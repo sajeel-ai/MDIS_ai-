@@ -1,0 +1,7 @@
+Admission Date: 2026-09-15 Discharge Date: 2026-09-20 Service: MEDICINE
+Chief Complaint: Shortness of breath, chest tightness, productive cough.
+History of Present Illness: 68-year-old female patient with a history of COPD and essential hypertension presenting with worsening dyspnea and purulent sputum for 3 days.
+Past Medical History: 1. Chronic Obstructive Pulmonary Disease (COPD) 2. Essential Hypertension 3. Type 2 Diabetes Mellitus.
+Medications on Admission: Lisinopril 10mg PO daily, Metformin 1000mg PO BID, Albuterol inhaler PRN.
+Discharge Medications: 1. Prednisone 40 mg PO daily for 5 days 2. Azithromycin 500 mg PO daily for 5 days 3. Lisinopril 10 mg PO daily.
+Discharge Diagnosis: Acute exacerbation of COPD, Essential hypertension, Type 2 Diabetes Mellitus.

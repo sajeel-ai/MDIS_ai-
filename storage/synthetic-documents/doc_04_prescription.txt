@@ -1,0 +1,27 @@
+CLINICAL PRESCRIPTION RECORD
+Patient Name: Aisha Khan
+DOB: 1985-09-08 | MRN: SYN-100204
+Date: 24 September 2026
+Clinic: Metro Internal Medicine Associates
+
+Rx 1: Atorvastatin 40 mg oral tablet
+     Sig: Take 1 tablet (40 mg) orally once daily at bedtime.
+     Qty: 90 tablets (Refills: 3)
+     Indication: Hyperlipidemia / Secondary cardiovascular prevention.
+
+Rx 2: Lisinopril 20 mg oral tablet
+     Sig: Take 1 tablet (20 mg) orally once daily in the morning.
+     Qty: 90 tablets (Refills: 3)
+     Indication: Essential Hypertension.
+
+Rx 3: Metformin Hydrochloride 850 mg oral tablet
+     Sig: Take 1 tablet orally twice daily with meals.
+     Qty: 180 tablets (Refills: 3)
+     Indication: Type 2 Diabetes Mellitus.
+
+Rx 4: Hydrochlorothiazide 12.5 mg oral tablet
+     Sig: Take 1 tablet orally once daily in the morning.
+     Qty: 90 tablets (Refills: 2)
+     Indication: Adjunctive antihypertensive therapy.
+
+Prescriber Signature: Dr. Aris Thorne, MD (NPI: 1982736450)

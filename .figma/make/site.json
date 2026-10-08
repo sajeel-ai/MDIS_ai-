@@ -1,0 +1,10 @@
+{
+  "description": "Create interactive prototypes with ease, enabling designers and teams to visualize and test ideas effectively for improved user experiences.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

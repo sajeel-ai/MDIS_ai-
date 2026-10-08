@@ -1,0 +1,9 @@
+{
+  "f1_by_type": {
+    "diagnosis": 1.0,
+    "medication": 1.0,
+    "symptom": 1.0,
+    "procedure": 1.0,
+    "lab": 1.0
+  }
+}

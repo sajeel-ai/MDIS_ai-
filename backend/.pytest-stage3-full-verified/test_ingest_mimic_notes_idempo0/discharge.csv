@@ -1,0 +1,2 @@
+note_id,subject_id,hadm_id,note_type,text
+NOTE-TEST-cbac3aa1,999001,888001,DS,"Admission Date: 2026-09-24 Discharge Summary text content."

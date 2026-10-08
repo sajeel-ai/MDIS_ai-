@@ -1,0 +1,3 @@
+# Sample data for development (Dataset A — synthetic, committed to repo)
+# This directory contains hand-crafted synthetic clinical documents.
+# MIMIC-IV data (raw/) is gitignored — it must be downloaded separately.

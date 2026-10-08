@@ -1,0 +1,18 @@
+SURGICAL OPERATIVE REPORT
+Patient Name: Susan Bennett
+DOB: 1982-05-19 | MRN: SYN-100209
+Date of Surgery: 19 September 2026
+Surgeon: Dr. Richard Sterling, MD (General Surgery)
+Preoperative Diagnosis: Acute calculous cholecystitis
+Postoperative Diagnosis: Acute suppurative cholecystitis with cholelithiasis
+Procedure Performed: Laparoscopic Cholecystectomy with Intraoperative Cholangiogram
+
+INDICATIONS FOR PROCEDURE:
+44-year-old female presenting with acute right upper quadrant abdominal pain, positive Murphy's sign, and abdominal ultrasound demonstrating gallstones with gallbladder wall thickening (5 mm).
+
+DESCRIPTION OF PROCEDURE:
+Under general endotracheal anesthesia, pneumatic peritoneum was established using a Veress needle. Standard 4-port laparoscopic access was achieved. The gallbladder was markedly distended and inflamed. Dissection of Calot's triangle successfully identified the cystic duct and cystic artery. Critical view of safety was unequivocally achieved. Intraoperative cholangiogram demonstrated free flow of contrast into the duodenum without choledocholithiasis. Cystic duct and artery were double-clipped and divided. The gallbladder was dissected off the liver bed using electrocautery, placed in an EndoCatch bag, and extracted through the umbilical port.
+
+ESTIMATED BLOOD LOSS: < 20 mL.
+COMPLICATIONS: None.
+SPECIMENS REMOVED: Gallbladder sent to Surgical Pathology.

@@ -1,0 +1,349 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-bg: #F5FAFF;
+  --color-surface: #ffffff;
+  --color-surface-2: #EAF5FF;
+  --color-border: #DCE7F3;
+  --color-border-subtle: #DCE7F3;
+
+  --color-text-primary: #071A3D;
+  --color-text-secondary: #52627A;
+  --color-text-tertiary: #52627A;
+  --color-text-inverse: #ffffff;
+
+  --color-blue-50: #EAF5FF;
+  --color-blue-100: #EAF5FF;
+  --color-blue-500: #146EF5;
+  --color-blue-600: #146EF5;
+  --color-blue-700: #146EF5;
+  --color-blue-900: #0E2A5C;
+
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
+
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-500: #d97706;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+
+  --color-nav-bg: #071A3D;
+  --color-nav-text: #B8C7E6;
+  --color-nav-text-active: #ffffff;
+  --color-nav-active-bg: #12366F;
+  --color-nav-section: #8FA5CC;
+  --color-nav-accent: #146EF5;
+  --color-nav-cyan: #16C7E8;
+
+}
+
+:root {
+  --sidebar-bg: #071A3D;
+  --sidebar-text: #B8C7E6;
+  --sidebar-text-active: #FFFFFF;
+  --sidebar-section: #8FA5CC;
+  --sidebar-active-bg: #12366F;
+  --sidebar-accent: #146EF5;
+  --sidebar-cyan: #16C7E8;
+}
+
+/* Standard page header shared by content views. The inset modifier extends
+   to the content edges horizontally while preserving AppLayout's top spacing. */
+.page-header-edge {
+  background-color: #ffffff;
+  border: 0;
+  border-bottom: 1px solid #DCE7F3;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.mobile-sidebar-drawer {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.app-shell-viewport {
+  height: 100vh;
+  min-height: 100vh;
+}
+
+.command-palette-panel {
+  max-height: calc(100vh - 6rem);
+  max-height: calc(100dvh - 6rem);
+}
+
+.mobile-drawer-brand-header {
+  height: calc(64px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+
+.mobile-drawer-footer {
+  margin: 12px;
+  padding: 10px 12px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
+
+.mobile-drawer-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.mobile-drawer-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.mobile-drawer-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mobile-drawer-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background-color 180ms ease;
+}
+
+.mobile-drawer-scroll:hover,
+.mobile-drawer-scroll.scrollbar-visible {
+  scrollbar-color: #244D85 transparent;
+}
+
+.mobile-drawer-scroll:hover::-webkit-scrollbar-thumb,
+.mobile-drawer-scroll.scrollbar-visible::-webkit-scrollbar-thumb {
+  background: #244D85;
+}
+
+.mobile-drawer-scroll::-webkit-scrollbar-thumb:hover {
+  background: #146EF5;
+}
+
+.mobile-drawer-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.mobile-drawer-nav-item:focus-visible {
+  outline: 2px solid #16C7E8;
+  outline-offset: 2px;
+}
+
+@keyframes mobile-navigation-slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.mobile-navigation-slide-in {
+  animation: mobile-navigation-slide-in 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-navigation-slide-in {
+    animation: none;
+  }
+}
+
+.page-header-edge-inset {
+  --page-header-content-pad: 1.5rem;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: calc(var(--page-header-content-pad) + 1rem);
+  padding-right: calc(var(--page-header-content-pad) + 1rem);
+}
+
+.page-header-edge-pad-4 {
+  --page-header-content-pad: 1rem;
+}
+
+.page-header-edge-pad-sm-6 {
+  --page-header-content-pad-sm: 1.5rem;
+}
+
+.page-header-edge-pad-sm-8 {
+  --page-header-content-pad-sm: 2rem;
+}
+
+@media (min-width: 640px) {
+  .page-header-edge-inset {
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    padding-left: calc(var(--page-header-content-pad-sm, var(--page-header-content-pad)) + 1.5rem);
+    padding-right: calc(var(--page-header-content-pad-sm, var(--page-header-content-pad)) + 1.5rem);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Keyboard focus — :focus-visible ensures focus ring appears for keyboard nav
+   but NOT on mouse click. Preserves native accessibility without visual noise. */
+:focus-visible {
+  outline: 2px solid #146EF5;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Suppress focus ring for mouse-initiated focus on elements that already
+   have custom interactive styles (buttons, etc.) */
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #F5FAFF;
+  color: #071A3D;
+  -webkit-font-smoothing: antialiased;
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+html, body, #root {
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+code, .mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background-color 180ms ease;
+}
+*:not(.scrollbar-hide):hover,
+*:not(.scrollbar-hide).scrollbar-visible {
+  scrollbar-color: #244D85 transparent;
+}
+*:not(.scrollbar-hide):hover::-webkit-scrollbar-thumb,
+*:not(.scrollbar-hide).scrollbar-visible::-webkit-scrollbar-thumb {
+  background: #244D85;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #146EF5;
+}
+
+*:not(.scrollbar-hide) {
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background-color 180ms ease;
+}
+.sidebar-scroll:hover,
+.sidebar-scroll.scrollbar-visible {
+  scrollbar-color: #244D85 transparent;
+}
+.sidebar-scroll:hover::-webkit-scrollbar-thumb,
+.sidebar-scroll.scrollbar-visible::-webkit-scrollbar-thumb {
+  background: #244D85;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #146EF5;
+}
+
+.highlight-entity {
+  background-color: rgba(217,119,6,0.15);
+  border-bottom: 2px solid #d97706;
+  border-radius: 2px;
+  padding: 0 2px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.highlight-entity:hover {
+  background-color: rgba(217,119,6,0.22);
+}
+.highlight-entity.diagnosis {
+  background-color: #EAF5FF;
+  border-bottom-color: #146EF5;
+}
+.highlight-entity.medication {
+  background-color: #dcfce7;
+  border-bottom-color: #22c55e;
+}
+.highlight-entity.symptom {
+  background-color: rgba(22,199,232,0.15);
+  border-bottom-color: #16C7E8;
+}
+.highlight-entity.active {
+  outline: 2px solid #146EF5;
+  outline-offset: 1px;
+}
+
+.pipeline-line {
+  width: 2px;
+  background: #DCE7F3;
+  flex-shrink: 0;
+}
+.pipeline-line.done {
+  background: #16C7E8;
+}
+.pipeline-line.warn {
+  background: #d97706;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes slide-in {
+  from { transform: translateX(8px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.slide-in {
+  animation: slide-in 0.2s ease-out;
+}

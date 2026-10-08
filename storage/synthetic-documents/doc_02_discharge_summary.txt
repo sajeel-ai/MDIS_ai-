@@ -1,0 +1,32 @@
+INPATIENT DISCHARGE SUMMARY
+Patient Name: Margaret Taylor
+DOB: 1958-03-14 | MRN: SYN-100202
+Date of Admission: 15 September 2026
+Date of Discharge: 22 September 2026
+Attending Physician: Dr. Sarah Chen, MD (Pulmonology)
+
+PRINCIPAL DIAGNOSIS:
+Acute exacerbation of Chronic Obstructive Pulmonary Disease (COPD), severe.
+
+SECONDARY DIAGNOSES:
+1. Community-acquired pneumonia, right lower lobe.
+2. Essential hypertension.
+3. Type 2 diabetes mellitus, non-insulin dependent.
+
+HISTORY OF PRESENT ILLNESS:
+The patient is a 68-year-old female with a 40 pack-year smoking history who presented with a 3-day history of severe dyspnea, productive cough with purulent sputum, and fever (38.5 °C).
+
+HOSPITAL COURSE:
+Patient was admitted to the step-down respiratory unit. Intravenous IV methylprednisolone 40 mg q12h and nebulized Albuterol/Ipratropium were initiated. Sputum cultures grew Streptococcus pneumoniae sensitive to Ceftriaxone. Intravenous antibiotics were transitioned to oral Azithromycin. Oxygen saturation improved from 88% on room air to 94% on 2L nasal cannula. Blood glucose levels were managed with an insulin sliding scale.
+
+DISCHARGE MEDICATIONS:
+1. Prednisone 40 mg PO once daily for 5 days.
+2. Azithromycin 500 mg PO once daily for 5 days.
+3. Tiotropium bromide 18 mcg inhalation once daily.
+4. Albuterol 90 mcg inhaler 2 puffs q4h PRN dyspnea.
+5. Lisinopril 10 mg PO once daily.
+6. Metformin 1000 mg PO twice daily.
+
+FOLLOW-UP PLAN:
+- Pulmonology outpatient clinic appointment in 10 days.
+- Repeat Chest X-ray in 4 weeks to confirm infiltrates resolution.

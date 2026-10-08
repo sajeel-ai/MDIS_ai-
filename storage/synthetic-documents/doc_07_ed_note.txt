@@ -1,0 +1,29 @@
+EMERGENCY DEPARTMENT ADMISSION NOTE
+Patient Name: Maria Rodriguez
+DOB: 1979-11-04 | MRN: SYN-100207
+Arrival Date/Time: 24 September 2026 02:15
+Attending ED Physician: Dr. Kevin O'Brien, MD
+
+CHIEF COMPLAINT:
+Acute severe substernal chest pain and diaphoresis starting 1 hour prior to arrival.
+
+HISTORY OF PRESENT ILLNESS:
+The patient is a 46-year-old female who woke up at 01:15 AM with severe 8/10 pressure-like substernal chest discomfort radiating to her left jaw and interscapular region. Associated with severe nausea, shortness of breath, and profuse sweating. No prior history of coronary artery disease.
+
+INITIAL PHYSICAL EXAMINATION:
+Vitals: BP 162/98 mmHg, HR 104 bpm, RR 22 bpm, SpO2 96% on room air, Temp 36.8 °C.
+General: Distressed, pale, diaphoretic.
+Cardiovascular: Tachycardic, S1/S2 present, no S3/S4 or pericardial friction rub.
+
+DIAGNOSTIC WORKUP:
+- Initial 12-lead ECG: Sinus tachycardia with 1.5 mm ST-segment depression in leads V4-V6.
+- High-Sensitivity Troponin T: 148 ng/L (CRITICAL HIGH, Normal < 14 ng/L).
+
+ED MANAGEMENT & INTERVENTIONS:
+1. Aspirin 325 mg chewed immediately.
+2. Nitroglycerin 0.4 mg sublingual x2 with partial relief of pain.
+3. Heparin IV bolus 5000 units followed by continuous infusion.
+4. Ticagrelor 180 mg oral loading dose administered.
+
+ASSESSMENT:
+Acute Coronary Syndrome (NSTEMI) — High Risk. Urgent Cardiac Catheterization Lab activation initiated. Admission to Cardiac Care Unit (CCU).

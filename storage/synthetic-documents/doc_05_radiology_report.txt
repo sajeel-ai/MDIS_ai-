@@ -1,0 +1,21 @@
+DEPARTMENT OF RADIOLOGY & IMAGING
+Patient Name: James Wilson
+DOB: 1952-01-30 | MRN: SYN-100205
+Accession Number: RAD-2026-98102
+Examination: Chest Radiography (PA and Lateral) & Non-contrast CT Thorax
+Date of Service: 21 September 2026
+
+CLINICAL HISTORY:
+74-year-old male with chronic dyspnea, heavy smoking history, presenting with acute right-sided chest tightness and fever.
+
+FINDINGS:
+Chest Radiograph:
+Cardiomegaly is present with prominent left ventricular contour. There is dense consolidation in the right lower lobe with visible air bronchograms. Left lung field is clear without focal consolidation. No pneumothorax. Small right pleural effusion noted.
+
+CT Thorax (Non-contrast):
+Confirms dense right lower lobe segment consolidation compatible with lobar pneumonia. Hilar and mediastinal lymph nodes are mildly enlarged (up to 1.2 cm in short axis), likely reactive. Emphysematous bullous changes noted in both lung apices.
+
+IMPRESSION:
+1. Right lower lobe lobar pneumonia with small parapneumonic effusion.
+2. Centrilobular emphysema in upper lung lobes.
+3. Mild cardiomegaly.

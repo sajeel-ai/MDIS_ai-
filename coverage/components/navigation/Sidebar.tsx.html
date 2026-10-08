@@ -1,0 +1,613 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for components/navigation/Sidebar.tsx</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">components/navigation</a> Sidebar.tsx</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>20/20</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">97.05% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>66/68</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">85.71% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>6/7</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>17/17</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">54x</span>
+<span class="cline-any cline-yes">54x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">54x</span>
+<span class="cline-any cline-yes">39x</span>
+<span class="cline-any cline-yes">39x</span>
+<span class="cline-any cline-yes">39x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">39x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">54x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">702x</span>
+<span class="cline-any cline-yes">702x</span>
+<span class="cline-any cline-yes">702x</span>
+<span class="cline-any cline-yes">702x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">702x</span>
+<span class="cline-any cline-yes">702x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">702x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import React, { useEffect, useState } from 'react';
+import {
+  LayoutDashboard,
+  FileSpreadsheet,
+  Clock,
+  CheckSquare,
+  Sparkles,
+  Activity,
+  GitBranch,
+  BarChart3,
+  ShieldCheck,
+  Settings,
+  ActivitySquare,
+  X,
+} from 'lucide-react';
+import { fetchReviewStats, type ReviewStats } from '../../services/api';
+import logoUrl from '../../public/cognate-logo.png';
+&nbsp;
+export interface SidebarProps {
+  activeView: string;
+  onNavigate: (view: string) =&gt; void;
+  collapsed?: boolean;
+  isMobileDrawer?: boolean;
+  onClose?: () =&gt; void;
+}
+&nbsp;
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  badgeKey?: keyof ReviewStats;
+  section?: string;
+}
+&nbsp;
+const NAV_ITEMS: NavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: &lt;LayoutDashboard size={16} /&gt; },
+  { id: 'clinical', label: 'Clinical Workspace', section: 'Clinical', icon: &lt;FileSpreadsheet size={16} /&gt; },
+  { id: 'documents', label: 'Documents', icon: &lt;FileSpreadsheet size={16} /&gt; },
+  { id: 'timeline', label: 'Clinical Timeline', icon: &lt;Clock size={16} /&gt; },
+  // badgeKey: 'pending' will pull from live ReviewStats
+  { id: 'review', label: 'Review Center', badgeKey: 'pending', icon: &lt;CheckSquare size={16} /&gt; },
+  { id: 'extraction', label: 'AI Extraction', section: 'AI', icon: &lt;Sparkles size={16} /&gt; },
+  { id: 'aiops', label: 'AI Operations', icon: &lt;Activity size={16} /&gt; },
+  { id: 'pipeline', label: 'Pipeline', icon: &lt;Activity size={16} /&gt; },
+  { id: 'workflows', label: 'Workflows', icon: &lt;GitBranch size={16} /&gt; },
+  { id: 'integrations', label: 'Integrations', section: 'System', icon: &lt;ActivitySquare size={16} /&gt; },
+  { id: 'analytics', label: 'Analytics', icon: &lt;BarChart3 size={16} /&gt; },
+  { id: 'audit', label: 'Audit &amp; Compliance', icon: &lt;ShieldCheck size={16} /&gt; },
+  { id: 'settings', label: 'Settings', icon: &lt;Settings size={16} /&gt; },
+];
+&nbsp;
+export function Sidebar({ activeView, onNavigate, isMobileDrawer = false, onClose }: SidebarProps) {
+  const [reviewStats, setReviewStats] = useState&lt;ReviewStats | null&gt;(null);
+  let currentSection = '';
+&nbsp;
+  useEffect(() =&gt; {
+    let cancelled = false;
+    fetchReviewStats()
+      .then((s) =&gt; { <span class="missing-if-branch" title="else path not taken" >E</span>if (!cancelled) setReviewStats(s); })
+      .<span class="fstat-no" title="function not covered" >catch(() =&gt; {</span> /* silently leave badge hidden on error */ });
+    return () =&gt; { cancelled = true; };
+  }, []);
+&nbsp;
+  return (
+    &lt;aside className={`bg-[#071A3D] flex flex-col ${isMobileDrawer ? 'flex-1 min-h-0 min-w-0 w-full' : 'h-full shrink-0 transition-all duration-200 w-[220px] md:w-[72px] lg:w-[220px]'} border-r border-[#0E2A5C]`}&gt;
+      {/* Brand Header */}
+      &lt;div className={isMobileDrawer
+        ? 'mobile-drawer-brand-header flex w-full shrink-0 items-center justify-between border-b border-[rgba(255,255,255,0.08)] px-4'
+        : 'px-4 py-3.5 border-b border-[#0E2A5C] flex items-center gap-2.5'}&gt;
+        &lt;img src={logoUrl} alt="Cognate AI" className="w-7 h-7 rounded-lg shrink-0" /&gt;
+        &lt;div className={`min-w-0 flex-1 ${isMobileDrawer ? '' : 'md:hidden lg:block'}`}&gt;
+          &lt;div className="font-sans text-[11px] font-black uppercase tracking-[0.12em] truncate text-white"&gt;
+            Cognate &lt;span className="bg-gradient-to-r from-[#146EF5] to-[#16C7E8] bg-clip-text text-transparent"&gt;AI&lt;/span&gt;
+          &lt;/div&gt;
+          &lt;div className="text-[#8FA3C0] text-[9px] font-mono tracking-widest uppercase"&gt;INTELLIGENCE&lt;/div&gt;
+        &lt;/div&gt;
+        {isMobileDrawer &amp;&amp; (
+          &lt;button
+            type="button"
+            onClick={onClose}
+            aria-label="Close navigation"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#A9B8D0] transition-colors hover:bg-[rgba(255,255,255,0.10)] hover:text-white focus-visible:bg-[rgba(255,255,255,0.10)] focus-visible:text-white"
+          &gt;
+            &lt;X size={20} aria-hidden="true" /&gt;
+          &lt;/button&gt;
+        )}
+      &lt;/div&gt;
+&nbsp;
+      {/* Navigation List */}
+      &lt;nav
+        aria-label="Main navigation"
+        className={isMobileDrawer
+          ? 'mobile-drawer-scroll min-h-0 flex-1 overflow-y-auto px-3 py-2'
+          : 'flex-1 overflow-y-auto py-3 sidebar-scroll'}
+      &gt;
+        {NAV_ITEMS.map((item) =&gt; {
+          const showSection = item.section &amp;&amp; item.section !== currentSection;
+          const firstSection = Boolean(showSection &amp;&amp; !currentSection);
+          if (item.section) currentSection = item.section;
+          const isActive = activeView === item.id;
+&nbsp;
+          // Resolve live badge count — only show when &gt; 0
+          const badgeCount =
+            item.badgeKey &amp;&amp; reviewStats !== null ? reviewStats[item.badgeKey] : undefined;
+          const showBadge = typeof badgeCount === 'number' &amp;&amp; badgeCount &gt; 0;
+&nbsp;
+          return (
+            &lt;React.Fragment key={item.id}&gt;
+              {showSection &amp;&amp; (
+                &lt;div className={isMobileDrawer
+                  ? `px-3 pt-5 pb-2 text-[10px] font-mono tracking-[0.12em] text-[#8FA3C0] uppercase font-semibold ${firstSection ? '' : 'border-t border-[rgba(255,255,255,0.08)]'}`
+                  : 'text-[#8FA3C0] text-[9px] font-mono tracking-wider px-5 pt-3.5 pb-1.5 uppercase font-semibold md:hidden lg:block'}&gt;
+                  {item.section}
+                &lt;/div&gt;
+              )}
+              &lt;button
+                onClick={() =&gt; onNavigate(item.id)}
+                title={item.label}
+                aria-current={isActive ? 'page' : undefined}
+                style={!isMobileDrawer &amp;&amp; isActive ? { borderImageSource: 'linear-gradient(180deg, #146EF5, #16C7E8)', borderImageSlice: 1 } : undefined}
+                className={isMobileDrawer
+                  ? `mobile-drawer-nav-item relative flex min-h-[44px] w-full items-center gap-3 rounded-[10px] px-3 text-left text-sm transition-colors ${isActive
+                    ? 'bg-[rgba(20,110,245,0.20)] font-medium text-white'
+                    : 'bg-transparent font-normal text-[#A9B8D0] hover:bg-[rgba(255,255,255,0.06)] hover:text-white active:bg-[rgba(255,255,255,0.06)]'}`
+                  : `w-full flex items-center gap-3 transition-colors px-5 md:px-0 lg:px-5 md:justify-center lg:justify-start py-2.5 md:py-3 lg:py-2.5 ${isActive
+                    ? 'bg-[#0E2A5C] text-white border-l-2 border-[#146EF5]'
+                    : 'text-[#A9B8D0] hover:text-white hover:bg-[#0E2A5C] border-l-2 border-transparent'}`}
+              &gt;
+                {isMobileDrawer &amp;&amp; isActive &amp;&amp; (
+                  &lt;span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-[#146EF5] to-[#16C7E8]" aria-hidden="true" /&gt;
+                )}
+                &lt;span className={isMobileDrawer
+                  ? (isActive ? 'text-[#16C7E8]' : 'text-[#8FA3C0]')
+                  : (isActive ? 'text-[#146EF5]' : 'opacity-80')}
+                  aria-hidden="true"
+                &gt;
+                  {isMobileDrawer &amp;&amp; React.isValidElement(item.icon)
+                    ? React.cloneElement(item.icon as React.ReactElement&lt;{ size?: number }&gt;, { size: 20 })
+                    : item.icon}
+                &lt;/span&gt;
+                &lt;span className={isMobileDrawer
+                  ? 'min-w-0 flex-1 truncate font-sans text-sm'
+                  : 'flex-1 text-left text-xs font-sans truncate md:hidden lg:inline'}&gt;
+                  {item.label}
+                &lt;/span&gt;
+                {showBadge &amp;&amp; (
+                  &lt;span
+                    className={`px-1.5 py-0.5 text-white bg-[#146EF5] font-mono text-[10px] min-w-5 text-center md:hidden lg:inline-block ${isMobileDrawer ? <span class="branch-0 cbranch-no" title="branch not covered" >'rounded-full' : '</span>rounded'}`}
+                    aria-label={`${badgeCount} pending reviews`}
+                  &gt;
+                    {badgeCount}
+                  &lt;/span&gt;
+                )}
+              &lt;/button&gt;
+            &lt;/React.Fragment&gt;
+          );
+        })}
+      &lt;/nav&gt;
+&nbsp;
+      {/* User Profile Footer — identity from session (currently unauthenticated: shows placeholder) */}
+      &lt;div className={isMobileDrawer
+        ? 'mobile-drawer-footer shrink-0 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)]'
+        : 'p-3 border-t border-[#0E2A5C]'}&gt;
+        &lt;div className="flex items-center gap-2.5 md:justify-center lg:justify-start"&gt;
+          &lt;div className="w-7 h-7 rounded-full bg-[#146EF5] flex items-center justify-center text-white text-xs font-semibold font-sans flex-shrink-0"&gt;
+            ?
+          &lt;/div&gt;
+          &lt;div className="min-w-0 flex-1 md:hidden lg:block"&gt;
+            &lt;div className={isMobileDrawer ? 'truncate font-sans text-sm font-medium text-white' : 'text-[#DCE7F3] text-xs font-sans font-medium truncate'}&gt;User&lt;/div&gt;
+            &lt;div className={isMobileDrawer ? 'truncate font-sans text-xs text-[#A9B8D0]' : 'text-[#A9B8D0] text-[9px] font-mono truncate'}&gt;Clinician&lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/aside&gt;
+  );
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-10-05T14:45:05.410Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    

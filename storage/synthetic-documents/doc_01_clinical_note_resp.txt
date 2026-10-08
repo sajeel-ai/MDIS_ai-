@@ -1,0 +1,30 @@
+PATIENT CLINICAL PROGRESS NOTE
+Patient Name: John Anderson
+DOB: 1968-04-12 | MRN: SYN-100201
+Date of Service: 18 September 2026
+Provider: Dr. Marcus Vance, MD (Internal Medicine)
+
+SUBJECTIVE:
+The patient is a 58-year-old male presenting to the outpatient clinic complaining of persistent cough for approximately three weeks. He reports intermittent fever, fatigue, and shortness of breath, particularly when walking upstairs. He denies hemoptysis or chest pain. Past medical history is significant for essential hypertension diagnosed five years ago. Current home medication is amlodipine 5 mg PO once daily.
+
+OBJECTIVE:
+Vitals: Temp: 38.2 °C (100.8 °F) | BP: 148/92 mmHg | HR: 88 bpm | RR: 20 bpm | SpO2: 95% on room air.
+General: Alert, mild respiratory distress upon exertion.
+HEENT: Normocephalic, mucosal membranes moist.
+Lungs: Mild bilateral wheezing and scattered crackles in lower lobes.
+Cardiovascular: Regular rate and rhythm, S1/S2 present, no murmurs.
+Abdomen: Soft, non-tender, non-distended.
+
+IMAGING & LABS:
+Chest X-ray (Posteranterior & Lateral): Mild bilateral perihilar infiltrates. No pleural effusion or pneumothorax identified.
+
+ASSESSMENT:
+1. Acute lower respiratory tract infection (suspected community-acquired pneumonia).
+2. Essential hypertension, suboptimally controlled.
+
+PLAN:
+1. Start Amoxicillin 500 mg PO three times daily for 7 days.
+2. Continue Amlodipine 5 mg PO once daily.
+3. Advise increased oral hydration and bed rest.
+4. Return to clinic or emergency department if dyspnea worsens or high fever persists.
+5. Follow-up scheduled in 7 days.

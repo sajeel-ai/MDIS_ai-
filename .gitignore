@@ -1,0 +1,51 @@
+node_modules/
+dist/
+build/
+.cache/
+.env*
+!.env.example
+.vite/
+vite.config.*.timestamp-*
+*.tsbuildinfo
+*-debug.log*
+logs/
+*.log
+.claude-replay.*
+.tmp-*
+/.figma/design-context/
+
+# Platform-managed agentplat state, not project source. In the
+# client-initiated single-repo workspace layout (make's `Path: "."` spec) the
+# repo root IS the workspace root, so these land inside this repo rather than
+# beside it.
+/.plugins/
+/.opencode-skills/
+
+# ── Python / Backend ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.pytest-tmp/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Backend secrets (never commit real credentials)
+backend/.env
+# Keep the example and docker env files
+!backend/.env.example
+!backend/.env.docker
+
+# ── Data (MIMIC-IV files are never committed) ─────────────────────────────────
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# ── Document file storage ─────────────────────────────────────────────────────
+storage/documents/*
+!storage/documents/.gitkeep

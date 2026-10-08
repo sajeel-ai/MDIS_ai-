@@ -1,0 +1,14 @@
+note_id,subject_id,hadm_id,note_type,note_seq,charttime,storetime,text
+10014729-DS-1,10014729,24181354,DS,1,2026-09-15 14:00:00,2026-09-15 15:30:00,"Admission Date: 2026-09-15 Discharge Date: 2026-09-20 Service: MEDICINE
+Chief Complaint: Shortness of breath, chest tightness, productive cough.
+History of Present Illness: 68-year-old female patient with a history of COPD and essential hypertension presenting with worsening dyspnea and purulent sputum for 3 days.
+Past Medical History: 1. Chronic Obstructive Pulmonary Disease (COPD) 2. Essential Hypertension 3. Type 2 Diabetes Mellitus.
+Medications on Admission: Lisinopril 10mg PO daily, Metformin 1000mg PO BID, Albuterol inhaler PRN.
+Discharge Medications: 1. Prednisone 40 mg PO daily for 5 days 2. Azithromycin 500 mg PO daily for 5 days 3. Lisinopril 10 mg PO daily.
+Discharge Diagnosis: Acute exacerbation of COPD, Essential hypertension, Type 2 Diabetes Mellitus."
+10003400-DS-1,10003400,25926192,DS,1,2026-09-18 10:00:00,2026-09-18 11:15:00,"Admission Date: 2026-09-18 Discharge Date: 2026-09-22 Service: CARDIOLOGY
+Chief Complaint: Palpitations, dizziness, fatigue.
+History of Present Illness: 72-year-old male presenting with paroxysmal atrial fibrillation and elevated blood pressure.
+Past Medical History: Atrial Fibrillation, Coronary Artery Disease, Hyperlipidemia.
+Discharge Medications: 1. Apixaban 5 mg PO BID 2. Metoprolol Succinate 50 mg PO daily 3. Atorvastatin 40 mg PO daily.
+Discharge Diagnosis: Atrial Fibrillation with rapid ventricular response, Essential Hypertension."

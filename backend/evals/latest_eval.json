@@ -1,0 +1,27 @@
+{
+  "measured_at": "2026-10-05T12:07:05.159466+00:00",
+  "fixtures_evaluated": 32,
+  "precision_by_type": {
+    "diagnosis": 1.0,
+    "medication": 1.0,
+    "symptom": 1.0,
+    "procedure": 1.0,
+    "lab": 1.0
+  },
+  "recall_by_type": {
+    "diagnosis": 1.0,
+    "medication": 1.0,
+    "symptom": 1.0,
+    "procedure": 1.0,
+    "lab": 1.0
+  },
+  "f1_by_type": {
+    "diagnosis": 1.0,
+    "medication": 1.0,
+    "symptom": 1.0,
+    "procedure": 1.0,
+    "lab": 1.0
+  },
+  "assertion_accuracy": 1.0,
+  "assertion_entities_evaluated": 35
+}

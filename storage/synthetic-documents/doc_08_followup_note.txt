@@ -1,0 +1,26 @@
+PULMONOLOGY OUTPATIENT FOLLOW-UP VISIT
+Patient Name: Arthur Pendelton
+DOB: 1955-08-22 | MRN: SYN-100208
+Date of Visit: 20 September 2026
+Attending Pulmonologist: Dr. Grace Lin, MD
+
+REASON FOR VISIT:
+Outpatient follow-up after hospital discharge for acute COPD exacerbation 3 weeks ago.
+
+CLINICAL STATUS:
+Mr. Pendelton reports substantial improvement in dyspnea. He is able to walk 200 meters without stopping. Cough has decreased significantly with clear sputum production. He completed his 5-day prednisone burst and antibiotic course without adverse effects.
+
+PHYSICAL EXAM:
+BP: 128/78 mmHg | HR: 72 bpm | SpO2: 96% on room air.
+Lungs: Clear to auscultation bilaterally. No wheezing, rhonchi, or rales.
+
+SPIROMETRY RESULTS (Post-Bronchodilator today):
+- FVC: 3.12 L (78% predicted)
+- FEV1: 1.68 L (56% predicted)
+- FEV1/FVC ratio: 0.54 (GOLD Stage 2 / Moderate COPD)
+
+IMPRESSION & PLAN:
+1. COPD, GOLD Stage 2 B, stable post-exacerbation.
+2. Maintenance Inhaler Therapy: Continue Tiotropium 18 mcg daily + Fluticasone/Salmeterol 250/50 mcg BID.
+3. Pulmonary Rehabilitation: Referral submitted for 8-week outpatient program.
+4. Next follow-up in 3 months with repeat spirometry.

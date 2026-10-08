@@ -1,0 +1,26 @@
+CENTRAL DIAGNOSTIC LABORATORY REPORT
+Patient Name: Robert Martinez
+DOB: 1974-11-23 | MRN: SYN-100203
+Specimen Collected: 23 September 2026 07:30
+Ordering Physician: Dr. Emily Ross, MD
+
+COMPLETE BLOOD COUNT (CBC WITH DIFFERENTIAL):
+- White Blood Cells (WBC): 14.2 x10^3/uL  [HIGH] (Ref: 4.5 - 11.0)
+- Red Blood Cells (RBC): 4.65 x10^6/uL    [NORMAL] (Ref: 4.30 - 5.90)
+- Hemoglobin (Hgb): 13.8 g/dL             [NORMAL] (Ref: 13.5 - 17.5)
+- Hematocrit (Hct): 41.2 %                [NORMAL] (Ref: 41.0 - 53.0)
+- Platelets: 285 x10^3/uL                  [NORMAL] (Ref: 150 - 450)
+- Neutrophils: 82.5 %                     [HIGH] (Ref: 45.0 - 70.0)
+
+COMPREHENSIVE METABOLIC PANEL (CMP):
+- Sodium: 139 mmol/L                      [NORMAL] (Ref: 135 - 145)
+- Potassium: 5.4 mmol/L                   [HIGH] (Ref: 3.5 - 5.1)
+- Chloride: 102 mmol/L                    [NORMAL] (Ref: 96 - 106)
+- Carbon Dioxide (CO2): 22 mmol/L         [NORMAL] (Ref: 20 - 29)
+- Blood Urea Nitrogen (BUN): 28 mg/dL     [HIGH] (Ref: 7 - 20)
+- Serum Creatinine: 1.6 mg/dL             [HIGH] (Ref: 0.7 - 1.3)
+- Glucose (Fasting): 145 mg/dL            [HIGH] (Ref: 70 - 99)
+- Hemoglobin A1c: 8.2 %                   [HIGH] (Ref: < 5.7)
+
+COMMENTS / CRITICAL VALUES:
+Elevated WBC count with neutrophilia indicates acute systemic inflammatory response or bacterial infection. Mild hyperkalemia and elevated creatinine noted; suggest renal function monitoring.
