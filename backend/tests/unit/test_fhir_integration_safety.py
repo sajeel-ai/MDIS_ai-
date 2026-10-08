@@ -8,6 +8,7 @@ from app.routers.integrations import ensure_synthetic_test_source
 
 def test_outbound_fhir_defaults_to_disabled():
     assert Settings(_env_file=None).fhir_outbound_enabled is False
+    assert Settings(_env_file=None).fhir_push_enabled is False
 
 
 @pytest.mark.parametrize("source", ["synthetic", "test", "SYNTHETIC"])

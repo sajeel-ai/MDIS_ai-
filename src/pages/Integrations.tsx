@@ -38,7 +38,7 @@ export function IntegrationsPage({ onNavigate }: IntegrationsPageProps) {
     { name: 'Cognate API', detail: 'FastAPI service', icon: Server, status: health ? 'Connected' : healthAccessRestricted ? restrictedLabel : 'Unavailable' },
     { name: 'PostgreSQL', detail: 'Clinical records and audit data', icon: Database, status: health ? 'Connected' : healthAccessRestricted ? restrictedLabel : 'Unavailable' },
     { name: 'Clinical processing pipeline', detail: health?.pipeline ?? (healthAccessRestricted ? 'Admin/operator access required' : 'Not available'), icon: ActivitySquare, status: health?.status ?? (healthAccessRestricted ? restrictedLabel : 'Unavailable') },
-    { name: 'FHIR R4 export (base-resource validated)', detail: fhir?.resource?.fhirVersion ? `FHIR ${fhir.resource.fhirVersion}` : 'Test server metadata check', icon: Database, status: fhir?.reachable ? 'Connected' : fhirRestricted ? restrictedLabel : fhirError || fhir?.configured ? 'Unavailable' : 'Not configured' },
+    { name: 'FHIR R4 export (base-resource validated)', detail: fhir?.reachable ? `${fhir.server_name || 'FHIR server'} · FHIR ${fhir.fhir_version || fhir.resource?.fhirVersion || ''}` : 'Test server metadata check', icon: Database, status: fhir?.reachable ? 'Connected' : fhirRestricted ? restrictedLabel : fhir?.reason ? `Unavailable (${fhir.reason})` : fhirError || fhir?.configured ? 'Unavailable' : 'Not configured' },
   ];
 
   return (

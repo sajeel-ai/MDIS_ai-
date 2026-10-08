@@ -34,6 +34,7 @@ import {
 interface ReviewCenterProps {
   onNavigate?: (view: string, documentId?: string, reviewTaskId?: string) => void;
   initialTaskId?: string | null;
+  detailOnly?: boolean;
 }
 
 const PriorityBadge = ({ priority }: { priority: string }) => {
@@ -62,7 +63,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
+export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: ReviewCenterProps) {
   const [tasks, setTasks] = useState<ReviewTask[]>([]);
   const [stats, setStats] = useState<ReviewStats>({
     pending: 0,
@@ -76,6 +77,7 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(initialTaskId || null);
+  const [mobilePanel, setMobilePanel] = useState<'source' | 'extraction' | 'decision'>('source');
   const [detailTask, setDetailTask] = useState<ReviewTask | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const canReview = currentUserRole === 'reviewer' || currentUserRole === 'admin';
@@ -112,7 +114,9 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
       setTasks(queueRes.items || []);
       setStats(statsRes);
 
-      if (queueRes.items.length > 0) {
+      if (detailOnly && initialTaskId) {
+        setSelectedTaskId(initialTaskId);
+      } else if (queueRes.items.length > 0) {
         if (!selectedTaskId || !queueRes.items.some((t) => t.id === selectedTaskId)) {
           setSelectedTaskId(queueRes.items[0].id);
         }
@@ -428,7 +432,7 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
       {/* Main Workspace Body */}
       <div className="flex min-h-[30rem] flex-1 flex-col overflow-visible md:min-h-0 md:flex-row md:overflow-hidden">
         {/* Left Queue Panel */}
-        <div
+        {!detailOnly && <div
           className={`flex min-h-[20rem] w-full flex-col border-r border-[#DCE7F3] bg-white flex-shrink-0 md:min-h-0 md:w-80 lg:w-96 ${
             selectedTaskId ? 'hidden md:flex' : 'flex'
           }`}
@@ -476,7 +480,7 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
                 return (
                   <button
                     key={t.id}
-                    onClick={() => setSelectedTaskId(t.id)}
+                    onClick={() => onNavigate ? onNavigate('review-document', undefined, t.id) : setSelectedTaskId(t.id)}
                     aria-pressed={isSelected}
                     aria-label={`Review document: ${docName} — ${patientName}, ${group.items.length} clinical findings`}
                     className={`w-full p-4 text-left transition-colors flex flex-col gap-1.5 ${
@@ -503,7 +507,7 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
               })
             )}
           </div>
-        </div>
+        </div>}
 
         {/* Right Detail Workspace */}
         <div className={`min-w-0 flex-1 flex-col overflow-visible bg-white md:overflow-hidden ${selectedTaskId ? 'flex' : 'hidden md:flex'}`}>
@@ -512,19 +516,34 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
               <RefreshCw size={18} className="animate-spin mr-2" /> Loading review task details...
             </div>
           ) : detailTask ? (
-            <div className="min-w-0 flex-1 flex flex-col overflow-visible lg:flex-row lg:overflow-hidden">
+            <div className="min-w-0 flex-1 flex flex-col overflow-visible md:flex-row md:overflow-hidden">
               {/* Mobile Back Button */}
               <div className="md:hidden px-4 py-2 bg-[#F5FAFF] border-b border-[#DCE7F3]">
                 <button
-                  onClick={() => setSelectedTaskId(null)}
+                  onClick={() => detailOnly ? onNavigate?.('review') : setSelectedTaskId(null)}
                   className="flex items-center gap-1 text-xs text-[#146EF5] font-semibold"
                 >
                   <ArrowLeft size={14} /> Back to Queue
                 </button>
+                {detailOnly && (
+                  <nav aria-label="Review sections" className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-white p-1 border border-[#DCE7F3]">
+                    {([['source', 'Source'], ['extraction', 'Extraction'], ['decision', 'Decision']] as const).map(([panel, label]) => (
+                      <button
+                        key={panel}
+                        type="button"
+                        onClick={() => setMobilePanel(panel)}
+                        aria-current={mobilePanel === panel ? 'page' : undefined}
+                        className={`min-h-10 rounded-md px-2 text-[11px] font-semibold ${mobilePanel === panel ? 'bg-[#146EF5] text-white' : 'text-[#52627A]'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </nav>
+                )}
               </div>
 
               {/* Panel 1: Source Document & Provenance (35% width on desktop) */}
-              <div className="w-full shrink-0 lg:min-h-0 lg:w-[38%] lg:shrink border-b lg:border-b-0 lg:border-r border-[#DCE7F3] flex flex-col bg-[#F5FAFF] overflow-visible lg:overflow-hidden">
+              <div className={`${detailOnly && mobilePanel !== 'source' ? 'hidden md:flex' : 'flex'} w-full shrink-0 md:min-h-0 md:w-[38%] md:shrink border-b md:border-b-0 md:border-r border-[#DCE7F3] flex-col bg-[#F5FAFF] overflow-visible md:overflow-hidden`}>
                 <div className="px-4 py-3 bg-white border-b border-[#DCE7F3] flex items-center justify-between">
                   <div>
                     <div className="font-sans text-xs font-bold text-[#071A3D] flex items-center gap-1.5">
@@ -544,7 +563,7 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
                   )}
                 </div>
 
-                <div className="flex-none p-4 space-y-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                <div className="flex-none p-4 space-y-3 md:min-h-0 md:flex-1 md:overflow-y-auto">
                   {/* Validation Reason Card */}
                   <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-lg">
                     <div className="flex items-center gap-1.5 text-amber-800 text-[11px] font-semibold font-mono uppercase">
@@ -583,7 +602,7 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
               </div>
 
               {/* Panel 2: AI Extraction & Entity Details (34% width on desktop) */}
-              <div className="w-full shrink-0 lg:min-h-0 lg:w-[34%] lg:shrink border-b lg:border-b-0 lg:border-r border-[#DCE7F3] flex flex-col bg-white overflow-visible lg:overflow-hidden">
+              <div className={`${detailOnly && mobilePanel !== 'extraction' ? 'hidden md:flex' : 'flex'} w-full shrink-0 md:min-h-0 md:w-[34%] md:shrink border-b md:border-b-0 md:border-r border-[#DCE7F3] flex-col bg-white overflow-visible md:overflow-hidden`}>
                 <div className="px-4 py-3 bg-[#F5FAFF] border-b border-[#DCE7F3]">
                   <div className="font-sans text-xs font-bold text-[#071A3D] flex items-center gap-1.5">
                     <Sparkles size={14} className="text-[#146EF5]" /> AI EXTRACTION DETAILS
@@ -591,7 +610,7 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
                   <div className="font-mono text-[10px] text-[#146EF5]">Model: Cognate Clinical NLP v1</div>
                 </div>
 
-                <div className="flex-none p-4 space-y-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                <div className="flex-none p-4 space-y-4 md:min-h-0 md:flex-1 md:overflow-y-auto">
                   {detailTask.entity ? (
                     <>
                       <div className="p-3 bg-[#F5FAFF] border border-[#DCE7F3] rounded-lg">
@@ -703,13 +722,13 @@ export function ReviewCenter({ onNavigate, initialTaskId }: ReviewCenterProps) {
               </div>
 
               {/* Panel 3: Human Review Decisions & Action Panel */}
-              <div className="w-full shrink-0 flex flex-col bg-white lg:min-h-0 lg:flex-1 lg:shrink lg:overflow-hidden">
+              <div className={`${detailOnly && mobilePanel !== 'decision' ? 'hidden md:flex' : 'flex'} w-full shrink-0 bg-white flex-col md:min-h-0 md:flex-1 md:shrink md:overflow-hidden`}>
                 <div className="px-4 py-3 bg-[#F5FAFF] border-b border-[#DCE7F3]">
                   <div className="font-sans text-xs font-bold text-[#071A3D]">HUMAN DECISION</div>
                   <div className="font-mono text-[10px] text-[#52627A]">Select clinician audit outcome</div>
                 </div>
 
-                <div className="flex-none p-4 space-y-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                <div className="flex-none p-4 space-y-4 md:min-h-0 md:flex-1 md:overflow-y-auto">
                   {!canReview && (
                     <div role="status" className="rounded-lg border border-[#DCE7F3] bg-[#F5FAFF] p-3 text-xs text-[#52627A]">
                       Read-only task view. Review decisions require the reviewer or admin role.

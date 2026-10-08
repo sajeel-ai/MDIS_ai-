@@ -72,6 +72,19 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
 
+  # Optional local HAPI FHIR R4 test server. Not started by default.
+  fhir:
+    image: hapiproject/hapi:latest
+    profiles: ["fhir"]
+    container_name: cognate-fhir
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - cognate_fhir_data:/data/hapi
+
 volumes:
   cognate_postgres_data:
+    driver: local
+  cognate_fhir_data:
     driver: local

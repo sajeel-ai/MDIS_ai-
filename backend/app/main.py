@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.config import settings
+from app.config import settings, validate_fhir_configuration
 from app.db import AsyncSessionLocal
 from app.security.auth import validate_jwt_configuration
 from app.routers import health
@@ -25,6 +25,7 @@ from app.routers import health
 async def lifespan(app: FastAPI):
     """Application startup / shutdown lifecycle."""
     validate_jwt_configuration()
+    validate_fhir_configuration()
     # Nothing to initialize in D2 beyond the DB engine (created at import time).
     yield
     # Graceful engine disposal on shutdown.

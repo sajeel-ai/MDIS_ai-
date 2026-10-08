@@ -62,6 +62,10 @@ From the repository root, run frontend checks with `npm run check`. From `backen
 
 For the opt-in live SMTP/Mailpit authentication journey, use a **disposable development/test database**, start Mailpit and configure the backend to send SMTP to it, then run `MDIS_MAILPIT_E2E=1 python -m pytest tests/integration/test_mailpit_auth_e2e.py -q` from `backend`. The test creates synthetic accounts and emails and exercises registration, email verification, administrator approval, password reset, revocation of the existing session, and sign-in with the replacement password. See [the Stage 6 integration runbook](docs/security/stage-6-runbook.md) for PowerShell commands and the manual browser checklist.
 
+## Local FHIR R4 test server
+
+The HAPI FHIR server is optional and is not started by the default Compose command. Start it with `docker compose --profile fhir up -d`, set `FHIR_TEST_SERVER_URL=http://localhost:8080/fhir` in your private `backend/.env`, then restart the backend. An administrator or operator can verify the connection on **Integrations**; the check calls `/metadata` and requires a FHIR R4 CapabilityStatement. Stop it with `docker compose --profile fhir stop fhir` (remove its persistent data only when intentionally resetting the local test server). Keep `FHIR_PUSH_ENABLED=false` unless you are deliberately testing; pushes are restricted to documents marked synthetic/test and must never contain real PHI.
+
 Email recovery and invitation delivery use `EMAIL_PROVIDER`, `EMAIL_FROM`, and the selected provider's environment variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` (or legacy `SMTP_USERNAME`), `SMTP_PASSWORD`, `SMTP_STARTTLS`; `RESEND_API_KEY`; or `SENDGRID_API_KEY`. Delivery timeout and retry settings are `EMAIL_SEND_TIMEOUT_SECONDS`, `EMAIL_RETRY_ATTEMPTS`, and `EMAIL_RETRY_BACKOFF_SECONDS`. The app does not expose action links in API responses. Console link delivery is for explicit local development only.
 
 See [the security threat model](docs/security/threat-model.md) and [the operations runbook](docs/security/operations-runbook.md) for control coverage, recovery procedures, and residual risks.

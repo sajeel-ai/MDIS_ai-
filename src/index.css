@@ -74,10 +74,15 @@
 }
 
 .app-shell-viewport {
-  height: 100vh;
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
 }
 
+/* The app shell owns scrolling (the <main> element), so the page behind it must not scroll. */
+html:has(.app-shell-viewport),
+body:has(.app-shell-viewport) {
+  overflow: hidden;
+}
 .command-palette-panel {
   max-height: calc(100vh - 6rem);
   max-height: calc(100dvh - 6rem);

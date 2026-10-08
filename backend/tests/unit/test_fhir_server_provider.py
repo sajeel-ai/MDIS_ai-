@@ -4,7 +4,15 @@ import httpx
 import pytest
 
 from app.providers import fhir_server
-from app.providers.fhir_server import ConfiguredFHIRServerProvider
+from app.providers.fhir_server import ConfiguredFHIRServerProvider, summarize_capability_statement
+
+
+def test_capability_statement_accepts_only_fhir_r4():
+    connected = summarize_capability_statement({"resourceType": "CapabilityStatement", "fhirVersion": "4.0.1", "software": {"name": "HAPI"}})
+    assert connected["status"] == "connected"
+    assert connected["server_name"] == "HAPI"
+    wrong_version = summarize_capability_statement({"resourceType": "CapabilityStatement", "fhirVersion": "5.0.0"})
+    assert wrong_version["reason"] == "wrong FHIR version"
 
 
 class FakeResponse:

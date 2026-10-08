@@ -59,6 +59,8 @@ def expected_roles(route: APIRoute) -> set[UserRole]:
         return {UserRole.CLINICIAN, UserRole.ADMIN}
     if route.path.startswith("/api/v1/integrations/fhir/push/"):
         return {UserRole.ADMIN}
+    if route.path == "/api/v1/integrations/fhir/metadata":
+        return {UserRole.ADMIN, UserRole.OPERATOR}
     if method == "POST" and route.path.startswith("/api/v1/review/"):
         return {UserRole.REVIEWER, UserRole.ADMIN}
     if "/export/" in route.path or route.path.endswith("/fhir"):

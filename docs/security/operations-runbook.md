@@ -28,6 +28,10 @@ This runbook describes the current code paths. Confirm environment-specific valu
 - OCR and extraction provider settings are `OCR_PROVIDER`, `AZURE_DOC_INTEL_ENDPOINT`, `AZURE_DOC_INTEL_KEY`, `EXTRACTION_PROVIDER`, `OPENAI_API_KEY`, and `OPENAI_MODEL`. Review outbound-data policy before enabling external providers.
 - Outbound FHIR stays disabled unless explicitly enabled for a test server and synthetic data. Verify the target server and its `/metadata` response before any test push.
 
+### Optional local FHIR R4 server
+
+Run `docker compose --profile fhir up -d` to start the persistent local HAPI server on `http://localhost:8080/fhir`; the profile is opt-in and does not run with normal Compose startup. Set `FHIR_TEST_SERVER_URL=http://localhost:8080/fhir` in the private `backend/.env`, restart the backend, and verify the **Integrations** page as an admin/operator. The status is connected only when `/metadata` returns a FHIR 4.x CapabilityStatement. Stop it with `docker compose --profile fhir stop fhir`. Keep `FHIR_PUSH_ENABLED=false` by default. If a controlled test push is enabled, use synthetic/test documents only; real PHI must never be sent to this server.
+
 ## Routine validation
 
 Run frontend checks from the repository root and backend tests from `backend`:

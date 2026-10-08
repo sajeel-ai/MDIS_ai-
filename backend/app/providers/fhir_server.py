@@ -12,6 +12,18 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+def summarize_capability_statement(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Return only safe, UI-facing CapabilityStatement fields."""
+    if metadata.get("resourceType") != "CapabilityStatement":
+        return {"reachable": False, "status": "unavailable", "reason": "invalid CapabilityStatement", "resource": None}
+    version = str(metadata.get("fhirVersion") or "")
+    if not version.startswith("4."):
+        return {"reachable": False, "status": "unavailable", "reason": "wrong FHIR version", "resource": {"fhirVersion": version}}
+    software = metadata.get("software") if isinstance(metadata.get("software"), dict) else {}
+    server_name = str(software.get("name") or "FHIR server")[:120]
+    return {"reachable": True, "status": "connected", "server_name": server_name, "fhir_version": version, "resource": {"resourceType": "CapabilityStatement", "fhirVersion": version}}
+
+
 class FHIRServerProvider(Protocol):
     async def get_metadata(self) -> dict[str, Any]: ...
     async def push_transaction(self, bundle: dict[str, Any]) -> dict[str, Any]: ...
@@ -24,10 +36,13 @@ class ConfiguredFHIRServerProvider:
         self.backoff_seconds = backoff_seconds
 
     async def get_metadata(self) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=5) as client:
             response = await client.get(f"{self.base_url}/metadata")
         response.raise_for_status()
-        return response.json()
+        metadata = response.json()
+        if not isinstance(metadata, dict):
+            raise ValueError("FHIR metadata response was not a JSON object")
+        return metadata
 
     async def push_transaction(self, bundle: dict[str, Any]) -> dict[str, Any]:
         transaction = {**bundle, "type": "transaction"}

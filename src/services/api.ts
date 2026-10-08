@@ -769,6 +769,10 @@ export async function fetchAIOpsHealth(): Promise<AIOpsHealth> {
 export interface FHIRMetadataCheck {
   configured: boolean
   reachable: boolean
+  status?: 'connected' | 'not_configured' | 'unavailable'
+  reason?: string
+  server_name?: string
+  fhir_version?: string
   resource: { fhirVersion?: string; [key: string]: unknown } | null
 }
 

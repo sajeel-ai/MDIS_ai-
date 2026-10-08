@@ -6,9 +6,26 @@ All configuration is centralized here — no os.getenv() calls scattered
 throughout the codebase.
 """
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
+from urllib.parse import urlparse
+
+
+def _validate_fhir_url(url: str, app_env: str, environment: str | None) -> str:
+    value = url.strip()
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("FHIR_TEST_SERVER_URL must be an http(s) URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("FHIR_TEST_SERVER_URL must not contain credentials")
+    production = app_env.strip().lower() == "production" or (environment or "").strip().lower() == "production"
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if production and (host == "localhost" or host.endswith(".localhost") or host in {"127.0.0.1", "::1", "hapi.fhir.org"} or host.endswith(".hapi.fhir.org")):
+        raise ValueError("FHIR_TEST_SERVER_URL cannot target localhost or a public HAPI test server in production")
+    return value.rstrip("/")
 
 
 class Settings(BaseSettings):
@@ -44,6 +61,7 @@ class Settings(BaseSettings):
 
     # Outbound FHIR is opt-in and may only receive synthetic/test documents.
     fhir_outbound_enabled: bool = False
+    fhir_push_enabled: bool = False
     fhir_test_server_url: str = ""
     fhir_push_max_attempts: int = Field(default=3, ge=1, le=8)
     fhir_push_backoff_seconds: float = Field(default=0.5, ge=0, le=30)
@@ -99,9 +117,18 @@ class Settings(BaseSettings):
     # Comma-separated string; parsed into a list by the property below.
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8443,http://127.0.0.1:8443"
 
+    @model_validator(mode="after")
+    def validate_fhir_configuration(self):
+        self.fhir_test_server_url = _validate_fhir_url(self.fhir_test_server_url, self.app_env, self.environment)
+        return self
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
 settings = Settings()
+
+
+def validate_fhir_configuration() -> None:
+    settings.fhir_test_server_url = _validate_fhir_url(settings.fhir_test_server_url, settings.app_env, settings.environment)

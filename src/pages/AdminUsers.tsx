@@ -241,9 +241,9 @@ export function AdminUsersPage({
             className="font-semibold text-[#071A3D]"
           >
             Account requests
-            {requests.length > 0 && (
+            {requestTotal > 0 && (
               <span className="ml-2 rounded-full bg-[#EAF5FF] px-2 py-0.5 align-middle text-xs font-medium text-[#52627A]">
-                {requests.length} pending
+                {requestTotal} pending
               </span>
             )}
           </h2>
@@ -374,22 +374,22 @@ export function AdminUsersPage({
               <p className="mt-0.5 text-xs text-[#52627A]">Active accounts and session management</p>
             </div>
             <span className="shrink-0 rounded-full bg-[#EAF5FF] px-2.5 py-1 text-xs font-medium text-[#52627A]">
-              {users.length} {users.length === 1 ? "user" : "users"}
+                 {userTotal} {userTotal === 1 ? "user" : "users"}
             </span>
           </div>
           {usersError && <div role="alert" className="m-4 rounded-lg bg-[#FEF2F2] p-3 text-sm text-[#B91C1C]">{usersError} <button type="button" onClick={() => void reloadUsers()} className="ml-2 font-semibold underline">Retry</button></div>}
           {loadingUsers ? <p className="px-4 py-8 text-sm text-[#52627A]">Loading users…</p> : <>
-          <div className="space-y-3 p-3 md:hidden">
+             <div className="grid gap-3 p-3 md:grid-cols-2 xl:hidden">
             {users.map((user) => <article key={`card-${user.id}`} className="rounded-lg border border-[#DCE7F3] p-3">
               <p className="font-medium text-[#071A3D]">{user.full_name || user.email}</p><p className="mt-0.5 break-all text-xs text-[#52627A]">{user.email}</p>
-              <div className="mt-3 grid gap-2"><label className="text-xs text-[#52627A]">Role<select aria-label={`Role for ${user.email}`} value={user.role} disabled={busy} onChange={(event) => { const next = event.target.value; setConfirm({ title: "Change user role", message: `Change ${user.email}'s role to ${next}?`, warning: next === "admin" || next === "operator", action: () => { setConfirm(null); void run(() => updateManagedUserRole(user.id, next, next === "admin" || next === "operator", user.updated_at), "Role updated.") } }) }} className="mt-1 h-10 w-full rounded-lg border border-[#DCE7F3] px-2" /> </label>
+              <div className="mt-3 grid gap-2"><label className="text-xs text-[#52627A]">Role<select aria-label={`Role for ${user.email}`} value={user.role} disabled={busy} onChange={(event) => { const next = event.target.value; setConfirm({ title: "Change user role", message: `Change ${user.email}'s role to ${next}?`, warning: next === "admin" || next === "operator", action: () => { setConfirm(null); void run(() => updateManagedUserRole(user.id, next, next === "admin" || next === "operator", user.updated_at), "Role updated.") } }) }} className="mt-1 h-10 w-full rounded-lg border border-[#DCE7F3] px-2">{roles.map((item) => <option key={item}>{item}</option>)}</select></label>
               <p className="text-xs text-[#52627A]">Status: <span className="font-medium text-[#071A3D]">{user.pending_approval ? "Pending approval" : user.is_active ? "Active" : "Inactive"}</span> · MFA: <span className="font-medium text-[#071A3D]">{user.mfa_enabled ? "Enabled" : "Not enabled"}</span></p>
               <div className="flex flex-wrap gap-2"><button type="button" className="min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#146EF5]" onClick={() => void selectUser(user)}>Sessions{typeof user.session_count === "number" ? ` (${user.session_count})` : ""}</button><button type="button" className="min-h-11 rounded-lg border border-[#DCE7F3] px-3" disabled={busy || user.pending_approval} onClick={() => setConfirm({ title: user.is_active ? "Deactivate user" : "Reactivate user", message: `${user.is_active ? "Deactivate" : "Reactivate"} ${user.email}?`, action: () => { setConfirm(null); void run(() => setManagedUserActive(user.id, !user.is_active, user.updated_at), user.is_active ? "User deactivated." : "User reactivated.") } })}>{user.is_active ? "Deactivate" : "Reactivate"}</button></div>
             </div></article>)}
           </div>
-          <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[700px] text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-[#EAF5FF] text-xs uppercase text-[#52627A]">
+          <div className="hidden max-h-[65vh] overflow-auto xl:block">
+          <table className="w-full min-w-[880px] text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-[#EAF5FF] text-xs uppercase text-[#52627A] [&_th]:whitespace-nowrap">
               <tr>
                 <th className="p-3">User</th>
                 <th className="p-3">Role</th>
@@ -401,11 +401,11 @@ export function AdminUsersPage({
             <tbody>
               {users.map((user) => (
                 <tr key={user.id} className="border-t border-[#DCE7F3]">
-                  <td className="p-3">
+                  <td className="min-w-[220px] p-3">
                     <span className="font-medium text-[#071A3D]">
                       {user.full_name || user.email}
                     </span>
-                    <span className="block text-xs text-[#52627A]">
+                    <span className="block break-all text-xs text-[#52627A]">
                       {user.email}
                     </span>
                   </td>
@@ -428,26 +428,28 @@ export function AdminUsersPage({
                       ))}
                     </select>
                   </td>
-                  <td className="p-3">
+                  <td className="whitespace-nowrap p-3">
                     {user.pending_approval
                       ? "Pending approval"
                       : user.is_active
                         ? "Active"
                         : "Inactive"}
                   </td>
-                  <td className="p-3">
+                  <td className="whitespace-nowrap p-3">
                     {user.mfa_enabled ? "Enabled" : "Not enabled"}
                   </td>
-                  <td className="p-3">
-                    <div className="flex flex-wrap gap-2">
+                  <td className="whitespace-nowrap p-3">
+                    <div className="flex items-center gap-2">
                       <button
-                        className="min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#146EF5]"
+                        type="button"
+                        className="min-h-10 whitespace-nowrap rounded-lg border border-[#DCE7F3] px-3 text-sm text-[#146EF5]"
                         onClick={() => void selectUser(user)}
                       >
-                        Sessions
+                        Sessions{typeof user.session_count === "number" ? ` (${user.session_count})` : ""}
                       </button>
                       <button
-                        className="min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#071A3D]"
+                        type="button"
+                        className="min-h-10 whitespace-nowrap rounded-lg border border-[#DCE7F3] px-3 text-sm text-[#071A3D] disabled:opacity-50"
                         disabled={busy || user.pending_approval}
                         onClick={() => setConfirm({ title: user.is_active ? "Deactivate user" : "Reactivate user", message: `${user.is_active ? "Deactivate" : "Reactivate"} ${user.email}?`, action: () => { setConfirm(null); void run(() => setManagedUserActive(user.id, !user.is_active, user.updated_at), user.is_active ? "User deactivated." : "User reactivated.") } })}
                       >
@@ -460,7 +462,7 @@ export function AdminUsersPage({
             </tbody>
           </table>
           </div></>}
-          {!users.length && (
+                             {!loadingUsers && !usersError && !users.length && (
             <div className="border-t border-[#DCE7F3] px-4 py-8 text-center text-sm text-[#52627A]">
               No organization users are available yet. Send an invitation above to add one.
             </div>

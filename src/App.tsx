@@ -3,6 +3,7 @@ import { DashboardPage } from "./pages/Dashboard"
 import { DocumentsPage } from "./pages/Documents"
 import { ClinicalWorkspacePage } from "./pages/ClinicalWorkspace"
 import { ReviewCenterPage } from "./pages/ReviewCenter"
+import { ReviewDocumentPage } from "./pages/ReviewDocument"
 import { WorkflowsPage } from "./pages/Workflows"
 import { IntegrationsPage } from "./pages/Integrations"
 import { AIOperationsPage } from "./pages/AIOperations"
@@ -31,7 +32,7 @@ if (import.meta.env.PROD && import.meta.env.VITE_AUTH_BYPASS === "true") {
   throw new Error("VITE_AUTH_BYPASS must not be enabled in a production build.")
 }
 
-type View = "dashboard" | "documents" | "clinical" | "review" | "workflows" | "integrations" | "aiops" | "settings" | "timeline" | "extraction" | "analytics" | "audit" | "pipeline" | "login" | "forgot" | "reset" | "invite" | "change-password" | "mfa-setup" | "mfa-verify" | "expired" | "forbidden" | "register" | "users"
+type View = "dashboard" | "documents" | "clinical" | "review" | "review-document" | "workflows" | "integrations" | "aiops" | "settings" | "timeline" | "extraction" | "analytics" | "audit" | "pipeline" | "login" | "forgot" | "reset" | "invite" | "change-password" | "mfa-setup" | "mfa-verify" | "expired" | "forbidden" | "register" | "users"
 
 type RouteState = {
   view: View
@@ -108,6 +109,14 @@ function parseRoute(pathname: string): RouteState {
     "/register": "register",
     "/admin/users": "users",
   }
+  const reviewDocumentMatch = cleanPath.match(/^\/review\/document\/([^/]+)$/)
+  if (reviewDocumentMatch)
+    return {
+      view: "review-document",
+      path: cleanPath,
+      documentId: null,
+      reviewTaskId: decodeURIComponent(reviewDocumentMatch[1]),
+    }
   const view = pathViews[cleanPath] ?? "dashboard"
   return { view, path: cleanPath, documentId: null, reviewTaskId: null }
 }
@@ -125,6 +134,8 @@ function pathForView(
     return `/clinical/${encodeURIComponent(documentId)}`
   if (view === "review" && reviewTaskId)
     return `/review/${encodeURIComponent(reviewTaskId)}`
+  if (view === "review-document" && reviewTaskId)
+    return `/review/document/${encodeURIComponent(reviewTaskId)}`
   const paths: Record<string, string> = {
     login: "/login",
     dashboard: "/dashboard",
@@ -254,6 +265,14 @@ function AppContent() {
     case "review":
       content = (
         <ReviewCenterPage
+          onNavigate={navigate}
+          reviewTaskId={route.reviewTaskId}
+        />
+      )
+      break
+    case "review-document":
+      content = (
+        <ReviewDocumentPage
           onNavigate={navigate}
           reviewTaskId={route.reviewTaskId}
         />
