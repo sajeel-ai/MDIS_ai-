@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react"
 import {
-  ArrowRight,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -9,6 +8,7 @@ import {
   Mail,
   SearchCheck,
   ShieldCheck,
+  LoaderCircle,
 } from "lucide-react"
 import mdisMarkUrl from "../public/Glossy Blue Ribbon M Emblem.png"
 import {
@@ -19,6 +19,24 @@ import {
 import { authErrorMessage, useAuth } from "../auth/AuthProvider"
 
 type LoginMode = "credentials" | "mfa_verify" | "mfa_setup" | "forgot" | "restricted" | "account_status"
+
+const WORKFLOW_STEPS = [
+  {
+    label: "AI Extraction",
+    description: "Extracts key clinical information.",
+    Icon: FileText,
+  },
+  {
+    label: "Clinic Review",
+    description: "Clinic reviewers validate and approve.",
+    Icon: SearchCheck,
+  },
+  {
+    label: "Approved Data",
+    description: "Structured, normalized data ready for use.",
+    Icon: CheckCircle2,
+  },
+] as const
 
 export function LoginPage({
   onAuthenticated,
@@ -38,6 +56,8 @@ export function LoginPage({
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [registrationEnabled, setRegistrationEnabled] = useState(false)
+  const [workflowStep, setWorkflowStep] = useState(0)
+  const [sliderPaused, setSliderPaused] = useState(false)
   const [accountStatus, setAccountStatus] = useState<{
     title: string
     message: string
@@ -54,6 +74,14 @@ export function LoginPage({
       active = false
     }
   }, [])
+
+  useEffect(() => {
+    if (sliderPaused) return
+    const timer = window.setInterval(() => {
+      setWorkflowStep((current) => (current + 1) % WORKFLOW_STEPS.length)
+    }, 5500)
+    return () => window.clearInterval(timer)
+  }, [sliderPaused])
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -205,16 +233,16 @@ export function LoginPage({
   }
 
   return (
-    <main className="min-h-screen bg-[#EAF5FF] lg:grid lg:grid-cols-2">
-      <section className="relative hidden min-h-screen overflow-x-hidden overflow-y-auto bg-[radial-gradient(ellipse_at_85%_105%,#087BFF_0%,transparent_42%),linear-gradient(135deg,#06183A_0%,#08285C_56%,#0649A8_100%)] px-10 py-8 text-white lg:flex lg:h-screen lg:min-h-0 lg:flex-col lg:justify-between xl:px-14 xl:py-10">
+    <main className="login-shell">
+      <section className="story-panel">
         <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
           <div className="absolute -right-28 -top-28 h-[30rem] w-[30rem] rounded-full border border-[#1688FF]/35" />
           <div className="absolute -right-12 -top-12 h-[24rem] w-[24rem] rounded-full border border-[#1688FF]/35" />
           <div className="absolute -bottom-48 -left-28 h-[27rem] w-[65rem] rotate-[-12deg] rounded-[50%] border border-[#16C7E8]/25 bg-gradient-to-r from-transparent via-[#146EF5]/15 to-[#146EF5]/50" />
           <div className="absolute bottom-16 left-0 h-px w-[70%] bg-gradient-to-r from-[#16C7E8]/50 to-transparent" />
         </div>
-        <div className="relative z-10 my-auto max-w-2xl py-6">
-          <div className="mb-6 flex items-center gap-3">
+        <div className="story-content">
+          <div className="story-header mb-6 flex items-center gap-3">
             <img src={mdisMarkUrl} alt="" className="h-10 w-10 object-contain" />
           </div>
           <div className="mb-5 flex items-center gap-4 text-[11px] font-medium uppercase tracking-[0.16em] text-[#C4D4F4]">
@@ -224,47 +252,53 @@ export function LoginPage({
           <h1 className="max-w-xl text-3xl font-semibold leading-[1.18] tracking-[-0.02em] xl:text-[38px]">
             Turn medical documents into <span className="text-[#16C7E8]">clinical intelligence.</span>
           </h1>
-          <p className="mt-5 max-w-xl text-[15px] leading-6 text-[#DCE7F3]">
-            Extract, verify, normalize and review clinical information with an evidence-grounded AI workflow.
-          </p>
-          <div className="mt-8 grid max-w-2xl grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-2">
-            <div className="min-w-0">
-              <div className="grid h-20 w-full max-w-36 place-items-center rounded-2xl border border-[#37A4FF]/30 bg-white/[0.06] text-[#16C7E8]">
-                <FileText size={34} strokeWidth={1.7} />
-              </div>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em]">AI Extraction</p>
-              <p className="mt-2 max-w-36 text-xs leading-5 text-[#C4D4F4]">Extracts key clinical information.</p>
+          <p className="story-description">Structured, validated, and traceable data from every clinical document.</p>
+          <div className="mx-auto mt-20 w-full max-w-2xl" onMouseEnter={() => setSliderPaused(true)} onMouseLeave={() => setSliderPaused(false)} onFocus={() => setSliderPaused(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSliderPaused(false) }}>
+            <div className="min-h-24 p-2 transition-all duration-500 sm:p-3">
+              {(() => {
+                const step = WORKFLOW_STEPS[workflowStep]
+                return (
+                  <div key={step.label} className="login-workflow-slide flex min-h-16 items-stretch gap-4 text-left">
+                    <span
+                      className="mt-0.5 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#16C7E8] via-[#146EF5] to-transparent"
+                      aria-hidden="true"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-white">{step.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-[#C4D4F4]">{step.description}</p>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
-            <ArrowRight className="mt-8 text-[#16C7E8]" size={20} aria-hidden="true" />
-            <div className="min-w-0">
-              <div className="grid h-20 w-full max-w-36 place-items-center rounded-2xl border border-[#37A4FF]/30 bg-white/[0.06] text-[#16C7E8]">
-                <SearchCheck size={34} strokeWidth={1.7} />
-              </div>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em]">Clinic Review</p>
-              <p className="mt-2 max-w-36 text-xs leading-5 text-[#C4D4F4]">Clinic reviewers validate and approve.</p>
-            </div>
-            <ArrowRight className="mt-8 text-[#16C7E8]" size={20} aria-hidden="true" />
-            <div className="min-w-0">
-              <div className="grid h-20 w-full max-w-36 place-items-center rounded-2xl border border-[#37A4FF]/30 bg-white/[0.06] text-[#16C7E8]">
-                <CheckCircle2 size={34} strokeWidth={1.7} />
-              </div>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em]">Approved Data</p>
-              <p className="mt-2 max-w-36 text-xs leading-5 text-[#C4D4F4]">Structured, normalized data ready for use.</p>
+            <div className="mt-4 flex items-center justify-center gap-2" role="tablist" aria-label="MDIS workflow">
+              {WORKFLOW_STEPS.map((step, index) => (
+                <button
+                  key={step.label}
+                  type="button"
+                  role="tab"
+                  aria-selected={workflowStep === index}
+                  aria-label={`Show ${step.label}`}
+                  onClick={() => setWorkflowStep(index)}
+                  className={`h-2.5 rounded-full transition-all duration-300 ${workflowStep === index ? "w-8 bg-[#16C7E8]" : "w-2.5 bg-[#7EA9DC]/60 hover:bg-[#C4D4F4]"}`}
+                />
+              ))}
             </div>
           </div>
         </div>
-        <p className="relative z-10 flex items-center gap-4 text-sm text-[#C4D4F4]">
-          <span className="h-0.5 w-9 bg-[#16C7E8]" />
+        <p className="story-footer relative z-10 flex items-center gap-4 text-sm text-[#C4D4F4]">
+          <span className="h-0.5 w-9 shrink-0 bg-[#16C7E8]" aria-hidden="true" />
           AI-assisted extraction. Human-approved results.
         </p>
       </section>
 
-      <section className="relative flex min-h-screen items-center justify-center overscroll-y-contain overflow-x-hidden overflow-y-auto bg-[radial-gradient(ellipse_at_100%_0%,#D8EEFF_0%,transparent_36%),radial-gradient(ellipse_at_0%_100%,#D8EEFF_0%,transparent_34%),#F5FAFF] px-4 py-8 sm:px-8 sm:py-12 lg:h-screen lg:min-h-0">
-        <div className="pointer-events-none absolute -right-36 top-[-7rem] h-[32rem] w-[32rem] rounded-full border-[3rem] border-[#D8EEFF]/50" aria-hidden="true" />
+      <section className="form-panel">
+        <header className="form-panel-header"><span>Organization portal</span><a href="mailto:support@mdis.local">Contact support</a></header>
+        <div className="mobile-logo"><img src={mdisMarkUrl} alt="MDIS" className="h-12 w-12 object-contain" /></div>
         <div className="relative my-auto w-full max-w-[520px]">
           <form
             onSubmit={submit}
-            className="rounded-[24px] border border-[#DCE7F3] bg-white/95 px-6 py-7 shadow-[0_18px_55px_rgba(20,110,245,0.11)] sm:px-10 sm:py-9 lg:px-12 lg:py-10"
+            className="login-card px-6 py-7 sm:px-10 sm:py-9 lg:px-12 lg:py-10"
           >
             <div className="mb-7 flex items-center justify-center">
               <img src={mdisMarkUrl} alt="MDIS" className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14" />
@@ -302,8 +336,8 @@ export function LoginPage({
               mode !== "account_status" && (
                 <label className="mt-7 block text-sm font-semibold text-[#071A3D]">
                   Email
-                  <span className="relative mt-2 block">
-                    <Mail size={18} aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7184B4]" />
+                  <span className="group relative mt-2 block">
+                    <Mail size={18} aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7184B4] transition-colors duration-200 group-focus-within:text-[#146EF5]" />
                     <input
                       autoComplete="username"
                       type="email"
@@ -311,9 +345,11 @@ export function LoginPage({
                       maxLength={256}
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      placeholder="you@organization.com"
-                      className="h-[54px] w-full rounded-xl border border-[#DCE7F3] bg-white pl-14 pr-4 text-[15px] font-normal text-[#071A3D] outline-none placeholder:text-[#8292BC] focus:border-[#146EF5] focus:ring-2 focus:ring-[#146EF5]/15"
+                      placeholder=" "
+                      aria-label="Email"
+                      className="peer h-[54px] w-full rounded-xl border border-[#DCE7F3] bg-white pl-14 pr-4 pt-4 text-[15px] font-normal text-[#071A3D] outline-none placeholder:text-transparent focus:border-[#146EF5] focus:ring-2 focus:ring-[#146EF5]/15"
                     />
+                    <span className="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 text-[15px] font-normal text-[#8292BC] transition-all duration-200 peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:font-semibold peer-focus:text-[#146EF5] peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-[10px] peer-[:not(:placeholder-shown)]:font-semibold peer-[:not(:placeholder-shown)]:text-[#146EF5]">Email</span>
                   </span>
                 </label>
               )}
@@ -321,8 +357,8 @@ export function LoginPage({
             {mode === "credentials" && (
               <label className="mt-6 block text-sm font-semibold text-[#071A3D]">
                 Password
-                <span className="relative mt-2 block">
-                  <LockKeyhole size={18} aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7184B4]" />
+                <span className="group relative mt-2 block">
+                  <LockKeyhole size={18} aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7184B4] transition-colors duration-200 group-focus-within:text-[#146EF5]" />
                   <input
                     autoComplete="current-password"
                     type={showPassword ? "text" : "password"}
@@ -330,9 +366,11 @@ export function LoginPage({
                     maxLength={1024}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Enter your password"
-                    className="h-[54px] w-full rounded-xl border border-[#DCE7F3] bg-white pl-14 pr-14 text-[15px] font-normal text-[#071A3D] outline-none placeholder:text-[#8292BC] focus:border-[#146EF5] focus:ring-2 focus:ring-[#146EF5]/15"
+                    placeholder=" "
+                    aria-label="Password"
+                    className="peer h-[54px] w-full rounded-xl border border-[#DCE7F3] bg-white pl-14 pr-14 pt-4 text-[15px] font-normal text-[#071A3D] outline-none placeholder:text-transparent focus:border-[#146EF5] focus:ring-2 focus:ring-[#146EF5]/15"
                   />
+                  <span className="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 text-[15px] font-normal text-[#8292BC] transition-all duration-200 peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:font-semibold peer-focus:text-[#146EF5] peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-[10px] peer-[:not(:placeholder-shown)]:font-semibold peer-[:not(:placeholder-shown)]:text-[#146EF5]">Password</span>
                   <button
                     type="button"
                     onClick={() => setShowPassword((value) => !value)}
@@ -405,10 +443,10 @@ export function LoginPage({
               <button
                 type="submit"
                 disabled={busy}
-                className="mt-7 flex h-[56px] w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#0877F9] to-[#146EF5] px-4 text-[15px] font-semibold text-white transition-colors hover:from-[#0F5BD6] hover:to-[#0F5BD6] active:from-[#0B4FC0] active:to-[#0B4FC0] disabled:cursor-not-allowed disabled:opacity-60"
+                className="login-submit group mt-7 flex h-[56px] w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#0877F9] to-[#16C7E8] px-4 text-[15px] font-semibold text-white shadow-[0_10px_24px_rgba(20,110,245,0.22)] will-change-transform transition-[transform,box-shadow,filter] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-px hover:from-[#146EF5] hover:to-[#22D3EE] hover:shadow-[0_14px_30px_rgba(20,110,245,0.35)] active:translate-y-0 active:scale-[0.995] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#146EF5] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {busy
-                  ? "Signing In..."
+                  ? <><LoaderCircle size={18} className="animate-spin" aria-hidden="true" /> Signing in…</>
                   : mode === "forgot"
                     ? "Send reset instructions"
                     : mode === "mfa_setup"
@@ -416,7 +454,6 @@ export function LoginPage({
                       : mode === "mfa_verify"
                         ? "Verify and Sign In"
                     : "Sign In"}
-                {!busy && mode === "credentials" && <ArrowRight size={22} aria-hidden="true" />}
               </button>
             )}
             {mode === "credentials" && registrationEnabled && (

@@ -140,6 +140,14 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
     fetchCurrentUser().then((user) => setCurrentUserRole(user.role)).catch(() => setCurrentUserRole(null));
   }, []);
 
+  // The detail route can change while this component stays mounted. Keep the
+  // selected task in sync so clicking another document refreshes the panels.
+  useEffect(() => {
+    if (detailOnly && initialTaskId) {
+      setSelectedTaskId(initialTaskId);
+    }
+  }, [detailOnly, initialTaskId]);
+
   // Handle search debouncing / trigger
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,6 +156,11 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
 
   // Load single task detail with full source text when selection changes
   useEffect(() => {
+    if (!detailOnly) {
+      setDetailTask(null);
+      setDetailLoading(false);
+      return;
+    }
     if (!selectedTaskId) {
       setDetailTask(null);
       return;
@@ -178,7 +191,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
     return () => {
       isSubscribed = false;
     };
-  }, [selectedTaskId, canReview]);
+  }, [detailOnly, selectedTaskId, canReview]);
 
   // Actions
   const handleApprove = async () => {
@@ -189,7 +202,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
       showFeedback('success', 'Document approved successfully.');
       await loadData();
     } catch (err: any) {
-      showFeedback('error', 'Unable to approve the document. Please try again.');
+      showFeedback('error', safeApiErrorMessage(err, 'Unable to approve the document. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -313,6 +326,9 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
         : 'normal';
     return { documentId, items, activeTask, status, priority };
   });
+  const selectedQueueDocument = queueDocuments.find((group) =>
+    group.items.some((item) => item.id === selectedTaskId),
+  );
 
   return (
     <div className="flex min-h-full min-w-0 flex-1 flex-col overflow-x-hidden bg-[#F5FAFF] md:h-full md:overflow-y-hidden">
@@ -334,8 +350,58 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
         </div>
       )}
 
-      {/* Top Header & Operational Metrics */}
-      <div className="bg-white border-b border-[#DCE7F3] px-4 sm:px-6 py-4 flex-shrink-0 page-header-edge page-header-edge-inset page-header-edge-pad-4 page-header-edge-pad-sm-6">
+      {detailOnly && (
+        <div className="flex-shrink-0 border-b border-[#DCE7F3] bg-white px-4 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => onNavigate?.('review')}
+                className="inline-flex items-center gap-1 rounded-md border border-[#DCE7F3] px-2.5 py-1.5 text-xs font-semibold text-[#146EF5] hover:bg-[#EAF5FF]"
+              >
+                <ArrowLeft size={14} /> Back to Review Center
+              </button>
+              <div>
+                <div className="text-sm font-bold text-[#071A3D]">Review document</div>
+                <div className="text-[11px] text-[#52627A]">Select a document to update the review panels</div>
+              </div>
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[#52627A]">
+              {queueDocuments.length} document{queueDocuments.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          <nav aria-label="Review documents" className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {queueDocuments.map((group) => {
+              const task = group.activeTask;
+              const active = group.items.some((item) => item.id === selectedTaskId);
+              return (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => onNavigate?.('review-document', undefined, task.id)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`min-w-[13rem] max-w-[18rem] shrink-0 rounded-lg border px-3 py-2 text-left transition-colors ${
+                    active
+                      ? 'border-[#146EF5] bg-[#EAF5FF]'
+                      : 'border-[#DCE7F3] bg-white hover:bg-[#F5FAFF]'
+                  }`}
+                >
+                  <div className="truncate text-xs font-semibold text-[#071A3D]">
+                    {task.document?.file_name || 'Untitled document'}
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#52627A]">
+                    <span className="truncate">{task.patient?.display_name || 'Patient unavailable'}</span>
+                    <StatusBadge status={group.status} />
+                  </div>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      )}
+
+      {/* Top Header & Operational Metrics (queue view only) */}
+      {!detailOnly && <div className="bg-white border-b border-[#DCE7F3] px-4 sm:px-6 py-4 flex-shrink-0 page-header-edge page-header-edge-inset page-header-edge-pad-4 page-header-edge-pad-sm-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -427,13 +493,15 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
             </button>
           </form>
         </div>
-      </div>
+      </div>}
 
       {/* Main Workspace Body */}
       <div className="flex min-h-[30rem] flex-1 flex-col overflow-visible md:min-h-0 md:flex-row md:overflow-hidden">
         {/* Left Queue Panel */}
         {!detailOnly && <div
-          className={`flex min-h-[20rem] w-full flex-col border-r border-[#DCE7F3] bg-white flex-shrink-0 md:min-h-0 md:w-80 lg:w-96 ${
+          className={`flex min-h-[20rem] w-full flex-col border-r border-[#DCE7F3] bg-white flex-shrink-0 md:min-h-0 ${
+            queueDocuments.length === 0 ? 'md:w-full md:border-r-0' : 'md:w-80 lg:w-96'
+          } ${
             selectedTaskId ? 'hidden md:flex' : 'flex'
           }`}
         >
@@ -480,7 +548,9 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
                 return (
                   <button
                     key={t.id}
-                    onClick={() => onNavigate ? onNavigate('review-document', undefined, t.id) : setSelectedTaskId(t.id)}
+                    onClick={() => detailOnly
+                      ? onNavigate?.('review-document', undefined, t.id)
+                      : setSelectedTaskId(t.id)}
                     aria-pressed={isSelected}
                     aria-label={`Review document: ${docName} — ${patientName}, ${group.items.length} clinical findings`}
                     className={`w-full p-4 text-left transition-colors flex flex-col gap-1.5 ${
@@ -509,8 +579,74 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
           </div>
         </div>}
 
-        {/* Right Detail Workspace */}
-        <div className={`min-w-0 flex-1 flex-col overflow-visible bg-white md:overflow-hidden ${selectedTaskId ? 'flex' : 'hidden md:flex'}`}>
+        {/* Queue preview: the main page stays a simple two-panel document browser. */}
+        {!detailOnly && (
+          <div className={`min-w-0 flex-1 bg-white ${selectedQueueDocument ? 'flex' : 'hidden md:flex'} flex-col`}>
+            {selectedQueueDocument ? (
+              <>
+                <div className="border-b border-[#DCE7F3] bg-[#F5FAFF] px-5 py-4 sm:px-6">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTaskId(null)}
+                    className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-[#146EF5] md:hidden"
+                  >
+                    <ArrowLeft size={14} /> Back to documents
+                  </button>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#071A3D]">
+                        <FileText size={15} className="shrink-0 text-[#146EF5]" />
+                        Document preview
+                      </div>
+                      <h2 className="mt-2 truncate text-base font-bold text-[#071A3D]">
+                        {selectedQueueDocument.activeTask.document?.file_name || 'Untitled document'}
+                      </h2>
+                      <p className="mt-1 text-xs text-[#52627A]">
+                        {selectedQueueDocument.activeTask.document?.document_type || 'Clinical document'}
+                        {' · '}{selectedQueueDocument.activeTask.patient?.display_name || 'Patient unavailable'}
+                      </p>
+                    </div>
+                    <StatusBadge status={selectedQueueDocument.status} />
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col items-center justify-center p-6 text-center sm:p-10">
+                  <FileText size={42} className="text-[#146EF5]" aria-hidden="true" />
+                  <h3 className="mt-4 text-sm font-semibold text-[#071A3D]">Ready for review</h3>
+                  <p className="mt-2 max-w-md text-xs leading-relaxed text-[#52627A]">
+                    This document has {selectedQueueDocument.items.length} clinical finding{selectedQueueDocument.items.length === 1 ? '' : 's'}.
+                    Open the full review page to inspect the source, AI extraction, and human decision panels.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.('review-document', undefined, selectedQueueDocument.activeTask.id)}
+                    className="mt-5 rounded-md bg-[#146EF5] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#0f5dcc]"
+                  >
+                    Open full review
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-1 items-center justify-center p-8 text-center">
+                <div>
+                  <FileText size={36} className="mx-auto text-[#9BB4D2]" aria-hidden="true" />
+                  <h3 className="mt-3 text-sm font-semibold text-[#071A3D]">Select a document</h3>
+                  <p className="mt-1 text-xs text-[#52627A]">Choose a document from the list to preview it here.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Right Detail Workspace (full review page only) */}
+        <div className={`min-w-0 flex-1 flex-col overflow-visible bg-white md:overflow-hidden ${
+          !detailOnly
+            ? 'hidden'
+            : !loading && queueDocuments.length === 0
+            ? 'hidden'
+            : selectedTaskId
+              ? 'flex'
+              : 'hidden md:flex'
+        }`}>
           {detailLoading ? (
             <div className="flex-1 flex items-center justify-center p-8 text-[#52627A] text-xs font-mono">
               <RefreshCw size={18} className="animate-spin mr-2" /> Loading review task details...
@@ -620,6 +756,28 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
                         <div className="font-sans text-sm font-semibold text-[#071A3D]">
                           {detailTask.entity.raw_text}
                         </div>
+                        {detailTask.entity.type === 'medication' && (detailTask.entity.details?.dose || detailTask.entity.details?.frequency || detailTask.entity.details?.route) && (
+                          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            {detailTask.entity.details?.dose && (
+                              <div>
+                                <div className="font-mono text-[9px] uppercase tracking-wider text-[#52627A]">Dose</div>
+                                <div className="text-xs font-semibold text-[#071A3D]">{String(detailTask.entity.details.dose)}</div>
+                              </div>
+                            )}
+                            {detailTask.entity.details?.frequency && (
+                              <div>
+                                <div className="font-mono text-[9px] uppercase tracking-wider text-[#52627A]">Frequency</div>
+                                <div className="text-xs font-semibold text-[#071A3D]">{String(detailTask.entity.details.frequency)}</div>
+                              </div>
+                            )}
+                            {detailTask.entity.details?.route && (
+                              <div>
+                                <div className="font-mono text-[9px] uppercase tracking-wider text-[#52627A]">Route</div>
+                                <div className="text-xs font-semibold text-[#071A3D]">{String(detailTask.entity.details.route)}</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Normalized Term */}

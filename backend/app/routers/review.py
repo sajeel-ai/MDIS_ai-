@@ -1,6 +1,7 @@
 """Review Center API Router."""
 
 import uuid
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,8 @@ from app.services.audit_service import record_audit_event
 from app.config import settings
 from sqlalchemy import select
 from app.models import Document
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/review", tags=["review"], dependencies=[Depends(require_roles(*tuple(UserRole)))])
 
@@ -155,6 +158,15 @@ async def submit_review_decision(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND if "not found" in str(exc) else status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
+        )
+    except Exception:
+        # Keep a failed approval request from poisoning the session or taking
+        # down the worker. The client receives a retryable response instead.
+        await db.rollback()
+        logger.exception("Review decision failed for task %s", task_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Review decision could not be saved. Please retry.",
         )
 
 

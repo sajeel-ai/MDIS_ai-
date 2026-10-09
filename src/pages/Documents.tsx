@@ -3,13 +3,14 @@ import { AppLayout } from '../layouts/AppLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Upload, FileText, Search, Filter, Play, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Search, Filter, Play, RefreshCw } from 'lucide-react';
 import {
   fetchDocuments,
   fetchPatients,
   uploadDocument,
   processDocument,
   retryDocumentProcessing,
+  reprocessDocument,
   fetchProcessingJob,
   type DocumentItem,
   type Patient,
@@ -96,13 +97,15 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
     }
   };
 
-  const handleProcessDocument = async (docId: string, retry = false) => {
+  const handleProcessDocument = async (docId: string, retry = false, reprocess = false) => {
     setProcessingDocId(docId);
     setProcessingError(null);
     try {
-      const processResp = retry
-        ? await retryDocumentProcessing(docId)
-        : await processDocument(docId);
+      const processResp = reprocess
+        ? await reprocessDocument(docId)
+        : retry
+          ? await retryDocumentProcessing(docId)
+          : await processDocument(docId);
       const jobId = processResp.job_id;
       setDocuments((items) => items.map((item) => item.id === docId
         ? { ...item, status: processResp.status }
@@ -374,6 +377,22 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
                             icon={<Play size={12} />}
                           >
                             {processingDocId === item.id ? 'Extracting...' : 'Extract'}
+                          </Button>
+                        )}
+                        {item.status === 'completed' && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={processingDocId === item.id}
+                            onClick={() => {
+                              if (window.confirm('Re-extract this document? Previous extraction results and review decisions will be replaced.')) {
+                                void handleProcessDocument(item.id, false, true);
+                              }
+                            }}
+                            icon={<RefreshCw size={12} />}
+                          >
+                            {processingDocId === item.id ? 'Re-extracting...' : 'Re-extract'}
                           </Button>
                         )}
                         <Button

@@ -2,6 +2,7 @@
 
 from enum import Enum
 
+from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
 
 
@@ -45,6 +46,7 @@ class ExtractedEntity(BaseModel):
     end_offset: int = Field(ge=0)
     evidence_text: str = Field(min_length=1)
     page_number: int = Field(ge=1)
+    details: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("type", "code_system", "assertion", mode="before")
     @classmethod

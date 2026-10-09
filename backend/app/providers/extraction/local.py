@@ -98,6 +98,37 @@ class LocalExtractionProvider(BaseExtractionProvider):
         "naproxen": ("Naproxen", "7258", "RxNorm"),
     }
 
+    _DOSE_PATTERN = re.compile(
+        r"\b(\d+(?:\.\d+)?)\s*(mg|mcg|µg|μg|ug|g|kg|ml|mL|l|meq|mmol|iu|units?|tablets?|capsules?)\b",
+        re.IGNORECASE,
+    )
+    _FREQUENCY_PATTERN = re.compile(
+        r"\b((?:once|twice|thrice|two|three|four)\s+(?:a|per)\s+day|"
+        r"(?:\d+)\s+(?:a|per)\s+day|"
+        r"(?:once|twice|three|four)\s+daily|"
+        r"(?:\d+)\s+times?\s+(?:a|per)\s+day|"
+        r"(?:every\s+\d+\s+(?:hours?|days?))|"
+        r"(?:daily|q\.?\s*(?:d|day)|bid|tid|qid)\b)",
+        re.IGNORECASE,
+    )
+
+    @classmethod
+    def _medication_details(cls, text: str, start: int, end: int) -> dict[str, str]:
+        """Capture dose and administration frequency near a medication mention."""
+        # Prefer instructions after the medication name. This avoids assigning
+        # the previous medication's dose when several medicines share a line.
+        after_window = text[end:min(len(text), end + 100)]
+        after_window = re.split(r"[\n;.]", after_window, maxsplit=1)[0]
+        before_window = text[max(0, start - 45):start]
+        details: dict[str, str] = {}
+        dose = cls._DOSE_PATTERN.search(after_window) or cls._DOSE_PATTERN.search(before_window)
+        if dose:
+            details["dose"] = f"{dose.group(1)} {dose.group(2)}"
+        frequency = cls._FREQUENCY_PATTERN.search(after_window) or cls._FREQUENCY_PATTERN.search(before_window)
+        if frequency:
+            details["frequency"] = " ".join(frequency.group(1).split())
+        return details
+
     PROCEDURES = {
         "laparoscopic cholecystectomy": (
             "Laparoscopic cholecystectomy",
@@ -266,6 +297,8 @@ class LocalExtractionProvider(BaseExtractionProvider):
                         "start_offset": match.start(),
                         "end_offset": match.end(),
                         "page_number": 1,
+                        "details": self._medication_details(text, match.start(), match.end())
+                        if entity_type == "medication" else {},
                     }
                 )
 

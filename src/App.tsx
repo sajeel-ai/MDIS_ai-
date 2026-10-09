@@ -77,7 +77,7 @@ function parseRoute(pathname: string): RouteState {
   const reviewMatch = cleanPath.match(/^\/review(?:\/([^/]+))?$/)
   if (reviewMatch)
     return {
-      view: "review",
+      view: reviewMatch[1] ? "review-document" : "review",
       path: cleanPath,
       documentId: null,
       reviewTaskId: reviewMatch[1] ? decodeURIComponent(reviewMatch[1]) : null,

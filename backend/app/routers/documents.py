@@ -330,6 +330,38 @@ async def retry_document_processing(
     }
 
 
+@router.post("/{document_id}/reprocess", response_model=DocumentProcessResponse, dependencies=[Depends(require_roles(UserRole.CLINICIAN, UserRole.ADMIN))])
+async def reprocess_document(
+    document_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserContext = Depends(get_current_user),
+    request: Request = None,
+):
+    """Replace prior extraction output with a fresh OCR/AI run."""
+    await authorize_document_access(document_id, current_user, db, request)
+    job_service = JobService(db)
+    try:
+        process_request = await job_service.reprocess_document(document_id)
+    except ExtractionProviderConfigurationError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    except ProcessingConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+    job = process_request.job
+    await record_audit_event(db, action="reprocess_document", user_id=current_user.id, organization_id=current_user.organization_id, resource_type="document", resource_id=document_id)
+    if process_request.created:
+        background_tasks.add_task(run_async_processing_task, job.id)
+    return {
+        "job_id": str(job.id),
+        "document_id": str(document_id),
+        "status": job.status,
+        "message": "Fresh document extraction initiated" if process_request.created else f"Existing processing job returned ({job.status})",
+    }
+
+
 @router.get("/{document_id}/fhir", dependencies=[Depends(require_roles(UserRole.CLINICIAN, UserRole.REVIEWER, UserRole.ADMIN))])
 async def get_document_fhir(
     document_id: uuid.UUID,

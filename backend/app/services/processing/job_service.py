@@ -89,6 +89,26 @@ class JobService:
 
         return await self._create_job(doc)
 
+    async def reprocess_document(self, document_id: uuid.UUID) -> ProcessingJobRequest:
+        """Start a fresh extraction run, replacing previous extracted output."""
+        doc = await self._get_document_for_update(document_id)
+        if not doc:
+            raise ValueError(f"Document {document_id} not found")
+        active_job = await self._get_active_job(document_id)
+        if active_job:
+            return ProcessingJobRequest(active_job, created=False)
+
+        entity_ids = select(ClinicalEntity.id).join(Extraction).where(
+            Extraction.document_id == document_id
+        )
+        await self.session.execute(delete(ReviewTask).where(ReviewTask.entity_id.in_(entity_ids)))
+        await self.session.execute(delete(EvidenceSpan).where(EvidenceSpan.entity_id.in_(entity_ids)))
+        await self.session.execute(delete(ValidationResult).where(ValidationResult.entity_id.in_(entity_ids)))
+        await self.session.execute(delete(ClinicalEntity).where(ClinicalEntity.id.in_(entity_ids)))
+        await self.session.execute(delete(Extraction).where(Extraction.document_id == document_id))
+        await self.session.flush()
+        return await self._create_job(doc)
+
     async def _create_job(self, doc: Document) -> ProcessingJobRequest:
         # Do not reject an idempotent request because provider settings changed
         # after its existing job was accepted.

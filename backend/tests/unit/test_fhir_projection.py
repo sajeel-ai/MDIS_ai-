@@ -41,8 +41,13 @@ def test_document_bundle_starts_with_composition_and_references_resolve():
     assert bundle["type"] == "document"
     assert bundle["entry"][0]["resource"]["resourceType"] == "Composition"
     assert all(entry["fullUrl"].startswith("urn:uuid:") for entry in bundle["entry"])
-    resources_by_reference = {f"{r['resourceType']}/{r['id']}" for r in resources(bundle)}
-    assert len(resources_by_reference) == len(bundle["entry"])
+    resource_keys = {f"{r['resourceType']}/{r['id']}" for r in resources(bundle)}
+    resources_by_reference = {
+        reference
+        for r in resources(bundle)
+        for reference in (f"{r['resourceType']}/{r['id']}", f"urn:uuid:{r['id']}")
+    }
+    assert len(resource_keys) == len(bundle["entry"])
 
     def references(value):
         if isinstance(value, dict):
@@ -56,8 +61,8 @@ def test_document_bundle_starts_with_composition_and_references_resolve():
 
     assert all(ref in resources_by_reference for ref in references(bundle))
     provenance = next(resource for resource in resources(bundle) if resource["resourceType"] == "Provenance")
-    assert provenance["agent"][0]["who"]["reference"] == f"Practitioner/{reviewer_id}"
-    assert provenance["entity"][0]["what"]["reference"].startswith("DocumentReference/")
+    assert provenance["agent"][0]["who"]["reference"] == f"urn:uuid:{reviewer_id}"
+    assert provenance["entity"][0]["what"]["reference"].startswith("urn:uuid:")
 
 
 @pytest.mark.parametrize(("raw", "expected"), [

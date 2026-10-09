@@ -184,6 +184,7 @@ class ClinicalProcessingWorkflow:
                     details_dict["code"] = item.code
                 if item.code_system:
                     details_dict["code_system"] = item.code_system.value
+                details_dict.update(item.details)
                 if not evidence_verified:
                     details_dict["evidence_unverified"] = True
 

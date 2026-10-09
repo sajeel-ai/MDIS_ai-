@@ -23,30 +23,65 @@ function AuthCard({
   description,
   children,
   brand = "cognate",
+  split = false,
 }: {
   title: string
   description: string
   children?: ReactNode
   brand?: "cognate" | "mdis"
+  split?: boolean
 }) {
+  const card = (
+    <>
+      <a
+        href="/login"
+        aria-label="MDIS sign in"
+        title="Back to sign in"
+        className="mb-6 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#146EF5]"
+      >
+        {brand === "mdis" ? (
+          <img src={mdisLogoUrl} alt="MDIS" className="h-9 w-auto object-contain" />
+        ) : (
+          <img src={mdisMarkUrl} alt="MDIS" className="h-9 w-9 object-contain" />
+        )}
+      </a>
+      <h1 className="text-2xl font-semibold text-[#071A3D]">{title}</h1>
+      <p className="mt-2 text-sm leading-6 text-[#52627A]">{description}</p>
+      {children}
+    </>
+  )
+  if (split)
+    return (
+      <main className="login-shell auth-flow-shell">
+        <section className="story-panel auth-flow-story">
+          <div className="absolute inset-0 overflow-hidden" aria-hidden="true" />
+          <div className="story-content">
+            <div className="story-header mb-6 flex items-center gap-3">
+              <img src={mdisMarkUrl} alt="" className="h-10 w-10 object-contain" />
+            </div>
+            <div className="mb-5 flex items-center gap-4 text-[11px] font-medium uppercase tracking-[0.16em] text-[#C4D4F4]">
+              <span className="h-0.5 w-9 bg-[#16C7E8]" aria-hidden="true" />
+              Medical document intelligence system
+            </div>
+            <h1 className="max-w-xl text-3xl font-semibold leading-[1.18] tracking-[-0.02em] xl:text-[38px]">
+              Request access to <span className="text-[#16C7E8]">clinical intelligence.</span>
+            </h1>
+            <p className="story-description">Create an organization account for secure, human-approved clinical workflows.</p>
+          </div>
+          <p className="story-footer relative z-10 flex items-center gap-4 text-sm text-[#C4D4F4]">
+            <span className="h-0.5 w-9 shrink-0 bg-[#16C7E8]" aria-hidden="true" />
+            AI-assisted extraction. Human-approved results.
+          </p>
+        </section>
+        <section className="form-panel auth-flow-form">
+          <div className="auth-flow-card">{card}</div>
+        </section>
+      </main>
+    )
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#F5FAFF] px-4 py-8 sm:px-6">
       <section className="w-full max-w-lg rounded-2xl border border-[#DCE7F3] bg-white p-5 shadow-sm sm:p-8">
-        <a
-          href="/login"
-          aria-label="MDIS sign in"
-          title="Back to sign in"
-          className="mb-6 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#146EF5]"
-        >
-          {brand === "mdis" ? (
-            <img src={mdisLogoUrl} alt="MDIS" className="h-9 w-auto object-contain" />
-          ) : (
-            <img src={mdisMarkUrl} alt="MDIS" className="h-9 w-9 object-contain" />
-          )}
-        </a>
-        <h1 className="text-2xl font-semibold text-[#071A3D]">{title}</h1>
-        <p className="mt-2 text-sm leading-6 text-[#52627A]">{description}</p>
-        {children}
+        {card}
       </section>
     </main>
   )
@@ -825,6 +860,7 @@ export function RegisterPage() {
       <AuthCard
         title="Checking registration"
         description="Loading account options…"
+        split
       />
     )
   if (!enabled)
@@ -832,6 +868,7 @@ export function RegisterPage() {
       <AuthCard
         title="Registration unavailable"
         description="This organization is not accepting public registrations."
+        split
       >
         <a
           href="/login"
@@ -846,6 +883,7 @@ export function RegisterPage() {
       <AuthCard
         title="Email verified"
         description="Your account request is awaiting organization approval."
+        split
       >
         <a
           href="/login"
@@ -859,6 +897,7 @@ export function RegisterPage() {
     <AuthCard
       title={verification ? "Verify your email" : "Request an account"}
       brand={verification ? "mdis" : "cognate"}
+      split
       description={
         verification
           ? "Enter the code sent to your email. Your account will then await organization approval."

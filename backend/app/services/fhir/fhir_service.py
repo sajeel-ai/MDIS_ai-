@@ -35,6 +35,11 @@ def _entry(resource: dict[str, Any], key: str) -> dict[str, Any]:
     return {"fullUrl": f"urn:uuid:{resource['id']}", "resource": resource}
 
 
+def _ref(resource_type: str, resource_id: str) -> str:
+    """Reference another entry in the document bundle by its UUID fullUrl."""
+    return f"urn:uuid:{resource_id}"
+
+
 def _concept(value: str | None, details: dict[str, Any]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     code = details.get("code")
@@ -97,7 +102,7 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
         "resourceType": "DocumentReference",
         "id": docref_id,
         "status": "current",
-        "subject": {"reference": f"Patient/{patient_id}"},
+        "subject": {"reference": _ref("Patient", patient_id)},
         "date": timestamp,
         "content": [{"attachment": {"contentType": document.mime_type or "application/octet-stream", "title": document.file_name or document.document_type}}],
     }
@@ -124,24 +129,24 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
         allergy = entity.entity_type == "medication" and (entity.section or "").strip().lower() in {"allergies", "allergy"}
         if entity.entity_type == "diagnosis":
             resource: dict[str, Any] = {
-                "resourceType": "Condition", "subject": {"reference": f"Patient/{patient_id}"},
+                "resourceType": "Condition", "subject": {"reference": _ref("Patient", patient_id)},
                 "code": _concept(value, details),
                 "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
                 "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" if approved else "unconfirmed"}]},
             }
         elif allergy:
             resource = {
-                "resourceType": "AllergyIntolerance", "patient": {"reference": f"Patient/{patient_id}"},
+                "resourceType": "AllergyIntolerance", "patient": {"reference": _ref("Patient", patient_id)},
                 "code": _concept(value, details), "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]},
             }
         elif entity.entity_type == "medication":
             medication = _concept(value, details)
             if details.get("explicit_prescription") is True:
-                resource = {"resourceType": "MedicationRequest", "status": "active", "intent": "order", "subject": {"reference": f"Patient/{patient_id}"}, "medicationCodeableConcept": medication}
+                resource = {"resourceType": "MedicationRequest", "status": "active", "intent": "order", "subject": {"reference": _ref("Patient", patient_id)}, "medicationCodeableConcept": medication}
             else:
-                resource = {"resourceType": "MedicationStatement", "status": "active", "subject": {"reference": f"Patient/{patient_id}"}, "medicationCodeableConcept": medication}
+                resource = {"resourceType": "MedicationStatement", "status": "active", "subject": {"reference": _ref("Patient", patient_id)}, "medicationCodeableConcept": medication}
         elif entity.entity_type in {"lab", "lab_result", "observation"}:
-            resource = {"resourceType": "Observation", "status": "final", "subject": {"reference": f"Patient/{patient_id}"}, "code": _concept(value, details)}
+            resource = {"resourceType": "Observation", "status": "final", "subject": {"reference": _ref("Patient", patient_id)}, "code": _concept(value, details)}
             lab_value = details.get("value")
             unit = details.get("unit")
             try:
@@ -154,7 +159,7 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
             if isinstance(reference_range, dict):
                 resource["referenceRange"] = [reference_range]
         elif entity.entity_type == "procedure":
-            resource = {"resourceType": "Procedure", "status": details.get("status") if details.get("status") in {"preparation", "in-progress", "not-done", "on-hold", "stopped", "completed", "entered-in-error", "unknown"} else "unknown", "subject": {"reference": f"Patient/{patient_id}"}, "code": _concept(value, details)}
+            resource = {"resourceType": "Procedure", "status": details.get("status") if details.get("status") in {"preparation", "in-progress", "not-done", "on-hold", "stopped", "completed", "entered-in-error", "unknown"} else "unknown", "subject": {"reference": _ref("Patient", patient_id)}, "code": _concept(value, details)}
         else:
             continue
 
@@ -164,7 +169,7 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
             resource["extension"] = [{"url": "urn:cognate:export-status", "valueCode": "unconfirmed"}]
         entity_entry = _entry(resource, f"{doc_id}:entity:{resource_id}")
         included.append(entity_entry)
-        source_refs[resource_id] = f"{resource['resourceType']}/{resource_id}"
+        source_refs[resource_id] = _ref(resource["resourceType"], resource_id)
         section_refs.append({"reference": source_refs[resource_id]})
 
         reviewer_id = next((str(task.assigned_to) for task in (entity.review_tasks or []) if task.status == "approved" and task.assigned_to), None)
@@ -172,19 +177,19 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
             reviewers[reviewer_id] = reviewer_id
 
     reviewer_entries = [_entry({"resourceType": "Practitioner", "id": user_id}, f"{doc_id}:reviewer:{user_id}") for user_id in reviewers]
-    reviewer_refs = {entry["resource"]["id"]: f"Practitioner/{entry['resource']['id']}" for entry in reviewer_entries}
+    reviewer_refs = {entry["resource"]["id"]: _ref("Practitioner", entry["resource"]["id"]) for entry in reviewer_entries}
     provenance_entries: list[dict[str, Any]] = []
     for resource_id, target in source_refs.items():
         entity = next((candidate for candidate in entities if str(candidate.id) == resource_id), None)
         if not entity:
             continue
         reviewer_id = next((str(task.assigned_to) for task in (entity.review_tasks or []) if task.status == "approved" and task.assigned_to), None)
-        agent_ref = reviewer_refs.get(reviewer_id) if reviewer_id else f"Device/{device_id}"
+        agent_ref = reviewer_refs.get(reviewer_id) if reviewer_id else _ref("Device", device_id)
         provenance_id = _id(f"{doc_id}:provenance:{resource_id}")
         provenance_entries.append(_entry({
             "resourceType": "Provenance", "id": provenance_id, "recorded": timestamp,
             "target": [{"reference": target}],
-            "entity": [{"role": "source", "what": {"reference": f"DocumentReference/{docref_id}"}}],
+            "entity": [{"role": "source", "what": {"reference": _ref("DocumentReference", docref_id)}}],
             "agent": [{"type": {"text": "reviewer approval" if reviewer_id else "document projection"}, "who": {"reference": agent_ref}}],
         }, f"{doc_id}:provenance:{resource_id}"))
 
@@ -195,8 +200,8 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
     composition = {
         "resourceType": "Composition", "id": composition_id, "status": "final", "type": composition_type,
         "identifier": {"system": "urn:cognate:document", "value": doc_id},
-        "subject": {"reference": f"Patient/{patient_id}"}, "date": timestamp,
-        "author": [{"reference": f"Device/{device_id}"}], "title": doc_type,
+        "subject": {"reference": _ref("Patient", patient_id)}, "date": timestamp,
+        "author": [{"reference": _ref("Device", device_id)}], "title": doc_type,
         "section": [{"title": "Clinical resources", "entry": section_refs}] if section_refs else [],
     }
     entries = [
@@ -208,7 +213,11 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
         *included,
         *provenance_entries,
     ]
-    bundle = {"resourceType": "Bundle", "type": "document", "timestamp": timestamp, "entry": entries}
+    bundle = {
+        "resourceType": "Bundle", "type": "document", "timestamp": timestamp,
+        "identifier": {"system": "urn:cognate:bundle", "value": doc_id},
+        "entry": entries,
+    }
     validate_bundle_model(bundle)
     return bundle
 
@@ -239,6 +248,7 @@ def validate_bundle_model(bundle: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("FHIR bundle fullUrl values must be unique")
         full_urls.add(full_url)
         resource_refs.add(f"{resource.get('resourceType')}/{resource.get('id')}")
+        resource_refs.add(f"urn:uuid:{resource.get('id')}")
 
     def references(value: Any):
         if isinstance(value, dict):

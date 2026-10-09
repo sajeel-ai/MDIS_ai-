@@ -15,7 +15,11 @@ def validate_entities(source_text: str, items: list[ExtractedEntity]) -> list[li
         confidence=item.confidence,
         assertion=item.assertion.value,
         section=item.section,
-        details={"code": item.code, "code_system": item.code_system.value if item.code_system else None},
+        details={
+            **item.details,
+            "code": item.code,
+            "code_system": item.code_system.value if item.code_system else None,
+        },
         start_offset=item.start_offset,
         end_offset=item.end_offset,
         evidence_text=item.evidence_text,

@@ -11,8 +11,8 @@ export function Card({ children, hoverable = false, className, ...props }: CardP
     <div
       className={twMerge(
         clsx(
-          'bg-white rounded-md border border-[#DCE7F3] p-4 transition-all duration-150',
-          hoverable && 'hover:border-[#DCE7F3] hover:shadow-xs cursor-pointer',
+          'bg-white rounded-sm border border-[#DCE7F3] p-4 transition-all duration-200',
+          hoverable && 'hover:border-[#B7CBE3] hover:shadow-md cursor-pointer',
           className
         )
       )}

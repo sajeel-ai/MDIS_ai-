@@ -23,6 +23,8 @@ class ExtractedEntityData(TypedDict):
     start_offset: int
     end_offset: int
     page_number: int
+    # Structured attributes such as medication dose/frequency and lab units.
+    details: Dict[str, Any]
 
 
 class ExtractionResult(TypedDict):

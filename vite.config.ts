@@ -10,6 +10,12 @@ import siteConfiguration from './.figma/make/site.json'
 export default defineConfig(({ mode }) => {
   // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
   const emitSourcemaps = mode === 'development'
+  // The Docker stack exposes FastAPI on 8000, while the local `npm run dev`
+  // helper starts it on 8002. Allow an explicit override and choose the
+  // correct default for each development surface.
+  const apiProxyTarget =
+    process.env.VITE_API_PROXY_TARGET ||
+    (process.env.PORT === '8443' ? 'http://127.0.0.1:8000' : 'http://127.0.0.1:8002')
 
   return {
     base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
@@ -36,7 +42,7 @@ react(),
       strictPort: true,
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:8002',
+          target: apiProxyTarget,
           changeOrigin: true,
           configure: (proxy) => {
             // The browser request is same-origin to Vite, so the API proxy

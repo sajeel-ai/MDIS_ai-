@@ -50,6 +50,9 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       SMTP_STARTTLS: "false"
+      # The backend runs inside Docker, so it must use the Compose service
+      # name instead of localhost to reach the optional HAPI container.
+      FHIR_TEST_SERVER_URL: http://fhir:8080/fhir
       SMTP_USER: ""
       SMTP_PASSWORD: ""
       PUBLIC_APP_URL: http://localhost:8443

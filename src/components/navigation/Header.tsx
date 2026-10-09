@@ -364,7 +364,7 @@ export function Header({
                   onClick={() => {
                     setNotifOpen(false)
 
-                    onNavigate("review", undefined, task.id)
+                      onNavigate("review-document", undefined, task.id)
                   }}
                   className="w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-[#EAF5FF] transition-colors"
                 >

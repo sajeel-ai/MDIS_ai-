@@ -59,6 +59,9 @@ function RealEntityCard({ entity, onViewSource, reviewPolicy }: { entity: Clinic
         : 'low';
   const code = entity.details?.code || 'â€”';
   const codeSys = entity.details?.code_system || 'SNOMED/ICD10';
+  const structuredDetails = Object.entries(entity.details || {}).filter(([key, value]) =>
+    !['code', 'code_system', 'evidence_unverified'].includes(key) && value !== null && value !== undefined && String(value).trim() !== '',
+  );
 
   return (
     <div className="rounded-lg p-4 mb-3 bg-white border border-[#DCE7F3] transition-colors hover:border-[#146EF5] hover:shadow-sm">
@@ -85,6 +88,18 @@ function RealEntityCard({ entity, onViewSource, reviewPolicy }: { entity: Clinic
           </div>
         </div>
       </div>
+      {entity.entity_type === 'medication' && (
+        <div className="mb-3 grid grid-cols-2 gap-2 rounded-md border border-[#DCE7F3] bg-[#F5FAFF] p-2.5 sm:grid-cols-3">
+          {structuredDetails.length > 0 ? structuredDetails.map(([key, value]) => (
+            <div key={key}>
+              <div className="font-mono text-[9px] uppercase tracking-wider text-[#52627A]">{key.replace(/_/g, ' ')}</div>
+              <div className="mt-0.5 text-xs font-semibold capitalize text-[#071A3D]">{String(value)}</div>
+            </div>
+          )) : (
+            <div className="col-span-full text-[11px] text-amber-700">Dose and frequency were not detected in the OCR text. Use Correct Clinical Value to verify them.</div>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-1.5 mb-3">
         <span className="px-2 py-0.5 rounded bg-[#EAF5FF] text-[#071A3D] text-[10px] font-semibold">{entity.assertion}</span>
         {entity.section && <span className="px-2 py-0.5 rounded bg-[#F5FAFF] text-[#52627A] text-[10px]">{entity.section === 'ALLERGIES' ? 'ALLERGY Â· NOT AN ACTIVE MEDICATION' : entity.section}</span>}
@@ -354,8 +369,8 @@ export function ClinicalWorkspace({
                 <div className="font-mono text-[10px] text-[#52627A]">
                   {docDetails.mrn ? `MRN ${docDetails.mrn}` : `Doc ID: ${docDetails.id.slice(0, 8)}`}
                 </div>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#dcfce7] text-[#15803d] font-mono uppercase">
-                  {docDetails.status}
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold font-mono uppercase ${docDetails.review_status === 'approved' || (!docDetails.review_status || docDetails.review_status === 'not_required') && docDetails.status === 'completed' ? 'bg-[#dcfce7] text-[#15803d]' : docDetails.review_status === 'rejected' ? 'bg-[#fee2e2] text-[#b91c1c]' : 'bg-[#EAF5FF] text-[#146EF5]'}`}>
+                  {docDetails.review_status && docDetails.review_status !== 'not_required' ? docDetails.review_status : docDetails.status}
                 </span>
               </div>
             </div>

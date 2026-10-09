@@ -49,6 +49,9 @@
 }
 
 :root {
+  --motion-fast: 180ms;
+  --motion-standard: 220ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --sidebar-bg: #071A3D;
   --sidebar-text: #B8C7E6;
   --sidebar-text-active: #FFFFFF;
@@ -56,6 +59,71 @@
   --sidebar-active-bg: #12366F;
   --sidebar-accent: #146EF5;
   --sidebar-cyan: #16C7E8;
+}
+
+/* Shared interaction helpers for links and clickable surfaces. */
+a:not([class*='no-motion']),
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a:not([class*='no-motion']):not([class*='underline']):not([class*='bg-']) {
+  transition: color var(--motion-fast) var(--motion-ease), opacity var(--motion-fast) var(--motion-ease);
+}
+
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']) {
+  transition-timing-function: var(--motion-ease);
+}
+
+/* Keep action buttons on the MDIS blue palette, including actions that were
+   previously styled with red, green, or amber utility colors. Status badges
+   and non-button indicators keep their semantic colors. */
+button[class*='bg-emerald-'],
+button[class*='bg-green-'],
+button[class*='bg-rose-'],
+button[class*='bg-red-'],
+button[class*='bg-amber-'] {
+  background-color: #146EF5 !important;
+  color: #fff !important;
+  border-color: #146EF5 !important;
+}
+
+button[class*='bg-emerald-']:hover,
+button[class*='bg-green-']:hover,
+button[class*='bg-rose-']:hover,
+button[class*='bg-red-']:hover,
+button[class*='bg-amber-']:hover {
+  background-color: #0F5BD6 !important;
+}
+
+button[class*='text-red-'],
+button[class*='text-rose-'],
+button[class*='text-emerald-'],
+button[class*='text-green-'],
+button[class*='text-amber-'] {
+  color: #146EF5 !important;
+  border-color: #146EF5 !important;
+}
+
+/* Legacy page-level primary buttons inherit the same MDIS authentication
+   gradient while their existing labels and layout remain unchanged. */
+button[class*='bg-[#146EF5]']:not(:disabled) {
+  background-image: linear-gradient(90deg, #0877F9 0%, #16C7E8 100%);
+  box-shadow: 0 6px 16px rgba(20, 110, 245, 0.18);
+  border: 0 !important;
+  will-change: transform;
+  transition: transform 240ms var(--motion-ease), box-shadow 240ms var(--motion-ease), filter 240ms var(--motion-ease);
+}
+
+button[class*='bg-[#146EF5]']:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 12px 26px rgba(20, 110, 245, 0.3);
+}
+
+button[class*='bg-[#146EF5]']:not(:disabled):active {
+  transform: translateY(0) scale(0.995);
 }
 
 /* Standard page header shared by content views. The inset modifier extends
@@ -190,6 +258,39 @@ body:has(.app-shell-viewport) {
 
 * {
   box-sizing: border-box;
+}
+
+/* Shared control treatment: one quiet border, compact corners, and a clear
+   hover state. Focus uses the border itself so controls do not render a
+   second blue ring around the field. */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  border-radius: 6px;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+input:not([type='checkbox']):not([type='radio']):hover,
+select:hover,
+textarea:hover {
+  border-color: #B7CBE3;
+}
+
+input:not([type='checkbox']):not([type='radio']):focus,
+select:focus,
+textarea:focus,
+input:not([type='checkbox']):not([type='radio']):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(20, 110, 245, 0.14) !important;
+  border-color: #146EF5 !important;
+}
+
+/* Keep larger legacy utility radii from creating a different visual language
+   while preserving circular status indicators and avatars. */
+:is(.rounded-xl, .rounded-2xl, .rounded-3xl) {
+  border-radius: 6px;
 }
 
 /* Keyboard focus — :focus-visible ensures focus ring appears for keyboard nav
@@ -351,4 +452,171 @@ code, .mono {
 }
 .slide-in {
   animation: slide-in 0.2s ease-out;
+}
+
+@keyframes login-workflow-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-workflow-slide {
+  animation: login-workflow-enter 240ms ease-out;
+}
+
+/* Figma Make login composition, adapted to the existing MDIS auth flow. */
+.login-shell {
+  background: #fff;
+  border: 1px solid rgba(151, 190, 220, .55);
+  border-radius: 30px;
+  grid-template-columns: minmax(460px, 1.06fr) minmax(520px, .94fr);
+  width: min(100%, 1440px);
+  min-height: calc(100dvh - 40px);
+  margin: 20px auto;
+  display: grid;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(27, 72, 113, .13), 0 4px 18px rgba(27, 72, 113, .05);
+}
+.login-shell:not(.auth-flow-shell) {
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  height: 100dvh;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+.login-shell:not(.auth-flow-shell) .story-panel,
+.login-shell:not(.auth-flow-shell) .form-panel {
+  min-height: 0;
+  height: 100%;
+}
+.login-shell:not(.auth-flow-shell) .form-panel {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.story-panel {
+  isolation: isolate;
+  color: #fff;
+  background: radial-gradient(circle at 100% 100%, rgba(10,119,235,.55), transparent 43%), linear-gradient(145deg,#061a38 0%,#082858 62%,#073c81 100%);
+  flex-direction: column;
+  min-height: 700px;
+  padding: clamp(36px, 4.4vw, 64px);
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.story-panel::before,
+.story-panel::after {
+  z-index: -1;
+  aspect-ratio: 1;
+  content: "";
+  border: 1px solid rgba(58,205,239,.14);
+  border-radius: 50%;
+  width: 70%;
+  position: absolute;
+  right: -28%;
+  top: -18%;
+}
+.story-panel::after { top: -6%; right: -16%; border-color: rgba(69,218,246,.09); }
+.story-panel > div:first-child { z-index: -1; filter: blur(130px); opacity: .25; background: #0b83ff; border-radius: 50%; width: 65%; height: 45%; position: absolute; bottom: 0; right: -20%; }
+.story-content { z-index: 2; width: min(100%, 600px); margin: auto 0; padding: 54px 0 42px; position: relative; }
+.story-header, .story-footer { z-index: 2; position: relative; }
+.story-description { color: rgba(226,239,255,.72); max-width: 485px; margin: 22px 0 38px; font-size: 16px; line-height: 1.7; }
+.principle-detail { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.11); border-radius: 14px; }
+.principle-flow button { color: rgba(255,255,255,.55); background: transparent; border: 0; }
+.principle-flow button:hover { color: #fff; }
+
+.form-panel {
+  background: #fbfdff;
+  justify-content: center;
+  align-items: center;
+  min-height: 700px;
+  padding: 72px clamp(48px, 6vw, 96px);
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 220ms ease, box-shadow 220ms ease;
+}
+.form-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 40%, rgba(20, 110, 245, .055), transparent 58%);
+  transition: opacity 220ms ease;
+}
+.form-panel:hover { background: #ffffff; box-shadow: inset 0 0 0 1px rgba(20, 110, 245, .045); }
+.form-panel:hover::before { opacity: 1; }
+.form-panel::after { content: ""; background: linear-gradient(#0000,#83b7dc59 18% 82%,#0000); width: 1px; position: absolute; top: 8%; bottom: 8%; left: 0; }
+.form-panel-header { z-index: 2; color: #8a9aaf; letter-spacing: .08em; text-transform: uppercase; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 600; display: flex; position: absolute; top: 34px; left: clamp(48px,6vw,96px); right: clamp(48px,6vw,96px); }
+.form-panel-header a { color: #53708f; text-decoration: none; transition: color .2s ease; }
+.form-panel-header a:hover { color: #0877ec; }
+.form-panel > * { z-index: 1; }
+.form-panel input:not([type="checkbox"]) { transition: border-color 200ms ease, background-color 200ms ease, box-shadow 200ms ease; }
+.form-panel input:not([type="checkbox"]):hover { border-color: #b5cdea; background: #fcfeff; }
+.login-card { z-index: 1; width: min(100%, 470px); box-shadow: none; background: transparent; border: 0; border-radius: 0; position: relative; }
+.mobile-logo { display: none; }
+.auth-flow-form { align-items: flex-start; overflow-y: auto; overscroll-behavior: contain; }
+.auth-flow-card { width: min(100%, 520px); margin: auto 0; padding: 20px 0; }
+.auth-flow-shell { width: 100%; max-width: none; min-height: 100dvh; height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+.auth-flow-shell .auth-flow-story { min-height: 0; height: 100%; }
+.auth-flow-shell .auth-flow-form { min-height: 0; height: 100%; }
+.auth-flow-card input:not([type="checkbox"]),
+.auth-flow-card select { transition: border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease; }
+.auth-flow-card input:not([type="checkbox"]):hover,
+.auth-flow-card select:hover { border-color: #b5cdea; background: #fcfeff; }
+.auth-flow-card button[type="submit"] {
+  background: #146EF5 !important;
+  color: #fff !important;
+  border: 0;
+  box-shadow: 0 10px 24px rgba(20, 110, 245, .22);
+  transition: transform 220ms ease, box-shadow 220ms ease, filter 220ms ease;
+}
+.auth-flow-card button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #0F5BD6 !important;
+  filter: none;
+  box-shadow: 0 14px 30px rgba(20, 110, 245, .34);
+}
+.auth-flow-card button[type="submit"]:active:not(:disabled) {
+  transform: translateY(0) scale(.995);
+}
+.login-submit {
+  background: #146EF5 !important;
+  background-image: none !important;
+}
+.login-submit:hover:not(:disabled) {
+  background: #0F5BD6 !important;
+  background-image: none !important;
+}
+
+@media (max-width: 1000px) {
+  .login-shell { grid-template-columns: .8fr 1.2fr; }
+  .story-panel { padding: 34px; }
+  .story-content h1 { font-size: 40px; }
+  .story-footer { display: none; }
+  .form-panel { padding: 55px 34px; }
+  .form-panel-header { left: 34px; right: 34px; }
+}
+
+@media (max-width: 767px) {
+  .login-shell { min-height: 100dvh; width: 100%; margin: 0; border: 0; border-radius: 0; display: block; box-shadow: none; }
+  .story-panel { display: none; }
+  .form-panel { min-height: 100dvh; padding: 76px 24px 40px; }
+  .auth-flow-form { padding: 56px 24px 32px; }
+  .auth-flow-card { margin: 0 auto; padding: 0; }
+  .form-panel-header { top: 24px; left: 24px; right: 24px; }
+  .mobile-logo { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

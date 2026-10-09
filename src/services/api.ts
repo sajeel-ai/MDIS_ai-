@@ -1031,6 +1031,14 @@ export async function retryDocumentProcessing(
   })
 }
 
+export async function reprocessDocument(
+  documentId: string,
+): Promise<DocumentProcessResponse> {
+  return apiFetch(`/documents/${documentId}/reprocess`, {
+    method: "POST",
+  })
+}
+
 export async function fetchDocumentDetails(
   documentId: string,
 ): Promise<DocumentDetailResponse> {
