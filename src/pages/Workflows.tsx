@@ -11,11 +11,11 @@ export interface WorkflowsPageProps {
 }
 
 const WORKFLOW_NODES = [
-  { id: 'n1', title: 'Document Input', sub: 'PDF / Image Ingestion', type: 'Trigger', color: 'bg-blue-50' },
-  { id: 'n2', title: 'OCR Processing', sub: 'Tesseract / Vision Engine', type: 'OCR', color: 'bg-[#EAF5FF]' },
-  { id: 'n3', title: 'Clinical NLP Extraction', sub: 'SNOMED / ICD-10 Normalization', type: 'AI Extraction', color: 'bg-[#EAF5FF]' },
-  { id: 'n4', title: 'Model confidence (uncalibrated)', sub: 'Configured review threshold: 85%', type: 'Validation Gate', color: 'bg-amber-50' },
-  { id: 'n5', title: 'FHIR-shaped export', sub: 'JSON document export', type: 'Export', color: 'bg-green-50' },
+  { id: 'n1', title: 'Document Input', sub: 'PDF / Image Ingestion', type: 'Trigger', color: 'bg-white' },
+  { id: 'n2', title: 'OCR Processing', sub: 'Tesseract / Vision Engine', type: 'OCR', color: 'bg-white' },
+  { id: 'n3', title: 'Clinical NLP Extraction', sub: 'SNOMED / ICD-10 Normalization', type: 'AI Extraction', color: 'bg-white' },
+  { id: 'n4', title: 'Model confidence (uncalibrated)', sub: 'Configured review threshold: 85%', type: 'Validation Gate', color: 'bg-white' },
+  { id: 'n5', title: 'FHIR-shaped export', sub: 'JSON document export', type: 'Export', color: 'bg-white' },
 ];
 
 export function WorkflowsPage({ onNavigate }: WorkflowsPageProps) {

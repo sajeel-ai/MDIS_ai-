@@ -106,6 +106,21 @@ button[class*='text-amber-'] {
   border-color: #146EF5 !important;
 }
 
+/* Rejection is the single destructive action that remains red for clarity. */
+.review-reject-button,
+.review-reject-button:hover:not(:disabled) {
+  background-color: #E11D48 !important;
+  color: #fff !important;
+  border-color: #E11D48 !important;
+}
+.review-reject-button:hover:not(:disabled) { background-color: #BE123C !important; }
+.reject-button {
+  background-color: #E11D48 !important;
+  color: #fff !important;
+  border-color: #E11D48 !important;
+}
+.reject-button:hover:not(:disabled) { background-color: #BE123C !important; }
+
 /* Legacy page-level primary buttons inherit the same MDIS authentication
    gradient while their existing labels and layout remain unchanged. */
 button[class*='bg-[#146EF5]']:not(:disabled) {

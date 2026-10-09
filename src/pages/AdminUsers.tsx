@@ -299,7 +299,7 @@ export function AdminUsersPage({
                     </button>
                     <button
                       disabled={busy}
-                      className="min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#B91C1C]"
+                      className="reject-button min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#B91C1C]"
                       onClick={() => {
                         setRejecting(account)
                         setRejectionReason("")
@@ -539,7 +539,7 @@ export function AdminUsersPage({
                   </button>
                   <button
                     disabled={busy || !rejectionReason.trim()}
-                    className="min-h-11 rounded-lg bg-[#146EF5] px-4 font-semibold text-white"
+                    className="reject-button min-h-11 rounded-lg bg-[#146EF5] px-4 font-semibold text-white"
                   >
                     Confirm rejection
                   </button>

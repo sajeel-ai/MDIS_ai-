@@ -927,7 +927,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
                       onClick={() => setShowRejectModal(true)}
                       disabled={!canReview || submitting}
                       aria-busy={submitting}
-                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-rose-600 text-white font-medium text-xs hover:bg-rose-700 transition-colors disabled:opacity-50"
+                      className="review-reject-button w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-[#E11D48] text-white font-medium text-xs hover:bg-[#BE123C] transition-colors disabled:opacity-50"
                     >
                       <XCircle size={16} aria-hidden="true" /> Reject / Flag Error (R)
                     </button>
