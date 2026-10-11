@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { DashboardPage } from "./pages/Dashboard"
 import { DocumentsPage } from "./pages/Documents"
+import { ApprovedFilesPage } from "./pages/ApprovedFiles"
 import { ClinicalWorkspacePage } from "./pages/ClinicalWorkspace"
 import { ReviewCenterPage } from "./pages/ReviewCenter"
 import { ReviewDocumentPage } from "./pages/ReviewDocument"
@@ -10,7 +11,6 @@ import { AIOperationsPage } from "./pages/AIOperations"
 import { SettingsPage } from "./pages/Settings"
 import { PatientTimeline } from "./views/PatientTimeline"
 import { AppLayout } from "./layouts/AppLayout"
-import { ExtractionView } from "./views/Placeholders"
 import {
   AnalyticsView,
   AuditView,
@@ -32,7 +32,7 @@ if (import.meta.env.PROD && import.meta.env.VITE_AUTH_BYPASS === "true") {
   throw new Error("VITE_AUTH_BYPASS must not be enabled in a production build.")
 }
 
-type View = "dashboard" | "documents" | "clinical" | "review" | "review-document" | "workflows" | "integrations" | "aiops" | "settings" | "timeline" | "extraction" | "analytics" | "audit" | "pipeline" | "login" | "forgot" | "reset" | "invite" | "change-password" | "mfa-setup" | "mfa-verify" | "expired" | "forbidden" | "register" | "users"
+type View = "dashboard" | "documents" | "approved-files" | "clinical" | "review" | "review-document" | "workflows" | "integrations" | "aiops" | "settings" | "timeline" | "analytics" | "audit" | "pipeline" | "login" | "forgot" | "reset" | "invite" | "change-password" | "mfa-setup" | "mfa-verify" | "expired" | "forbidden" | "register" | "users"
 
 type RouteState = {
   view: View
@@ -86,6 +86,7 @@ function parseRoute(pathname: string): RouteState {
     "/": "dashboard",
     "/dashboard": "dashboard",
     "/documents": "documents",
+    "/approved-files": "approved-files",
     "/patients": "timeline",
     "/timeline": "timeline",
     "/workflows": "workflows",
@@ -93,8 +94,8 @@ function parseRoute(pathname: string): RouteState {
     "/ai-operations": "aiops",
     "/aiops": "aiops",
     "/settings": "settings",
-    "/ai-extraction": "extraction",
-    "/extraction": "extraction",
+    "/ai-extraction": "documents",
+    "/extraction": "documents",
     "/analytics": "analytics",
     "/audit": "audit",
     "/pipeline": "pipeline",
@@ -136,10 +137,13 @@ function pathForView(
     return `/review/${encodeURIComponent(reviewTaskId)}`
   if (view === "review-document" && reviewTaskId)
     return `/review/document/${encodeURIComponent(reviewTaskId)}`
+  if (view === "audit" && documentId)
+    return `/audit?resource_id=${encodeURIComponent(documentId)}`
   const paths: Record<string, string> = {
     login: "/login",
     dashboard: "/dashboard",
     documents: "/documents",
+    "approved-files": "/approved-files",
     clinical: "/clinical",
     review: "/review",
     workflows: "/workflows",
@@ -147,7 +151,6 @@ function pathForView(
     aiops: "/ai-operations",
     settings: "/settings",
     timeline: "/patients",
-    extraction: "/ai-extraction",
     analytics: "/analytics",
     audit: "/audit",
     pipeline: "/pipeline",
@@ -185,6 +188,11 @@ function AppContent() {
     window.addEventListener("popstate", onPopState)
     return () => window.removeEventListener("popstate", onPopState)
   }, [])
+
+  useEffect(() => {
+    if (route.path === "/ai-extraction" || route.path === "/extraction")
+      changePath("/documents", true)
+  }, [changePath, route.path])
 
   useEffect(() => {
     if (auth.authError === "Your session has expired. Please sign in again.")
@@ -254,6 +262,9 @@ function AppContent() {
     case "documents":
       content = <DocumentsPage onNavigate={navigate} />
       break
+    case "approved-files":
+      content = <ApprovedFilesPage onNavigate={navigate} />
+      break
     case "clinical":
       content = (
         <ClinicalWorkspacePage
@@ -300,13 +311,6 @@ function AppContent() {
       content = (
         <AppLayout activeView="timeline" onNavigate={navigate}>
           <PatientTimeline />
-        </AppLayout>
-      )
-      break
-    case "extraction":
-      content = (
-        <AppLayout activeView="extraction" onNavigate={navigate}>
-          <ExtractionView onNavigate={navigate} />
         </AppLayout>
       )
       break

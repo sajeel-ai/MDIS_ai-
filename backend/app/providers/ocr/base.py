@@ -8,6 +8,7 @@ class OCRPage(TypedDict, total=False):
     page_number: int
     text: str
     confidence: float | None
+    method: str
 
 
 class OCRResult(TypedDict, total=False):

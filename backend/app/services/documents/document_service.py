@@ -4,11 +4,12 @@ import uuid
 from pathlib import Path
 from typing import List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import and_, select, func, or_
 from sqlalchemy.orm import selectinload
 
 from app.models import Document, DocumentVersion, Patient, ProcessingJob, ProcessingStep, Extraction, ClinicalEntity, EvidenceSpan
 from app.config import settings
+from app.workflows.states import derive_lifecycle_status
 
 
 class DocumentService:
@@ -81,6 +82,7 @@ class DocumentService:
             "doc_type": doc.document_type,
             "status": doc.status,
             "review_status": doc.review_status,
+            "lifecycle_status": derive_lifecycle_status(doc.status, doc.review_status),
             "confidence": "not_available",
             "last_updated": doc.created_at.isoformat() if doc.created_at else "",
         }
@@ -91,6 +93,8 @@ class DocumentService:
         page_size: int = 25,
         status: str | None = None,
         search: str | None = None,
+        unlinked_patient: bool = False,
+        sort: str = "updated_desc",
         organization_id: uuid.UUID | None = None,
     ) -> Tuple[List[dict], int]:
         query = select(Document).options(
@@ -101,8 +105,26 @@ class DocumentService:
         if organization_id is not None:
             query = query.where(Document.organization_id == organization_id)
 
+        if unlinked_patient:
+            query = query.where(Document.patient_id.is_(None))
+
         if status:
-            query = query.where(Document.status == status)
+            lifecycle_conditions = {
+                "failed": Document.status == "failed",
+                "processing": Document.status == "processing",
+                "uploaded": Document.status.in_(["uploaded", "queued"]),
+                "rejected": and_(Document.status == "completed", Document.review_status == "rejected"),
+                "approved": and_(Document.status == "completed", Document.review_status == "approved"),
+                "in_review": and_(Document.status == "completed", Document.review_status.in_(["pending", "in_review"])),
+                "extracted": and_(Document.status == "completed", Document.review_status == "not_required"),
+            }
+            condition = lifecycle_conditions.get(status)
+            if condition is not None:
+                query = query.where(condition)
+            elif status in {"uploaded", "queued", "processing", "completed", "failed"}:
+                # Preserve the existing processing-status API contract for
+                # callers that still need the raw backend state.
+                query = query.where(Document.status == status)
 
         if search:
             search_pattern = f"%{search}%"
@@ -123,7 +145,13 @@ class DocumentService:
 
         # Paginated results
         offset = (page - 1) * page_size
-        query = query.order_by(Document.created_at.desc()).offset(offset).limit(page_size)
+        if sort == "name_asc":
+            query = query.order_by(Document.file_name.asc(), Document.created_at.desc())
+        elif sort == "status_asc":
+            query = query.order_by(Document.status.asc(), Document.created_at.desc())
+        else:
+            query = query.order_by(Document.created_at.desc())
+        query = query.offset(offset).limit(page_size)
         res = await self.session.execute(query)
         docs = res.scalars().all()
 
@@ -167,6 +195,7 @@ class DocumentService:
                 "doc_type": d.document_type,
                 "status": d.status,
                 "review_status": d.review_status,
+                "lifecycle_status": derive_lifecycle_status(d.status, d.review_status),
                 "confidence": conf_str,
                 "last_updated": d.updated_at.isoformat(),
             })
@@ -258,6 +287,7 @@ class DocumentService:
             "doc_type": d.document_type,
             "status": d.status,
             "review_status": d.review_status,
+            "lifecycle_status": derive_lifecycle_status(d.status, d.review_status),
             "confidence": conf_str,
             "source_text": source_text,
             "version_number": latest_ver.version_number if latest_ver else 1,

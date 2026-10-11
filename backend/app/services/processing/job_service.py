@@ -90,7 +90,7 @@ class JobService:
         return await self._create_job(doc)
 
     async def reprocess_document(self, document_id: uuid.UUID) -> ProcessingJobRequest:
-        """Start a fresh extraction run, replacing previous extracted output."""
+        """Start a fresh extraction run and clear any prior review decision."""
         doc = await self._get_document_for_update(document_id)
         if not doc:
             raise ValueError(f"Document {document_id} not found")
@@ -106,6 +106,9 @@ class JobService:
         await self.session.execute(delete(ValidationResult).where(ValidationResult.entity_id.in_(entity_ids)))
         await self.session.execute(delete(ClinicalEntity).where(ClinicalEntity.id.in_(entity_ids)))
         await self.session.execute(delete(Extraction).where(Extraction.document_id == document_id))
+        # Re-extraction invalidates the previous human decision. The workflow
+        # will set this to not_required or pending once the new output exists.
+        doc.review_status = "pending"
         await self.session.flush()
         return await self._create_job(doc)
 

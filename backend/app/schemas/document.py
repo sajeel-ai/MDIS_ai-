@@ -2,7 +2,7 @@
 
 from typing import List, Literal, Optional
 from pydantic import BaseModel
-from app.workflows.states import DocumentStatus, ReviewStatus
+from app.workflows.states import DocumentStatus, LifecycleStatus, ReviewStatus
 
 
 class PipelineStage(BaseModel):
@@ -21,6 +21,7 @@ class DocumentResponse(BaseModel):
     doc_type: str
     status: DocumentStatus
     review_status: ReviewStatus = "not_required"
+    lifecycle_status: LifecycleStatus = "extracted"
     confidence: str
     last_updated: str
 

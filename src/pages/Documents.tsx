@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
 import { Upload, FileText, Search, Filter, Play, RefreshCw } from 'lucide-react';
+import { StatusBadge } from '../components/shared/StatusBadge';
+import { deriveDocumentLifecycleStatus, type LifecycleStatus } from '../domain/documentLifecycle';
 import {
   fetchDocuments,
   fetchPatients,
@@ -27,7 +28,16 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const queryParams = new URLSearchParams(window.location.search);
+  const [statusFilter, setStatusFilter] = useState<LifecycleStatus | undefined>(() => {
+    const value = queryParams.get('status') as LifecycleStatus | null;
+    return value && ['uploaded', 'processing', 'failed', 'extracted', 'in_review', 'approved', 'rejected'].includes(value) ? value : undefined;
+  });
+  const [page, setPage] = useState(() => Math.max(1, Number(queryParams.get('page') || 1)));
+  const [pageSize, setPageSize] = useState(() => Math.min(100, Math.max(10, Number(queryParams.get('page_size') || 25))));
+  const [sort, setSort] = useState(() => queryParams.get('sort') || 'updated_desc');
+  const [unlinkedPatient, setUnlinkedPatient] = useState(() => queryParams.get('unlinked_patient') === 'true');
+  const [total, setTotal] = useState(0);
 
   // Upload modal state
   const [showModal, setShowModal] = useState(false);
@@ -46,10 +56,11 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
     setError(null);
     try {
       const [docsResp, patsResp] = await Promise.all([
-        fetchDocuments(1, 50, statusFilter, search),
+        fetchDocuments(page, pageSize, statusFilter, search, unlinkedPatient, sort),
         fetchPatients(1, 100),
       ]);
       setDocuments(docsResp.items);
+      setTotal(docsResp.total);
       setPatients(patsResp.items);
       if (patsResp.items.length > 0 && !selectedPatientId) {
         setSelectedPatientId(patsResp.items[0].id);
@@ -62,8 +73,19 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
   };
 
   useEffect(() => {
-    loadData();
-  }, [statusFilter]);
+    const timer = window.setTimeout(() => void loadData(), 300);
+    return () => window.clearTimeout(timer);
+  }, [statusFilter, search, page, pageSize, unlinkedPatient, sort]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (statusFilter) params.set('status', statusFilter);
+    params.set('page', String(page));
+    params.set('page_size', String(pageSize));
+    params.set('sort', sort);
+    if (unlinkedPatient) params.set('unlinked_patient', 'true');
+    window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
+  }, [statusFilter, page, pageSize, sort, unlinkedPatient]);
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,13 +156,7 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
     }
   };
 
-  const filtered = documents.filter(
-    (c) =>
-      (c.patient_name || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.doc_type || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.case_id || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.id || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = documents;
 
   return (
     <AppLayout activeView="documents" onNavigate={onNavigate}>
@@ -257,7 +273,7 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52627A]" />
             <input
               type="text"
-              placeholder="Filter by document type, patient name, or case ID..."
+              placeholder="Search name, MRN, document, or case ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#EAF5FF] border border-[#DCE7F3] rounded-md text-[#071A3D] outline-none"
@@ -266,13 +282,31 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <select
               value={statusFilter || ''}
-              onChange={(e) => setStatusFilter(e.target.value || undefined)}
+              onChange={(e) => { setPage(1); setStatusFilter((e.target.value || undefined) as LifecycleStatus | undefined); }}
               className="text-xs p-1.5 rounded border border-[#DCE7F3] bg-[#EAF5FF] text-[#52627A]"
             >
               <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
+              <option value="uploaded">Uploaded</option>
+              <option value="processing">Processing</option>
               <option value="failed">Failed</option>
+              <option value="extracted">Extracted (no review required)</option>
+              <option value="in_review">In review</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <label className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-[#52627A]">
+              <input type="checkbox" checked={unlinkedPatient} onChange={(e) => { setPage(1); setUnlinkedPatient(e.target.checked); }} />
+              Unlinked patient
+            </label>
+            <select
+              aria-label="Sort documents"
+              value={sort}
+              onChange={(e) => { setPage(1); setSort(e.target.value); }}
+              className="text-xs p-1.5 rounded border border-[#DCE7F3] bg-[#EAF5FF] text-[#52627A]"
+            >
+              <option value="updated_desc">Newest</option>
+              <option value="name_asc">Name</option>
+              <option value="status_asc">Status</option>
             </select>
           </div>
         </div>
@@ -347,19 +381,11 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
                         {item.doc_type ? item.doc_type.replace('_', ' ') : '—'}
                       </td>
                       <td className="py-3 px-4">
-                        <Badge
-                          variant={
-                            item.status === 'completed'
-                              ? 'success'
-                              : item.status === 'processing'
-                              ? 'warning'
-                              : item.status === 'failed'
-                              ? 'error'
-                              : 'ai'
-                          }
-                        >
-                          {processingDocId === item.id ? 'Processing...' : item.status}
-                        </Badge>
+                        <StatusBadge
+                          status={processingDocId === item.id
+                            ? 'processing'
+                            : item.lifecycle_status || deriveDocumentLifecycleStatus(item.status, item.review_status)}
+                        />
                       </td>
                       <td className="py-3 px-4">
                         <span className="font-mono text-[11px] font-semibold text-[#071A3D] uppercase">
@@ -398,9 +424,16 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() => onNavigate('clinical', item.id)}
+                          onClick={() => {
+                            const lifecycle = item.lifecycle_status || deriveDocumentLifecycleStatus(item.status, item.review_status);
+                            if (lifecycle === 'in_review' || lifecycle === 'rejected') onNavigate('review');
+                            else onNavigate('clinical', item.id);
+                          }}
                         >
-                          Inspect Case
+                          {(() => {
+                            const lifecycle = item.lifecycle_status || deriveDocumentLifecycleStatus(item.status, item.review_status);
+                            return lifecycle === 'failed' || lifecycle === 'processing' ? 'Manage in Documents' : lifecycle === 'approved' ? 'Inspect Approved' : lifecycle === 'extracted' ? 'View extracted data' : lifecycle === 'in_review' || lifecycle === 'rejected' ? 'Open Review' : 'Inspect Case';
+                          })()}
                         </Button>
                       </td>
                     </tr>
@@ -411,6 +444,18 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
             </div>
           )}
         </Card>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#52627A]">
+          <span>{total === 0 ? 'No documents' : `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, total)} of ${total}`}</span>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1">Rows
+              <select value={pageSize} onChange={(e) => { setPage(1); setPageSize(Number(e.target.value)); }} className="rounded border border-[#DCE7F3] bg-white px-1.5 py-1">
+                <option value={10}>10</option><option value={25}>25</option><option value={50}>50</option>
+              </select>
+            </label>
+            <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
+            <Button size="sm" variant="outline" disabled={page * pageSize >= total} onClick={() => setPage((value) => value + 1)}>Next</Button>
+          </div>
+        </div>
       </div>
     </AppLayout>
   );

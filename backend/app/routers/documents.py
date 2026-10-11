@@ -174,6 +174,8 @@ async def list_documents(
     page_size: int = Query(25, ge=1, le=100),
     doc_status: Optional[str] = Query(None, alias="status"),
     search: Optional[str] = None,
+    unlinked_patient: bool = Query(False),
+    sort: str = Query("updated_desc", pattern="^(updated_desc|name_asc|status_asc)$"),
     db: AsyncSession = Depends(get_db),
     current_user: UserContext = Depends(get_current_user),
 ):
@@ -184,6 +186,8 @@ async def list_documents(
         page_size=page_size,
         status=doc_status,
         search=search,
+        unlinked_patient=unlinked_patient,
+        sort=sort,
         organization_id=current_user.organization_id,
     )
     return {

@@ -11,13 +11,15 @@ import {
   type ReviewPolicy,
 } from '../services/api';
 import { FileText, ArrowRight, Database, RefreshCw } from 'lucide-react';
+import { StatusBadge } from '../components/shared/StatusBadge';
+import { deriveDocumentLifecycleStatus } from '../domain/documentLifecycle';
 
 const ConfidenceBadge = ({ level }: { level: string }) => {
   const map: Record<string, { icon: string; color: string; bg: string }> = {
-    high: { icon: 'âœ“', color: '#15803d', bg: '#dcfce7' },
-    medium: { icon: 'âš ', color: '#b45309', bg: '#fef3c7' },
-    low: { icon: 'âš ', color: '#b91c1c', bg: '#fee2e2' },
-    unavailable: { icon: 'â€¢', color: '#52627A', bg: '#F5FAFF' },
+    high: { icon: '✓', color: '#15803d', bg: '#dcfce7' },
+    medium: { icon: '⚠', color: '#b45309', bg: '#fef3c7' },
+    low: { icon: '⚠', color: '#b91c1c', bg: '#fee2e2' },
+    unavailable: { icon: '•', color: '#52627A', bg: '#F5FAFF' },
   };
   const s = map[level] || map.medium;
   return (
@@ -57,7 +59,7 @@ function RealEntityCard({ entity, onViewSource, reviewPolicy }: { entity: Clinic
       : entity.confidence >= reviewPolicy.high_priority_threshold
         ? 'medium'
         : 'low';
-  const code = entity.details?.code || 'â€”';
+  const code = entity.details?.code || '—';
   const codeSys = entity.details?.code_system || 'SNOMED/ICD10';
   const structuredDetails = Object.entries(entity.details || {}).filter(([key, value]) =>
     !['code', 'code_system', 'evidence_unverified'].includes(key) && value !== null && value !== undefined && String(value).trim() !== '',
@@ -102,8 +104,8 @@ function RealEntityCard({ entity, onViewSource, reviewPolicy }: { entity: Clinic
       )}
       <div className="flex flex-wrap gap-1.5 mb-3">
         <span className="px-2 py-0.5 rounded bg-[#EAF5FF] text-[#071A3D] text-[10px] font-semibold">{entity.assertion}</span>
-        {entity.section && <span className="px-2 py-0.5 rounded bg-[#F5FAFF] text-[#52627A] text-[10px]">{entity.section === 'ALLERGIES' ? 'ALLERGY Â· NOT AN ACTIVE MEDICATION' : entity.section}</span>}
-        {entity.details?.evidence_unverified && <span className="px-2 py-0.5 rounded bg-red-50 text-red-700 text-[10px] font-semibold">Evidence unverified Â· review required</span>}
+        {entity.section && <span className="px-2 py-0.5 rounded bg-[#F5FAFF] text-[#52627A] text-[10px]">{entity.section === 'ALLERGIES' ? 'ALLERGY · NOT AN ACTIVE MEDICATION' : entity.section}</span>}
+        {entity.details?.evidence_unverified && <span className="px-2 py-0.5 rounded bg-red-50 text-red-700 text-[10px] font-semibold">Evidence unverified · review required</span>}
         {entity.validation_rule_codes?.map((code) => <span key={code} className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 text-[10px] font-mono">{code}</span>)}
       </div>
       {entity.evidence_spans && entity.evidence_spans.length > 0 && (
@@ -120,7 +122,7 @@ function RealEntityCard({ entity, onViewSource, reviewPolicy }: { entity: Clinic
         </button>
         {!expanded && (
           <button onClick={() => setExpanded(true)} className="px-3 py-1.5 rounded text-xs text-[#52627A] hover:bg-[#EAF5FF] hover:text-[#146EF5] transition-colors">
-            Details â†“
+            Details ↓
           </button>
         )}
       </div>
@@ -137,7 +139,7 @@ function RealEntityCard({ entity, onViewSource, reviewPolicy }: { entity: Clinic
               <span className="text-[#071A3D]">{(entity.confidence * 100).toFixed(1)}%</span>
             </div>
           </div>
-          <button onClick={() => setExpanded(false)} className="mt-2 text-xs text-[#52627A] hover:text-[#146EF5] transition-colors">Close â†‘</button>
+        <button onClick={() => setExpanded(false)} className="mt-2 text-xs text-[#52627A] hover:text-[#146EF5] transition-colors">Close ↑</button>
         </div>
       )}
     </div>
@@ -182,7 +184,7 @@ function RealDocumentPanel({
         <div>
           <div className="font-sans text-xs font-semibold text-[#071A3D]">SOURCE DOCUMENT</div>
           <div className="font-mono text-[10px] text-[#52627A]">
-            {docDetails.file_name} Â· {docDetails.page_count} page(s) Â· {(docDetails.size_bytes / 1024).toFixed(1)} KB
+            {docDetails.file_name} · {docDetails.page_count} page(s) · {(docDetails.size_bytes / 1024).toFixed(1)} KB
           </div>
         </div>
         <div className="flex gap-1.5">
@@ -200,7 +202,7 @@ function RealDocumentPanel({
       <div className="px-4 py-2.5 border-t flex items-center gap-4 bg-[#EAF5FF] border-[#DCE7F3]">
         <div className="font-mono text-[9px] text-[#52627A] uppercase tracking-wider">Provenance:</div>
         <span className="font-mono text-[10px] text-[#15803d]">
-          âœ“ Version {docDetails.version_number} Â· SHA-256 Hash Verified
+          ✓ Version {docDetails.version_number} · SHA-256 Hash Verified
         </span>
       </div>
     </div>
@@ -359,7 +361,7 @@ export function ClinicalWorkspace({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-mono text-[10px] text-[#52627A]">Clinical Workspace</span>
-                <span className="text-[#DCE7F3]">â€º</span>
+                <span className="text-[#DCE7F3]">›</span>
                 <span className="font-mono text-[10px] text-[#146EF5] font-medium">{docDetails.case_id}</span>
               </div>
               <div className="flex items-center gap-3">
@@ -369,9 +371,9 @@ export function ClinicalWorkspace({
                 <div className="font-mono text-[10px] text-[#52627A]">
                   {docDetails.mrn ? `MRN ${docDetails.mrn}` : `Doc ID: ${docDetails.id.slice(0, 8)}`}
                 </div>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold font-mono uppercase ${docDetails.review_status === 'approved' || (!docDetails.review_status || docDetails.review_status === 'not_required') && docDetails.status === 'completed' ? 'bg-[#dcfce7] text-[#15803d]' : docDetails.review_status === 'rejected' ? 'bg-[#fee2e2] text-[#b91c1c]' : 'bg-[#EAF5FF] text-[#146EF5]'}`}>
-                  {docDetails.review_status && docDetails.review_status !== 'not_required' ? docDetails.review_status : docDetails.status}
-                </span>
+                <StatusBadge
+                  status={docDetails.lifecycle_status || deriveDocumentLifecycleStatus(docDetails.status, docDetails.review_status)}
+                />
               </div>
             </div>
             <div className="flex items-center gap-2">

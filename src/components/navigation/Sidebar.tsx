@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   FileSpreadsheet,
+  FileCheck2,
   Clock,
   CheckSquare,
-  Sparkles,
   Activity,
   GitBranch,
   BarChart3,
@@ -39,10 +39,10 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
   { id: 'clinical', label: 'Clinical Workspace', section: 'Clinical', icon: <FileSpreadsheet size={16} /> },
   { id: 'documents', label: 'Documents', icon: <FileSpreadsheet size={16} /> },
+  { id: 'approved-files', label: 'Approved Files', icon: <FileCheck2 size={16} /> },
   { id: 'timeline', label: 'Clinical Timeline', icon: <Clock size={16} /> },
   // badgeKey: 'pending' will pull from live ReviewStats
   { id: 'review', label: 'Review Center', badgeKey: 'pending', icon: <CheckSquare size={16} /> },
-  { id: 'extraction', label: 'AI Extraction', section: 'AI', icon: <Sparkles size={16} /> },
   { id: 'aiops', label: 'AI Operations', icon: <Activity size={16} /> },
   { id: 'pipeline', label: 'Pipeline', icon: <Activity size={16} /> },
   { id: 'workflows', label: 'Workflows', icon: <GitBranch size={16} /> },

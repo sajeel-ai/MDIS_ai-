@@ -1,5 +1,6 @@
 """Audit log API."""
 
+import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,11 +18,15 @@ router = APIRouter(prefix="/audit", tags=["audit"], dependencies=[Depends(requir
 @router.get("/events")
 async def list_audit_events(
     limit: int = Query(50, ge=1, le=200),
+    resource_id: uuid.UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: UserContext = Depends(get_current_user),
 ):
+    query = select(AuditEvent).where(AuditEvent.organization_id == current_user.organization_id)
+    if resource_id is not None:
+        query = query.where(AuditEvent.resource_id == resource_id)
     result = await db.execute(
-        select(AuditEvent)
+        query
         .options(selectinload(AuditEvent.user))
         .order_by(desc(AuditEvent.created_at))
         .limit(limit)

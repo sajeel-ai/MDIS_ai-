@@ -1,4 +1,4 @@
-"""Local OCR Provider using Tesseract 5 and pdftoppm for PDFs and Images."""
+﻿"""Local OCR Provider using Tesseract 5 and pdftoppm for PDFs and Images."""
 
 from __future__ import annotations
 
@@ -102,11 +102,69 @@ class LocalOCRProvider(BaseOCRProvider):
         return await asyncio.to_thread(_run_tesseract)
 
     async def _process_pdf(self, pdf_bytes: bytes) -> OCRResult:
+        digital_result = self._extract_embedded_pdf_text(pdf_bytes)
+        if digital_result is not None:
+            return digital_result
+
         def _run_pdftoppm_and_tesseract():
             with tempfile.TemporaryDirectory() as tmp_dir:
                 pdf_path = os.path.join(tmp_dir, "input.pdf")
                 with open(pdf_path, "wb") as f:
                     f.write(pdf_bytes)
+
+                # Digital PDFs should retain their embedded Unicode text and
+                # layout. OCR is only used for pages whose text layer is empty
+                # or too small to be useful.
+                try:
+                    import pymupdf
+
+                    with pymupdf.open(pdf_path) as pdf:
+                        if pdf.page_count == 0:
+                            raise RuntimeError("OCR_EMPTY_RESULT: PDF has no pages")
+                        page_data = []
+                        ocr_pages = []
+                        for page_number, page in enumerate(pdf, start=1):
+                            text = page.get_text("text", sort=True) or ""
+                            # A page with only a handful of non-whitespace
+                            # characters is usually a scanned/image page.
+                            useful = len("".join(text.split())) >= 20 and any(ch.isalnum() for ch in text)
+                            if useful:
+                                page_data.append({
+                                    "page_number": page_number,
+                                    "text": text.rstrip("\n"),
+                                    "confidence": None,
+                                    "method": "text_layer",
+                                })
+                            else:
+                                ocr_pages.append((page_number, page.get_pixmap(dpi=150)))
+
+                        for page_number, pixmap in ocr_pages:
+                            image_path = os.path.join(tmp_dir, f"ocr-{page_number}.png")
+                            pixmap.save(image_path)
+                            text, confidence = self._tesseract_image_data(image_path)
+                            page_data.append({
+                                "page_number": page_number,
+                                "text": text,
+                                "confidence": confidence,
+                                "method": "ocr",
+                            })
+                        page_data.sort(key=lambda page: page["page_number"])
+                        combined_text = "\n\n".join(page["text"] for page in page_data if page["text"].strip()).strip()
+                        if not combined_text:
+                            raise RuntimeError("OCR_EMPTY_RESULT: PDF produced no usable text")
+                        measured_pages = [page["confidence"] for page in page_data if page["confidence"] is not None]
+                        methods = {page["method"] for page in page_data}
+                        return OCRResult(
+                            text=combined_text,
+                            confidence=(sum(measured_pages) / len(measured_pages)) if measured_pages else None,
+                            page_count=len(page_data),
+                            engine="pymupdf_text_layer" if methods == {"text_layer"} else "pymupdf_text_layer_ocr",
+                            pages=page_data,
+                        )
+                except RuntimeError:
+                    raise
+                except Exception as err:
+                    logger.warning("PDF text-layer extraction failed error_type=%s; trying OCR fallback", type(err).__name__)
 
                 out_prefix = os.path.join(tmp_dir, "page")
                 cmd_pdf = ["pdftoppm", "-png", "-r", "150", pdf_path, out_prefix]
@@ -130,8 +188,11 @@ class LocalOCRProvider(BaseOCRProvider):
                                     "page_number": page_number,
                                     "text": text,
                                     "confidence": confidence,
+                                    "method": "ocr",
                                 })
                         text = "\n\n".join(page["text"] for page in page_data if page["text"].strip()).strip()
+                        if not text:
+                            raise RuntimeError("OCR_EMPTY_RESULT: PDF produced no usable text")
                         measured_pages = [page["confidence"] for page in page_data if page["confidence"] is not None]
                         return OCRResult(
                             text=text,
@@ -146,9 +207,11 @@ class LocalOCRProvider(BaseOCRProvider):
                 page_data = []
                 for page_number, p_file in enumerate(page_files, start=1):
                     text, confidence = self._tesseract_image_data(str(p_file))
-                    page_data.append({"page_number": page_number, "text": text, "confidence": confidence})
+                    page_data.append({"page_number": page_number, "text": text, "confidence": confidence, "method": "ocr"})
 
                 combined_text = "\n\n".join(p["text"] for p in page_data if p["text"].strip()).strip()
+                if not combined_text:
+                    raise RuntimeError("OCR_EMPTY_RESULT: PDF produced no usable text")
                 measured_pages = [p["confidence"] for p in page_data if p["confidence"] is not None]
                 return OCRResult(
                     text=combined_text,
@@ -159,6 +222,32 @@ class LocalOCRProvider(BaseOCRProvider):
                 )
 
         return await asyncio.to_thread(_run_pdftoppm_and_tesseract)
+
+    @staticmethod
+    def _extract_embedded_pdf_text(pdf_bytes: bytes) -> OCRResult | None:
+        """Read a complete embedded text layer without a lossy OCR round-trip."""
+        try:
+            import pymupdf
+
+            with pymupdf.open(stream=pdf_bytes, filetype="pdf") as pdf:
+                if pdf.page_count == 0:
+                    raise ValueError("OCR_EMPTY_RESULT: PDF has no pages")
+                pages = []
+                for page_number, page in enumerate(pdf, start=1):
+                    text = (page.get_text("text", sort=True) or "").rstrip("\n")
+                    useful = len("".join(text.split())) >= 20 and any(ch.isalnum() for ch in text)
+                    if not useful:
+                        return None
+                    pages.append({"page_number": page_number, "text": text, "confidence": None, "method": "text_layer"})
+                combined = "\n\n".join(page["text"] for page in pages).strip()
+                if not combined:
+                    raise ValueError("OCR_EMPTY_RESULT: PDF produced no usable text")
+                return OCRResult(text=combined, confidence=None, page_count=len(pages), engine="pymupdf_text_layer", pages=pages)
+        except ValueError:
+            raise
+        except Exception as exc:
+            logger.warning("PDF embedded text read failed error_type=%s", type(exc).__name__)
+            return None
 
     @staticmethod
     def _tesseract_image_data(image_path: str) -> tuple[str, float | None]:
@@ -183,3 +272,4 @@ class LocalOCRProvider(BaseOCRProvider):
         text = " ".join(words).strip()
         average = (sum(confidences) / len(confidences) / 100.0) if confidences else None
         return text, average
+

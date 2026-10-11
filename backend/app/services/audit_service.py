@@ -31,6 +31,7 @@ async def record_audit_event(
     user_agent: str | None = None,
     request_id: str | None = None,
     request: Request | None = None,
+    metadata: dict | None = None,
 ) -> AuditEvent:
     if request is not None:
         ip_address = request.client.host if request.client else ip_address
@@ -49,6 +50,7 @@ async def record_audit_event(
             "action": action,
             "resource_id": str(resource_id) if resource_id else None,
             "organization_id": str(organization_id) if organization_id else None,
+            **(metadata or {}),
         },
     )
     session.add(event)

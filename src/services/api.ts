@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cognate AI — Typed REST API Client
  * Connects to the FastAPI backend at http://127.0.0.1:8001/api/v1
  *
@@ -123,6 +123,27 @@ export async function logout(): Promise<void> {
 
 export async function fetchCurrentUser(): Promise<AuthUser> {
   return apiFetch("/auth/me")
+}
+
+export type GlobalSearchItem = {
+  id: string
+  display_label: string
+  status: "uploaded" | "processing" | "failed" | "extracted" | "in_review" | "approved" | "rejected"
+  type: "document" | "patient" | "finding"
+}
+
+export type GlobalSearchResponse = {
+  documents: GlobalSearchItem[]
+  patients: GlobalSearchItem[]
+  findings: GlobalSearchItem[]
+}
+
+export async function fetchGlobalSearch(query: string): Promise<GlobalSearchResponse> {
+  return apiFetch("/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ q: query }),
+  })
 }
 
 export async function refreshAuthSession(): Promise<AuthUser> {
@@ -780,6 +801,19 @@ export async function fetchFHIRMetadata(): Promise<FHIRMetadataCheck> {
   return apiFetch("/integrations/fhir/metadata")
 }
 
+export async function fetchDocumentFHIR(documentId: string): Promise<Record<string, unknown>> {
+  return apiFetch("/documents/" + encodeURIComponent(documentId) + "/fhir")
+}
+
+export async function pushSyntheticFHIR(documentId: string): Promise<{
+  document_id: string
+  status: string
+  attempts?: number
+  http_status?: number
+}> {
+  return apiFetch("/integrations/fhir/push/" + encodeURIComponent(documentId), { method: "POST" })
+}
+
 export interface AuditEvent {
   id: string
 
@@ -798,8 +832,11 @@ export interface AuditEvent {
 
 export async function fetchAuditEvents(
   limit = 50,
+  resourceId?: string,
 ): Promise<{ items: AuditEvent[] }> {
-  return apiFetch(`/audit/events?limit=${limit}`)
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (resourceId) params.set("resource_id", resourceId)
+  return apiFetch("/audit/events?" + params.toString())
 }
 
 // ---------------------------------------------------------------------------
@@ -902,6 +939,7 @@ export interface DocumentItem {
   doc_type: string
 
   status: string
+  lifecycle_status?: "uploaded" | "processing" | "failed" | "extracted" | "in_review" | "approved" | "rejected"
   review_status?: "not_required" | "pending" | "in_review" | "approved" | "rejected"
   confidence: string
 
@@ -992,6 +1030,8 @@ export async function fetchDocuments(
   status?: string,
 
   search?: string,
+  unlinkedPatient = false,
+  sort = "updated_desc",
 ): Promise<PaginatedResponse<DocumentItem>> {
   const params = new URLSearchParams({
     page: String(page),
@@ -1001,6 +1041,8 @@ export async function fetchDocuments(
   if (status) params.set("status", status)
 
   if (search) params.set("search", search)
+  if (unlinkedPatient) params.set("unlinked_patient", "true")
+  params.set("sort", sort)
 
   return apiFetch(`/documents?${params}`)
 }

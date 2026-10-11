@@ -8,15 +8,17 @@ Business API endpoints (documents, cases, review, aiops, etc.) are added in D4.
 from contextlib import asynccontextmanager
 import logging
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import update
 
 from app.config import settings, validate_fhir_configuration
 from app.db import AsyncSessionLocal
+from app.models import RefreshToken
 from app.security.auth import validate_jwt_configuration
 from app.routers import health
 
@@ -26,6 +28,16 @@ async def lifespan(app: FastAPI):
     """Application startup / shutdown lifecycle."""
     validate_jwt_configuration()
     validate_fhir_configuration()
+    # A process restart starts a new authentication epoch. Revoking all
+    # refresh-token families also invalidates the short-lived access cookies,
+    # because authenticated requests verify their family is still active.
+    async with AsyncSessionLocal() as session:
+        await session.execute(
+            update(RefreshToken)
+            .where(RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=datetime.now(timezone.utc))
+        )
+        await session.commit()
     # Nothing to initialize in D2 beyond the DB engine (created at import time).
     yield
     # Graceful engine disposal on shutdown.
@@ -60,6 +72,9 @@ async def security_headers_and_request_id(request: Request, call_next):
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["X-Frame-Options"] = "DENY"
+    content_type = response.headers.get("content-type", "")
+    if content_type.startswith("application/json") and "charset=" not in content_type.lower():
+        response.headers["Content-Type"] = "application/json; charset=utf-8"
     if request.url.path.startswith(f"{settings.api_prefix}/"):
         response.headers["Cache-Control"] = "no-store, private"
     if settings.auth_cookie_secure:
@@ -91,7 +106,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------
-from app.routers import health, dashboard, documents, processing, review, aiops, patients, audit, auth, integrations, admin_auth, notifications
+from app.routers import health, dashboard, documents, processing, review, aiops, patients, audit, auth, integrations, admin_auth, notifications, search
 
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(auth.router, prefix=settings.api_prefix)
@@ -105,3 +120,4 @@ app.include_router(audit.router, prefix=settings.api_prefix)
 app.include_router(integrations.router, prefix=settings.api_prefix)
 app.include_router(admin_auth.router, prefix=settings.api_prefix)
 app.include_router(notifications.router, prefix=settings.api_prefix)
+app.include_router(search.router, prefix=settings.api_prefix)

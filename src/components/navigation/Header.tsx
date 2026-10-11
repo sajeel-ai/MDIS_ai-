@@ -393,7 +393,7 @@ export function Header({
                 }}
                 className="w-full text-center text-xs font-medium text-[#146EF5] py-1 hover:underline"
               >
-                Open Review Center â†’
+                Open Review Center →
               </button>
             </div>
           </div>

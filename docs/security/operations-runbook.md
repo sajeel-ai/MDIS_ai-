@@ -22,6 +22,11 @@ This runbook describes the current code paths. Confirm environment-specific valu
    There are no default credentials. Admin and operator accounts must complete MFA setup on sign-in.
 5. Start the app with the repository's configured dev command. Local HTTP uses `AUTH_COOKIE_SECURE=false`; production must use HTTPS and `AUTH_COOKIE_SECURE=true`.
 
+Every backend startup revokes all active refresh-token families. This starts a
+new authentication epoch, so browsers using the previous session are redirected
+to the login page on their next API request after a backend restart. Users must
+sign in again; users and documents are not deleted.
+
 ## Email and external providers
 
 - Email is disabled when `EMAIL_PROVIDER` is empty. Configure SMTP, Resend, or SendGrid and `EMAIL_FROM` to deliver reset/invitation links. Do not enable console links outside development.

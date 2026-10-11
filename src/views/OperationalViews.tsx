@@ -99,7 +99,8 @@ export function AuditView() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchAuditEvents().then((response) => setEvents(response.items)).catch((err) => setError(safeApiErrorMessage(err, "Access restricted (admin/operator only)")));
+    const resourceId = new URLSearchParams(window.location.search).get("resource_id") || undefined;
+    fetchAuditEvents(50, resourceId).then((response) => setEvents(response.items)).catch((err) => setError(safeApiErrorMessage(err, "Access restricted (admin/operator only)")));
   }, []);
 
   return (

@@ -6,7 +6,7 @@ OCR re-runs and text versioning with full provenance.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,6 +17,7 @@ from app.models.organization import DEFAULT_ORGANIZATION_ID
 class Document(Base):
     __tablename__ = "documents"
     __table_args__ = (
+        Index("ix_documents_org_lifecycle_filters", "organization_id", "status", "review_status", "updated_at"),
         CheckConstraint(
             "status IN ('uploaded', 'queued', 'processing', 'completed', 'failed')",
             name="ck_documents_processing_status",
