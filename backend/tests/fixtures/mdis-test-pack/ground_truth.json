@@ -1,0 +1,575 @@
+{
+  "note": "Reference answers for testing extraction. Verify codes against a terminology server before relying on them.",
+  "assertion_values": [
+    "present",
+    "negated",
+    "historical",
+    "family",
+    "possible",
+    "discontinued"
+  ],
+  "documents": [
+    {
+      "document_id": "DOC-001",
+      "file": "documents/DOC-001_discharge_summary_Testova.pdf",
+      "doc_type": "discharge_summary",
+      "patient": {
+        "name": "Maria Testova",
+        "dob": "1968-03-12",
+        "sex": "female",
+        "mrn": "TEST-100001"
+      },
+      "dates": {
+        "admitted": "2026-09-28",
+        "discharged": "2026-10-02"
+      },
+      "entities": [
+        {
+          "text": "Type 2 Diabetes",
+          "type": "diagnosis",
+          "normalized": "Type 2 diabetes mellitus",
+          "assertion": "present",
+          "snomed": "44054006",
+          "icd10": "E11.9"
+        },
+        {
+          "text": "Hypertension",
+          "type": "diagnosis",
+          "normalized": "Hypertension",
+          "assertion": "present",
+          "snomed": "38341003",
+          "icd10": "I10"
+        },
+        {
+          "text": "Acute gastroenteritis",
+          "type": "diagnosis",
+          "normalized": "Acute gastroenteritis",
+          "assertion": "present"
+        },
+        {
+          "text": "vomiting",
+          "type": "symptom",
+          "normalized": "Vomiting",
+          "assertion": "present",
+          "snomed": "422400008",
+          "icd10": "R11.10"
+        },
+        {
+          "text": "nausea",
+          "type": "symptom",
+          "normalized": "Nausea",
+          "assertion": "present"
+        },
+        {
+          "text": "chest pain",
+          "type": "symptom",
+          "normalized": "Chest pain",
+          "assertion": "negated",
+          "snomed": "29857009",
+          "icd10": "R07.9"
+        },
+        {
+          "text": "fever",
+          "type": "symptom",
+          "normalized": "Fever",
+          "assertion": "negated"
+        },
+        {
+          "text": "breast cancer",
+          "type": "diagnosis",
+          "normalized": "Malignant neoplasm of breast",
+          "assertion": "family",
+          "snomed": "254837009",
+          "icd10": "C50.9",
+          "related_to": "mother"
+        },
+        {
+          "text": "asthma",
+          "type": "diagnosis",
+          "normalized": "Asthma",
+          "assertion": "negated",
+          "snomed": "195967001",
+          "icd10": "J45.909"
+        },
+        {
+          "text": "HbA1c 8.2%",
+          "type": "lab",
+          "normalized": "Hemoglobin A1c",
+          "assertion": "present",
+          "loinc": "4548-4",
+          "value": 8.2,
+          "unit": "%"
+        },
+        {
+          "text": "Blood pressure 152/94 mmHg",
+          "type": "vital",
+          "normalized": "Blood pressure",
+          "assertion": "present",
+          "systolic": 152,
+          "diastolic": 94,
+          "unit": "mmHg"
+        },
+        {
+          "text": "Metformin 500 mg PO BID",
+          "type": "medication",
+          "normalized": "metformin",
+          "assertion": "present",
+          "rxnorm": "6809",
+          "dose": "500 mg",
+          "route": "oral",
+          "frequency": "twice daily"
+        },
+        {
+          "text": "Lisinopril 10 mg PO once daily",
+          "type": "medication",
+          "normalized": "lisinopril",
+          "assertion": "present",
+          "rxnorm": "29046",
+          "dose": "10 mg",
+          "route": "oral",
+          "frequency": "once daily"
+        },
+        {
+          "text": "Ondansetron 4 mg PO q8h PRN",
+          "type": "medication",
+          "normalized": "ondansetron",
+          "assertion": "present",
+          "dose": "4 mg",
+          "route": "oral",
+          "frequency": "every 8 hours as needed"
+        }
+      ]
+    },
+    {
+      "document_id": "DOC-002",
+      "file": "documents/DOC-002_cardiology_note_Sample.pdf",
+      "doc_type": "progress_note",
+      "patient": {
+        "name": "James Sample",
+        "dob": "1959-07-22",
+        "sex": "male",
+        "mrn": "TEST-100002"
+      },
+      "dates": {
+        "visit": "2026-10-09"
+      },
+      "entities": [
+        {
+          "text": "DM2",
+          "type": "diagnosis",
+          "normalized": "Type 2 diabetes mellitus",
+          "assertion": "present",
+          "snomed": "44054006",
+          "icd10": "E11.9",
+          "note": "abbreviation variant"
+        },
+        {
+          "text": "Coronary artery disease, s/p stent 2019",
+          "type": "diagnosis",
+          "normalized": "Coronary artery disease",
+          "assertion": "historical",
+          "snomed": "53741008",
+          "icd10": "I25.10"
+        },
+        {
+          "text": "Atrial fibrillation, persistent",
+          "type": "diagnosis",
+          "normalized": "Persistent atrial fibrillation",
+          "assertion": "present",
+          "snomed": "49436004",
+          "icd10": "I48.19"
+        },
+        {
+          "text": "Hyperlipidemia",
+          "type": "diagnosis",
+          "normalized": "Hyperlipidemia",
+          "assertion": "present"
+        },
+        {
+          "text": "shortness of breath on exertion",
+          "type": "symptom",
+          "normalized": "Dyspnea on exertion",
+          "assertion": "present",
+          "snomed": "60845006"
+        },
+        {
+          "text": "palpitations",
+          "type": "symptom",
+          "normalized": "Palpitations",
+          "assertion": "negated"
+        },
+        {
+          "text": "syncope",
+          "type": "symptom",
+          "normalized": "Syncope",
+          "assertion": "negated"
+        },
+        {
+          "text": "asthma",
+          "type": "diagnosis",
+          "normalized": "Asthma",
+          "assertion": "negated",
+          "snomed": "195967001"
+        },
+        {
+          "text": "COPD",
+          "type": "diagnosis",
+          "normalized": "COPD",
+          "assertion": "negated",
+          "snomed": "13645005",
+          "icd10": "J44.9"
+        },
+        {
+          "text": "heart failure",
+          "type": "diagnosis",
+          "normalized": "Heart failure",
+          "assertion": "possible"
+        },
+        {
+          "text": "ischemia",
+          "type": "diagnosis",
+          "normalized": "Myocardial ischemia",
+          "assertion": "possible",
+          "note": "'rule out' phrasing"
+        },
+        {
+          "text": "Blood pressure 138/86 mmHg",
+          "type": "vital",
+          "normalized": "Blood pressure",
+          "assertion": "present",
+          "systolic": 138,
+          "diastolic": 86,
+          "unit": "mmHg"
+        },
+        {
+          "text": "Apixaban 5 mg twice daily",
+          "type": "medication",
+          "normalized": "apixaban",
+          "assertion": "present",
+          "rxnorm": "1364430",
+          "dose": "5 mg",
+          "frequency": "twice daily"
+        },
+        {
+          "text": "Atorvastatin 40 mg at bedtime",
+          "type": "medication",
+          "normalized": "atorvastatin",
+          "assertion": "present",
+          "rxnorm": "83367",
+          "dose": "40 mg",
+          "frequency": "at bedtime"
+        },
+        {
+          "text": "Metformin 1000 mg BID",
+          "type": "medication",
+          "normalized": "metformin",
+          "assertion": "present",
+          "rxnorm": "6809",
+          "dose": "1000 mg",
+          "frequency": "twice daily"
+        },
+        {
+          "text": "Aspirin",
+          "type": "medication",
+          "normalized": "aspirin",
+          "assertion": "discontinued",
+          "note": "discontinued 2024"
+        }
+      ]
+    },
+    {
+      "document_id": "DOC-003",
+      "file": "documents/DOC-003_lab_report_Demo.pdf",
+      "doc_type": "lab_report",
+      "patient": {
+        "name": "Aisha Demo",
+        "dob": "1992-02-09",
+        "sex": "female",
+        "mrn": "TEST-100003"
+      },
+      "dates": {
+        "collected": "2026-10-05"
+      },
+      "entities": [
+        {
+          "text": "Hemoglobin 10.2 g/dL",
+          "type": "lab",
+          "normalized": "Hemoglobin",
+          "assertion": "present",
+          "loinc": "718-7",
+          "value": 10.2,
+          "unit": "g/dL",
+          "flag": "low"
+        },
+        {
+          "text": "WBC 6.1",
+          "type": "lab",
+          "normalized": "Leukocytes",
+          "assertion": "present",
+          "loinc": "6690-2",
+          "value": 6.1,
+          "unit": "10*9/L",
+          "flag": "normal"
+        },
+        {
+          "text": "Platelets 310",
+          "type": "lab",
+          "normalized": "Platelets",
+          "assertion": "present",
+          "loinc": "777-3",
+          "value": 310,
+          "unit": "10*9/L",
+          "flag": "normal"
+        },
+        {
+          "text": "Ferritin 8 ng/mL",
+          "type": "lab",
+          "normalized": "Ferritin",
+          "assertion": "present",
+          "loinc": "2276-4",
+          "value": 8,
+          "unit": "ng/mL",
+          "flag": "low"
+        },
+        {
+          "text": "Glucose, fasting 5.4 mmol/L",
+          "type": "lab",
+          "normalized": "Fasting glucose",
+          "assertion": "present",
+          "loinc": "1558-6",
+          "value": 5.4,
+          "unit": "mmol/L",
+          "flag": "normal",
+          "note": "unit differs from other docs"
+        },
+        {
+          "text": "Creatinine 0.8 mg/dL",
+          "type": "lab",
+          "normalized": "Creatinine",
+          "assertion": "present",
+          "loinc": "2160-0",
+          "value": 0.8,
+          "unit": "mg/dL",
+          "flag": "normal"
+        },
+        {
+          "text": "iron deficiency anemia",
+          "type": "diagnosis",
+          "normalized": "Iron deficiency anemia",
+          "assertion": "present",
+          "snomed": "87522002",
+          "icd10": "D50.9"
+        },
+        {
+          "text": "Type II diabetic",
+          "type": "diagnosis",
+          "normalized": "Type 2 diabetes mellitus",
+          "assertion": "family",
+          "snomed": "44054006",
+          "related_to": "mother",
+          "note": "must NOT be assigned to the patient"
+        },
+        {
+          "text": "fatigue",
+          "type": "symptom",
+          "normalized": "Fatigue",
+          "assertion": "present"
+        },
+        {
+          "text": "heavy periods",
+          "type": "symptom",
+          "normalized": "Heavy menstrual bleeding",
+          "assertion": "present"
+        }
+      ]
+    },
+    {
+      "document_id": "DOC-004",
+      "file": "documents/DOC-004_chest_xray_report_Mock.pdf",
+      "doc_type": "radiology_report",
+      "patient": {
+        "name": "Robert Mock",
+        "dob": "1954-11-30",
+        "sex": "male",
+        "mrn": "TEST-100004"
+      },
+      "dates": {
+        "exam": "2026-10-07"
+      },
+      "entities": [
+        {
+          "text": "right lower lobe pneumonia",
+          "type": "diagnosis",
+          "normalized": "Pneumonia of right lower lobe",
+          "assertion": "present",
+          "snomed": "233604007",
+          "icd10": "J18.9",
+          "laterality": "right",
+          "note": "'likely' in findings, stated in impression"
+        },
+        {
+          "text": "pleural effusion",
+          "type": "finding",
+          "normalized": "Pleural effusion",
+          "assertion": "negated",
+          "snomed": "60046008",
+          "icd10": "J90"
+        },
+        {
+          "text": "pneumothorax",
+          "type": "finding",
+          "normalized": "Pneumothorax",
+          "assertion": "negated"
+        },
+        {
+          "text": "COPD",
+          "type": "diagnosis",
+          "normalized": "Chronic obstructive pulmonary disease",
+          "assertion": "present",
+          "snomed": "13645005",
+          "icd10": "J44.9"
+        },
+        {
+          "text": "T2DM",
+          "type": "diagnosis",
+          "normalized": "Type 2 diabetes mellitus",
+          "assertion": "present",
+          "snomed": "44054006",
+          "icd10": "E11.9",
+          "note": "abbreviation variant"
+        },
+        {
+          "text": "cough",
+          "type": "symptom",
+          "normalized": "Cough",
+          "assertion": "present"
+        },
+        {
+          "text": "fever",
+          "type": "symptom",
+          "normalized": "Fever",
+          "assertion": "present"
+        },
+        {
+          "text": "Consolidation",
+          "type": "finding",
+          "normalized": "Pulmonary consolidation",
+          "assertion": "present"
+        }
+      ]
+    },
+    {
+      "document_id": "DOC-005",
+      "file": "documents/DOC-005_referral_prescription_Placeholder.pdf",
+      "doc_type": "referral_prescription",
+      "patient": {
+        "name": "Lin Placeholder",
+        "dob": "1981-05-14",
+        "sex": "female",
+        "mrn": "TEST-100005"
+      },
+      "dates": {
+        "letter": "2026-10-08"
+      },
+      "entities": [
+        {
+          "text": "GERD",
+          "type": "diagnosis",
+          "normalized": "Gastroesophageal reflux disease",
+          "assertion": "possible",
+          "snomed": "235595009",
+          "icd10": "K21.9",
+          "note": "'rule out' phrasing"
+        },
+        {
+          "text": "diabetes mellitus type II",
+          "type": "diagnosis",
+          "normalized": "Type 2 diabetes mellitus",
+          "assertion": "present",
+          "snomed": "44054006",
+          "icd10": "E11.9",
+          "note": "wording variant"
+        },
+        {
+          "text": "asthma",
+          "type": "diagnosis",
+          "normalized": "Asthma",
+          "assertion": "present",
+          "snomed": "195967001",
+          "icd10": "J45.909"
+        },
+        {
+          "text": "burning epigastric discomfort",
+          "type": "symptom",
+          "normalized": "Epigastric pain",
+          "assertion": "present"
+        },
+        {
+          "text": "weight loss",
+          "type": "symptom",
+          "normalized": "Weight loss",
+          "assertion": "negated"
+        },
+        {
+          "text": "dysphagia",
+          "type": "symptom",
+          "normalized": "Dysphagia",
+          "assertion": "negated"
+        },
+        {
+          "text": "blood in stool",
+          "type": "symptom",
+          "normalized": "Blood in stool",
+          "assertion": "negated"
+        },
+        {
+          "text": "Penicillin - rash",
+          "type": "allergy",
+          "normalized": "Allergy to penicillin",
+          "assertion": "present",
+          "snomed": "91936005",
+          "reaction": "rash"
+        },
+        {
+          "text": "Salbutamol 100 mcg inhaler, 2 puffs PRN",
+          "type": "medication",
+          "normalized": "albuterol",
+          "assertion": "present",
+          "rxnorm": "435",
+          "dose": "100 mcg",
+          "route": "inhalation",
+          "frequency": "as needed"
+        },
+        {
+          "text": "Cetirizine 10 mg OD",
+          "type": "medication",
+          "normalized": "cetirizine",
+          "assertion": "present",
+          "dose": "10 mg",
+          "frequency": "once daily",
+          "note": "OD = once daily"
+        },
+        {
+          "text": "Metformin 850 mg bd",
+          "type": "medication",
+          "normalized": "metformin",
+          "assertion": "present",
+          "rxnorm": "6809",
+          "dose": "850 mg",
+          "frequency": "twice daily",
+          "note": "bd = twice daily"
+        },
+        {
+          "text": "Omeprazole 20 mg PO once daily",
+          "type": "medication",
+          "normalized": "omeprazole",
+          "assertion": "present",
+          "dose": "20 mg",
+          "route": "oral",
+          "frequency": "once daily",
+          "duration": "8 weeks"
+        }
+      ]
+    }
+  ]
+}
