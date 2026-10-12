@@ -570,6 +570,199 @@
           "duration": "8 weeks"
         }
       ]
+    },
+    {
+      "document_id": "DOC-006",
+      "file": "documents/DOC-006_clinic_note_chest_pain_denied_Notepatient.pdf",
+      "doc_type": "clinic_note",
+      "patient": {
+        "name": "Daniel Notepatient",
+        "dob": "1977-04-18",
+        "sex": "male",
+        "mrn": "TEST-100006"
+      },
+      "dates": {
+        "visit": "2026-10-12"
+      },
+      "entities": [
+        {
+          "text": "chest pain",
+          "type": "symptom",
+          "normalized": "Chest pain",
+          "assertion": "negated",
+          "snomed": "29857009",
+          "icd10": "R07.9",
+          "note": "stated 3 times (HPI, ROS, return advice); the plan mention is a safety instruction, not a finding"
+        },
+        {
+          "text": "abdominal pain",
+          "type": "symptom",
+          "normalized": "Abdominal pain",
+          "assertion": "negated",
+          "snomed": "21522001",
+          "icd10": "R10.9"
+        },
+        {
+          "text": "headache",
+          "type": "symptom",
+          "normalized": "Headache",
+          "assertion": "negated",
+          "snomed": "25064002",
+          "icd10": "R51.9"
+        },
+        {
+          "text": "back pain",
+          "type": "symptom",
+          "normalized": "Back pain",
+          "assertion": "negated",
+          "snomed": "161891005",
+          "icd10": "M54.9"
+        },
+        {
+          "text": "shortness of breath",
+          "type": "symptom",
+          "normalized": "Dyspnea",
+          "assertion": "negated",
+          "snomed": "267036007",
+          "icd10": "R06.02"
+        },
+        {
+          "text": "palpitations",
+          "type": "symptom",
+          "normalized": "Palpitations",
+          "assertion": "negated",
+          "snomed": "80313002",
+          "icd10": "R00.2"
+        },
+        {
+          "text": "fever",
+          "type": "symptom",
+          "normalized": "Fever",
+          "assertion": "negated",
+          "note": "'no fever reported'; the plan's 'fever above 38.5 C' is advice, not a finding"
+        },
+        {
+          "text": "nausea",
+          "type": "symptom",
+          "normalized": "Nausea",
+          "assertion": "negated"
+        },
+        {
+          "text": "cough",
+          "type": "symptom",
+          "normalized": "Cough",
+          "assertion": "present",
+          "snomed": "49727002",
+          "icd10": "R05.9"
+        },
+        {
+          "text": "sore throat",
+          "type": "symptom",
+          "normalized": "Sore throat",
+          "assertion": "present",
+          "snomed": "162397003",
+          "icd10": "R07.0"
+        },
+        {
+          "text": "mild right knee pain",
+          "type": "symptom",
+          "normalized": "Knee pain",
+          "assertion": "present",
+          "snomed": "30989003",
+          "icd10": "M25.561",
+          "laterality": "right",
+          "severity": "mild"
+        },
+        {
+          "text": "low energy",
+          "type": "symptom",
+          "normalized": "Low energy",
+          "assertion": "present"
+        },
+        {
+          "text": "Hypertension",
+          "type": "diagnosis",
+          "normalized": "Hypertension",
+          "assertion": "present",
+          "snomed": "38341003",
+          "icd10": "I10"
+        },
+        {
+          "text": "Upper respiratory tract infection, likely viral",
+          "type": "diagnosis",
+          "normalized": "Upper respiratory tract infection",
+          "assertion": "present",
+          "snomed": "54150009",
+          "icd10": "J06.9",
+          "note": "'likely' hedge in assessment"
+        },
+        {
+          "text": "Right knee strain",
+          "type": "diagnosis",
+          "normalized": "Strain of right knee",
+          "assertion": "present",
+          "laterality": "right"
+        },
+        {
+          "text": "Blood pressure 128/80 mmHg",
+          "type": "vital",
+          "normalized": "Blood pressure",
+          "assertion": "present",
+          "systolic": 128,
+          "diastolic": 80,
+          "unit": "mmHg"
+        },
+        {
+          "text": "Heart rate 82 bpm",
+          "type": "vital",
+          "normalized": "Heart rate",
+          "assertion": "present",
+          "value": 82,
+          "unit": "bpm"
+        },
+        {
+          "text": "Temperature 37.8 C",
+          "type": "vital",
+          "normalized": "Body temperature",
+          "assertion": "present",
+          "value": 37.8,
+          "unit": "C"
+        },
+        {
+          "text": "SpO2 98 %",
+          "type": "vital",
+          "normalized": "Oxygen saturation",
+          "assertion": "present",
+          "value": 98,
+          "unit": "%"
+        },
+        {
+          "text": "No known drug allergies",
+          "type": "allergy",
+          "normalized": "No known drug allergies",
+          "assertion": "present",
+          "note": "negative allergy statement; should not create an allergy entity"
+        },
+        {
+          "text": "Amlodipine 5 mg PO once daily",
+          "type": "medication",
+          "normalized": "amlodipine",
+          "assertion": "present",
+          "rxnorm": "17767",
+          "dose": "5 mg",
+          "route": "oral",
+          "frequency": "once daily"
+        },
+        {
+          "text": "paracetamol 500 mg every 6 hours as needed",
+          "type": "medication",
+          "normalized": "acetaminophen",
+          "assertion": "possible",
+          "dose": "500 mg",
+          "frequency": "every 6 hours as needed",
+          "note": "planned/recommended, not a current medication"
+        }
+      ]
     }
   ]
 }
