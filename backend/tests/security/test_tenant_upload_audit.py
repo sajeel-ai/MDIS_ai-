@@ -257,7 +257,8 @@ async def test_admin_user_management_hides_cross_organization_accounts(tenant_da
         json={"role": "viewer"},
     )
     assert users.status_code == 200
-    assert all(item["id"] != str(tenant_data["user_b"].id) for item in users.json())
+    user_items = users.json()["items"]
+    assert all(item["id"] != str(tenant_data["user_b"].id) for item in user_items)
     assert sessions.status_code == 404
     assert role_change.status_code == 404
 

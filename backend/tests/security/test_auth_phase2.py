@@ -214,6 +214,13 @@ async def test_code_request_endpoint_is_generic_for_existing_and_unknown_emails(
 async def test_forgot_password_known_unknown_timing_is_bounded_by_response_floor(monkeypatch):
     user = await make_user()
     monkeypatch.setattr(verification_codes, "email_delivery_available", lambda: True)
+    # Keep this timing test deterministic: the endpoint queues delivery, so a
+    # configured SMTP/HTTP provider must not add network latency to the known
+    # account sample while the unknown sample has no delivery task.
+    async def discard_delivery(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(verification_codes, "_deliver_verification_code", discard_delivery)
     durations: dict[str, list[float]] = {"known": [], "unknown": []}
     async with AsyncClient(transport=phase2_transport(), base_url="http://test") as client:
         headers = await csrf(client)

@@ -55,7 +55,7 @@ def expected_roles(route: APIRoute) -> set[UserRole]:
         return {UserRole.ADMIN, UserRole.OPERATOR}
     if route.path == "/api/v1/dashboard":
         return set(UserRole)
-    if route.path == "/api/v1/documents/upload" or route.path.endswith("/process") or route.path.endswith("/process/retry"):
+    if route.path == "/api/v1/documents/upload" or route.path.endswith(("/process", "/process/retry", "/reprocess")):
         return {UserRole.CLINICIAN, UserRole.ADMIN}
     if route.path.startswith("/api/v1/integrations/fhir/push/"):
         return {UserRole.ADMIN}

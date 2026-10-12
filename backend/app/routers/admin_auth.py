@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -213,7 +213,10 @@ async def list_account_requests(
     """List verified registration requests inside the administrator's organization."""
     filters = [
             User.organization_id == current_user.organization_id,
-            User.registration_status == RegistrationStatus.PENDING_APPROVAL.value,
+            or_(
+                User.registration_status == RegistrationStatus.PENDING_APPROVAL.value,
+                User.pending_approval.is_(True),
+            ),
             User.email_verified.is_(True),
     ]
     if q and q.strip():
@@ -221,7 +224,9 @@ async def list_account_requests(
         filters.append(func.lower(User.email).like(term) | func.lower(User.display_name).like(term))
     total = int(await db.scalar(select(func.count()).select_from(User).where(*filters)) or 0)
     offset = (page - 1) * page_size
-    users = (await db.scalars(select(User).where(*filters).order_by(User.created_at.asc(), User.id.asc()).offset(offset).limit(page_size))).all()
+    # Surface the newest requests first so a newly verified registration is
+    # visible on the first page even when an organization has a long queue.
+    users = (await db.scalars(select(User).where(*filters).order_by(User.created_at.desc(), User.id.desc()).offset(offset).limit(page_size))).all()
     items = [
         {
             "id": user.id,
@@ -242,7 +247,10 @@ async def _pending_account_request(db: AsyncSession, current_user: UserContext, 
     user = await db.scalar(select(User).where(
         User.id == user_id,
         User.organization_id == current_user.organization_id,
-        User.registration_status == RegistrationStatus.PENDING_APPROVAL.value,
+        or_(
+            User.registration_status == RegistrationStatus.PENDING_APPROVAL.value,
+            User.pending_approval.is_(True),
+        ),
         User.email_verified.is_(True),
     ).with_for_update())
     if user is None:

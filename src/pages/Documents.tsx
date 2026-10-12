@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Upload, FileText, Search, Filter, Play, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Search, Filter, Play, RefreshCw, Eye, ClipboardCheck } from 'lucide-react';
 import { StatusBadge } from '../components/shared/StatusBadge';
 import { deriveDocumentLifecycleStatus, type LifecycleStatus } from '../domain/documentLifecycle';
 import {
@@ -13,13 +13,14 @@ import {
   retryDocumentProcessing,
   reprocessDocument,
   fetchProcessingJob,
+  fetchReviewQueue,
   type DocumentItem,
   type Patient,
   safeApiErrorMessage,
 } from '../services/api';
 
 export interface DocumentsPageProps {
-  onNavigate: (view: string, documentId?: string) => void;
+  onNavigate: (view: string, documentId?: string, reviewTaskId?: string) => void;
 }
 
 export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
@@ -153,6 +154,21 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
     } catch (err) {
       setProcessingError(safeApiErrorMessage(err));
       setProcessingDocId(null);
+    }
+  };
+
+  // Review is a document-level workflow, but the review API addresses its
+  // individual tasks. Resolve the first active task so the reviewer lands on
+  // the selected document rather than the first item in the global queue.
+  const openReview = async (item: DocumentItem) => {
+    try {
+      const queue = await fetchReviewQueue(1, 100, 'all', 'all', undefined, item.id);
+      const task = (queue.items || []).find((candidate) =>
+        candidate.status === 'pending' || candidate.status === 'in_review',
+      ) || queue.items?.[0];
+      onNavigate('review', undefined, task?.id);
+    } catch (err) {
+      setError(safeApiErrorMessage(err, 'Unable to open the review workflow.'));
     }
   };
 
@@ -424,16 +440,20 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() => {
-                            const lifecycle = item.lifecycle_status || deriveDocumentLifecycleStatus(item.status, item.review_status);
-                            if (lifecycle === 'in_review' || lifecycle === 'rejected') onNavigate('review');
-                            else onNavigate('clinical', item.id);
-                          }}
+                          onClick={() => onNavigate('clinical', item.id)}
+                          icon={<Eye size={12} />}
                         >
-                          {(() => {
-                            const lifecycle = item.lifecycle_status || deriveDocumentLifecycleStatus(item.status, item.review_status);
-                            return lifecycle === 'failed' || lifecycle === 'processing' ? 'Manage in Documents' : lifecycle === 'approved' ? 'Inspect Approved' : lifecycle === 'extracted' ? 'View extracted data' : lifecycle === 'in_review' || lifecycle === 'rejected' ? 'Open Review' : 'Inspect Case';
-                          })()}
+                          Inspect
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={item.status !== 'completed'}
+                          title={item.status !== 'completed' ? 'Review becomes available after extraction finishes.' : 'Open this document in the human review workflow.'}
+                          onClick={() => void openReview(item)}
+                          icon={<ClipboardCheck size={12} />}
+                        >
+                          Review
                         </Button>
                       </td>
                     </tr>

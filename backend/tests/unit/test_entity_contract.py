@@ -29,6 +29,41 @@ def test_required_assertion_examples():
     assert assertions["Cough"] == "present"
 
 
+@pytest.mark.parametrize(
+    ("text", "term", "expected"),
+    [
+        ("The patient reports no history of asthma.", "Asthma", "absent"),
+        ("There is no known chronic obstructive pulmonary disease.", "Chronic obstructive pulmonary disease", "absent"),
+        ("Negative for chest pain, dyspnea, or fever.", "Fever", "absent"),
+        ("Denies abdominal pain but reports knee pain.", "Abdominal pain", "absent"),
+        ("Denies abdominal pain but reports knee pain.", "Knee pain", "present"),
+        ("Ibuprofen was discontinued.", "Ibuprofen", "discontinued"),
+        ("Rosuvastatin 20 mg every night.", "Rosuvastatin", "present"),
+    ],
+)
+def test_assertion_context_handles_negation_history_and_discontinuation(text, term, expected):
+    import asyncio
+
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    found = next((entity for entity in entities if entity["normalized_value"] == term), None)
+    if found is None and term in {"Abdominal pain", "Knee pain"}:
+        # The local vocabulary does not invent unsupported concepts; validate
+        # the context helper directly for this generalized exception case.
+        start = text.lower().index(term.split()[0].lower())
+        from app.providers.extraction.context import detect_assertion
+        assert detect_assertion(text, start, start + len(term)).value == expected
+    else:
+        assert found is not None
+        assert found["assertion"] == expected
+
+
+def test_no_known_drug_allergies_does_not_create_allergy_context():
+    import asyncio
+
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities("No known drug allergies."))["entities"]
+    assert not any(entity["type"] == "medication" and entity["section"] == "ALLERGIES" for entity in entities)
+
+
 def test_local_and_mock_provider_outputs_meet_the_entity_contract():
     import asyncio
 

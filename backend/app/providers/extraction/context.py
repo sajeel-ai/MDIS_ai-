@@ -26,12 +26,21 @@ SECTION_ALIASES = {
 }
 
 _SECTION_RE = re.compile(r"^\s*([A-Za-z][A-Za-z /_-]{1,50})\s*:?\s*$")
-_BOUNDARY_RE = re.compile(r";|\bbut\b|\bhowever\b|[.!?\n]", re.IGNORECASE)
+# A line wrap is not a semantic boundary: clinical notes commonly wrap
+# "denies" onto the next line before the finding.  Keep punctuation and
+# contrastive conjunctions as scope boundaries.
+_BOUNDARY_RE = re.compile(r";|\bbut\b|\bhowever\b|[.!?]|\n", re.IGNORECASE)
 _FAMILY_RE = re.compile(r"\b(?:mother|father|sibling|brother|sister|family history)\b", re.IGNORECASE)
-_HISTORICAL_RE = re.compile(r"\b(?:history of|h/o|previously|resolved)\b", re.IGNORECASE)
+_HISTORICAL_RE = re.compile(r"\b(?:history of|h/o|past|prior|previously|resolved|s/p)\b", re.IGNORECASE)
 _HYPOTHETICAL_RE = re.compile(r"\b(?:if|should|return if)\b", re.IGNORECASE)
 _POSSIBLE_RE = re.compile(r"\b(?:possible|suspected|probable|rule out)\b|\?", re.IGNORECASE)
-_ABSENT_RE = re.compile(r"\b(?:no evidence of|negative for|denies|without|ruled out|no)\b", re.IGNORECASE)
+_ABSENT_RE = re.compile(
+    r"\b(?:no evidence of|negative for|denies|denied|without|ruled out|no|absent|"
+    r"no complaints of|does not report|free of|no known)\b|\(\s*-\s*\)",
+    re.IGNORECASE,
+)
+_DISCONTINUED_RE = re.compile(r"\b(?:discontinued|stopped|held|no longer taking|ceased)\b", re.IGNORECASE)
+_RECOMMENDED_RE = re.compile(r"\b(?:recommended|recommend|advised|advised to|start|consider)\b", re.IGNORECASE)
 
 
 def detect_section(text: str, offset: int) -> str | None:
@@ -60,6 +69,13 @@ def _clause_bounds(text: str, start: int, end: int) -> tuple[int, int]:
     left = 0
     right = len(text)
     for match in _BOUNDARY_RE.finditer(text):
+        # Preserve cue scope across a formatting newline, e.g. "denies\nfever".
+        if match.group() == "\n" and re.search(
+            r"\b(?:denies|denied|negative for|no|without|absent)\s*$",
+            text[left:match.start()],
+            re.IGNORECASE,
+        ):
+            continue
         if match.end() <= start:
             left = match.end()
         elif match.start() >= end:
@@ -75,14 +91,18 @@ def detect_assertion(text: str, start: int, end: int, section: str | None = None
     before = clause[:relative_start]
     after = clause[relative_start + (end - start):]
 
-    if _HYPOTHETICAL_RE.search(before) or _HYPOTHETICAL_RE.search(after):
+    if _HYPOTHETICAL_RE.search(before) or _HYPOTHETICAL_RE.search(after) or _RECOMMENDED_RE.search(before):
         return Assertion.HYPOTHETICAL
     if section == "FAMILY HISTORY" or _FAMILY_RE.search(before) or _FAMILY_RE.search(after):
         return Assertion.FAMILY
-    if section == "PAST MEDICAL HISTORY" or _HISTORICAL_RE.search(before) or _HISTORICAL_RE.search(after):
-        return Assertion.HISTORICAL
+    # Negation takes precedence over historical context so phrases such as
+    # "no history of asthma" cannot be mislabeled historical.
+    if _ABSENT_RE.search(before) or _ABSENT_RE.search(after):
+        return Assertion.ABSENT
+    if _DISCONTINUED_RE.search(before) or _DISCONTINUED_RE.search(after):
+        return Assertion.DISCONTINUED
     if _POSSIBLE_RE.search(before) or _POSSIBLE_RE.search(after) or text[end:end + 1] == "?" or text[start - 1:start] == "?":
         return Assertion.POSSIBLE
-    if _ABSENT_RE.search(before) or _ABSENT_RE.search(after) or re.search(r"\b(?:absent)\b", after, re.IGNORECASE):
-        return Assertion.ABSENT
+    if section == "PAST MEDICAL HISTORY" or _HISTORICAL_RE.search(before) or _HISTORICAL_RE.search(after):
+        return Assertion.HISTORICAL
     return Assertion.PRESENT

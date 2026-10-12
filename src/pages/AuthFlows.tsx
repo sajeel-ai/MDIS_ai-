@@ -1030,6 +1030,12 @@ export function RegisterPage() {
               ? "Verify email"
               : "Request account"}
         </button>
+        <a
+          href="/login"
+          className="mt-4 flex min-h-11 items-center justify-center text-sm font-semibold text-[#146EF5] transition-colors hover:text-[#0E2A5C]"
+        >
+          Back to sign in
+        </a>
       </form>
     </AuthCard>
   )

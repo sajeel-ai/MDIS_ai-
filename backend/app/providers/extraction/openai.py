@@ -25,7 +25,7 @@ ENTITY_JSON_SCHEMA = {
         "code": {"type": ["string", "null"]},
         "code_system": {"type": ["string", "null"], "enum": ["ICD10", "RxNorm", "SNOMED", "LOINC", "CPT", None]},
         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-        "assertion": {"type": "string", "enum": ["present", "absent", "possible", "historical", "family", "hypothetical"]},
+        "assertion": {"type": "string", "enum": ["present", "absent", "possible", "historical", "family", "hypothetical", "discontinued"]},
         "section": {"type": ["string", "null"]},
         "start_offset": {"type": "integer", "minimum": 0},
         "end_offset": {"type": "integer", "minimum": 1},

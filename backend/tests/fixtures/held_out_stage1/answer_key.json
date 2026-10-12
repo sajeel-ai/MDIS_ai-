@@ -1,0 +1,185 @@
+{
+  "note": "Held-out answer key; not used by baseline or fixes.",
+  "documents": [
+    {
+      "id": "HELD-001",
+      "entities": [
+        {
+          "text": "chest pain",
+          "type": "symptom",
+          "assertion": "negated"
+        },
+        {
+          "text": "abdominal pain",
+          "type": "symptom",
+          "assertion": "negated"
+        },
+        {
+          "text": "headache",
+          "type": "symptom",
+          "assertion": "negated"
+        },
+        {
+          "text": "cough",
+          "type": "symptom",
+          "assertion": "present"
+        },
+        {
+          "text": "fatigue",
+          "type": "symptom",
+          "assertion": "present"
+        },
+        {
+          "text": "Blood pressure 120/80",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "T 37.2 C",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "HR 70",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "RR 16",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "SpO2 97%",
+          "type": "vital",
+          "assertion": "present"
+        }
+      ]
+    },
+    {
+      "id": "HELD-002",
+      "entities": [
+        {
+          "text": "Blood Pressure 120 over 80",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "B/P 120/80 mmHg",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "Temperature 98.6 F",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "pulse 72 bpm",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "respirations 18/min",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "oxygen saturation 98%",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "Weight 70 kg",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "Height 175 cm",
+          "type": "vital",
+          "assertion": "present"
+        }
+      ]
+    },
+    {
+      "id": "HELD-003",
+      "entities": [
+        {
+          "text": "chest pain",
+          "type": "symptom",
+          "assertion": "present"
+        },
+        {
+          "text": "shortness of breath",
+          "type": "symptom",
+          "assertion": "present"
+        },
+        {
+          "text": "nausea",
+          "type": "symptom",
+          "assertion": "present"
+        },
+        {
+          "text": "back pain",
+          "type": "symptom",
+          "assertion": "negated"
+        },
+        {
+          "text": "throat pain",
+          "type": "symptom",
+          "assertion": "negated"
+        },
+        {
+          "text": "BP 118/76",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "HR 68",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "SpO2 99",
+          "type": "vital",
+          "assertion": "present"
+        }
+      ]
+    },
+    {
+      "id": "HELD-004",
+      "entities": [
+        {
+          "text": "chest pain",
+          "type": "symptom",
+          "assertion": "negated"
+        },
+        {
+          "text": "sore throat",
+          "type": "symptom",
+          "assertion": "present"
+        },
+        {
+          "text": "T 37.2 C",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "HR 70",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "RR 16",
+          "type": "vital",
+          "assertion": "present"
+        },
+        {
+          "text": "SpO2 97%",
+          "type": "vital",
+          "assertion": "present"
+        }
+      ]
+    }
+  ]
+}

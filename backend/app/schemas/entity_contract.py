@@ -29,6 +29,7 @@ class Assertion(str, Enum):
     HISTORICAL = "historical"
     FAMILY = "family"
     HYPOTHETICAL = "hypothetical"
+    DISCONTINUED = "discontinued"
 
 
 class ExtractedEntity(BaseModel):

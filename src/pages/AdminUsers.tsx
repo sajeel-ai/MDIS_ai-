@@ -190,7 +190,7 @@ export function AdminUsersPage({
   }
   return (
     <AppLayout activeView="users" onNavigate={onNavigate}>
-      <section className="mx-auto w-full max-w-[1440px] min-w-0 space-y-5 pb-8" aria-labelledby="admin-users-title">
+      <section className="mx-auto w-full max-w-360 min-w-0 space-y-5 pb-8" aria-labelledby="admin-users-title">
         <div>
           <h1
             id="admin-users-title"
