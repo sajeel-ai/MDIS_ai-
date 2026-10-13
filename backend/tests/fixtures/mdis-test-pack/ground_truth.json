@@ -242,6 +242,25 @@
           "unit": "mmHg"
         },
         {
+          "text": "HR 88",
+          "type": "vital",
+          "normalized": "Heart rate",
+          "assertion": "present",
+          "loinc": "8867-4",
+          "value": 88,
+          "unit": "bpm"
+        },
+        {
+          "text": "SpO2 96% on room air",
+          "type": "vital",
+          "normalized": "Oxygen saturation",
+          "assertion": "present",
+          "loinc": "59408-5",
+          "value": 96,
+          "unit": "%",
+          "on_room_air": true
+        },
+        {
           "text": "Apixaban 5 mg twice daily",
           "type": "medication",
           "normalized": "apixaban",
