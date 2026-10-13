@@ -5,8 +5,9 @@ from app.providers.extraction.base import BaseExtractionProvider
 from app.providers.extraction.local import LocalExtractionProvider
 from app.providers.extraction.mock import MockExtractionProvider
 from app.providers.extraction.openai import OpenAIExtractionProvider
+from app.providers.extraction.hybrid import HybridExtractionProvider
 
-SUPPORTED_EXTRACTION_PROVIDERS = ("local", "mock", "openai")
+SUPPORTED_EXTRACTION_PROVIDERS = ("local", "mock", "openai", "hybrid")
 
 
 class ExtractionProviderConfigurationError(RuntimeError):
@@ -39,6 +40,12 @@ def validate_extraction_provider_configuration(
                 "OpenAI extraction requires OPENAI_MODEL to be configured."
             )
 
+    if name == "hybrid" and settings.extraction_llm_fallback_enabled:
+        if not settings.openai_api_key.strip() or not settings.openai_model.strip():
+            raise ExtractionProviderConfigurationError(
+                "Hybrid LLM fallback requires OPENAI_API_KEY and OPENAI_MODEL when enabled."
+            )
+
     return name
 
 
@@ -55,5 +62,8 @@ def get_extraction_provider(
 
     if name == "openai":
         return OpenAIExtractionProvider()
+
+    if name == "hybrid":
+        return HybridExtractionProvider()
 
     raise AssertionError("Provider validation and factory selection are out of sync")

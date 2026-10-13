@@ -12,6 +12,7 @@ class EntityType(str, Enum):
     SYMPTOM = "symptom"
     PROCEDURE = "procedure"
     LAB = "lab"
+    VITAL = "vital"
 
 
 class CodeSystem(str, Enum):

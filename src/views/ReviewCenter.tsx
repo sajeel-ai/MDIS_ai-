@@ -156,11 +156,6 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
 
   // Load single task detail with full source text when selection changes
   useEffect(() => {
-    if (!detailOnly) {
-      setDetailTask(null);
-      setDetailLoading(false);
-      return;
-    }
     if (!selectedTaskId) {
       setDetailTask(null);
       return;

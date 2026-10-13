@@ -19,7 +19,7 @@ ENTITY_JSON_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "type": {"type": "string", "enum": ["diagnosis", "medication", "symptom", "procedure", "lab"]},
+        "type": {"type": "string", "enum": ["diagnosis", "medication", "symptom", "procedure", "lab", "vital"]},
         "raw_text": {"type": "string"},
         "normalized_value": {"type": "string"},
         "code": {"type": ["string", "null"]},
@@ -45,7 +45,7 @@ EXTRACTION_SCHEMA = {
     "required": ["entities"],
 }
 
-EXTRACTION_SYSTEM_PROMPT = """Extract diagnoses, medications, symptoms, procedures, and lab findings from the supplied clinical text.
+EXTRACTION_SYSTEM_PROMPT = """Extract diagnoses, medications, symptoms, procedures, lab findings, and vital signs from the supplied clinical text.
 Return each entity's raw_text and evidence_text verbatim as a contiguous source substring. start_offset/end_offset must point to evidence_text using zero-based, end-exclusive character offsets. Use the assertion that matches the stated context; do not infer unsupported facts. If no entities are present, return an empty entities array."""
 
 

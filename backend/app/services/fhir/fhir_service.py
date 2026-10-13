@@ -145,6 +145,14 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
                 resource = {"resourceType": "MedicationRequest", "status": "active", "intent": "order", "subject": {"reference": _ref("Patient", patient_id)}, "medicationCodeableConcept": medication}
             else:
                 resource = {"resourceType": "MedicationStatement", "status": "active", "subject": {"reference": _ref("Patient", patient_id)}, "medicationCodeableConcept": medication}
+        elif entity.entity_type == "vital":
+            resource = {"resourceType": "Observation", "status": "final", "subject": {"reference": _ref("Patient", patient_id)}, "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs", "display": "Vital Signs"}]}], "code": _concept(value, details)}
+            vital_value = details.get("value")
+            unit = details.get("unit")
+            if details.get("vital_sign") == "blood_pressure":
+                resource["component"] = [{"code": {"text": "Systolic blood pressure"}, "valueQuantity": {"value": details.get("systolic"), "unit": "mmHg"}}, {"code": {"text": "Diastolic blood pressure"}, "valueQuantity": {"value": details.get("diastolic"), "unit": "mmHg"}}]
+            elif vital_value is not None:
+                resource["valueQuantity"] = {"value": vital_value, "unit": str(unit or "")}
         elif entity.entity_type in {"lab", "lab_result", "observation"}:
             resource = {"resourceType": "Observation", "status": "final", "subject": {"reference": _ref("Patient", patient_id)}, "code": _concept(value, details)}
             lab_value = details.get("value")

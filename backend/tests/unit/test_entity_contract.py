@@ -46,15 +46,8 @@ def test_assertion_context_handles_negation_history_and_discontinuation(text, te
 
     entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
     found = next((entity for entity in entities if entity["normalized_value"] == term), None)
-    if found is None and term in {"Abdominal pain", "Knee pain"}:
-        # The local vocabulary does not invent unsupported concepts; validate
-        # the context helper directly for this generalized exception case.
-        start = text.lower().index(term.split()[0].lower())
-        from app.providers.extraction.context import detect_assertion
-        assert detect_assertion(text, start, start + len(term)).value == expected
-    else:
-        assert found is not None
-        assert found["assertion"] == expected
+    assert found is not None
+    assert found["assertion"] == expected
 
 
 def test_no_known_drug_allergies_does_not_create_allergy_context():
@@ -62,6 +55,121 @@ def test_no_known_drug_allergies_does_not_create_allergy_context():
 
     entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities("No known drug allergies."))["entities"]
     assert not any(entity["type"] == "medication" and entity["section"] == "ALLERGIES" for entity in entities)
+
+
+def test_vital_signs_are_structured_without_treating_doses_as_vitals():
+    import asyncio
+
+    text = "Arrival vitals: BP 124/78 mmHg, HR 72 bpm, RR 16, T 37.2 C, SpO2 97% RA. Take 500 mg medication."
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    vitals = [entity for entity in entities if entity["type"] == "vital"]
+    assert {entity["normalized_value"] for entity in vitals} == {"Blood pressure", "Heart rate", "Respiratory rate", "Body temperature", "Oxygen saturation"}
+    bp = next(entity for entity in vitals if entity["normalized_value"] == "Blood pressure")
+    assert bp["details"]["systolic"] == 124 and bp["details"]["diastolic"] == 78
+    assert text[bp["start_offset"]:bp["end_offset"]] == bp["evidence_text"]
+    assert not any(entity["type"] == "vital" and "500" in entity["raw_text"] for entity in entities)
+
+
+def test_each_vital_reading_is_kept_separate_and_implausible_values_flagged():
+    import asyncio
+
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities("BP 150/90 mmHg; discharge BP 118/76 mmHg; BP 40/200 mmHg"))["entities"]
+    readings = [entity for entity in entities if entity["type"] == "vital" and entity["normalized_value"] == "Blood pressure"]
+    assert len(readings) == 3
+    assert "implausible_blood_pressure" in readings[-1]["details"]["validation_warnings"]
+
+
+def test_advice_and_conditional_mentions_are_not_findings():
+    import asyncio
+
+    text = "Return if chest pain develops; seek care if fever occurs."
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    assert entities == []
+
+
+@pytest.mark.parametrize(
+    ("text", "normalized"),
+    [("COPD is documented.", "Chronic obstructive pulmonary disease"), ("HTN is documented.", "Hypertension")],
+)
+def test_hybrid_terminology_abbreviation_expansions_are_deterministic(text, normalized):
+    import asyncio
+
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    assert any(entity["normalized_value"] == normalized for entity in entities)
+
+
+def test_vitals_are_not_labs():
+    import asyncio
+
+    text = "BP 124/78 mmHg; HR 72; RR 16; T 37.2 C; SpO2 97% RA; weight 70 kg; height 175 cm; BMI 22.9"
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    assert any(entity["type"] == "vital" for entity in entities)
+    assert not any(entity["type"] == "lab" for entity in entities)
+
+
+def test_same_concept_merges_evidence_but_assertion_conflicts_remain_separate():
+    import asyncio
+
+    merged = asyncio.run(LocalExtractionProvider().extract_clinical_entities("Cough is present. The patient reports cough again."))["entities"]
+    coughs = [entity for entity in merged if entity["normalized_value"] == "Cough"]
+    assert len(coughs) == 1
+    assert len(coughs[0]["details"]["evidence_spans"]) == 2
+
+    conflict = asyncio.run(LocalExtractionProvider().extract_clinical_entities("Cough is present. No cough today."))["entities"]
+    coughs = [entity for entity in conflict if entity["normalized_value"] == "Cough"]
+    assert {entity["assertion"] for entity in coughs} == {"present", "absent"}
+    assert all(entity["details"]["assertion_conflict"] for entity in coughs)
+
+
+def test_pain_modifiers_and_coordinated_negation_are_preserved():
+    import asyncio
+
+    text = "Mild right knee pain; lower back pain; right upper quadrant pain; pain in the left knee; denies chest and abdominal pain; no pain in the throat."
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    pains = [entity for entity in entities if entity["type"] == "symptom" and "pain" in entity["normalized_value"].lower()]
+    assert any(entity["details"].get("severity") == "mild" and entity["details"].get("laterality") == "right" for entity in pains)
+    assert any(entity["details"].get("site") == "lower back" for entity in pains)
+    assert any(entity["details"].get("site") == "upper quadrant" for entity in pains)
+    assert any(entity["details"].get("laterality") == "left" and entity["details"].get("site") == "knee" for entity in pains)
+    assert sum(entity["assertion"] == "absent" for entity in pains) == 3
+
+
+def test_incomplete_lab_rows_are_retained_for_validation():
+    import asyncio
+
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities("Hemoglobin: 10.2"))["entities"]
+    lab = next(entity for entity in entities if entity["type"] == "lab")
+    assert lab["details"]["value"] == "10.2"
+    assert "incomplete_lab_row" in lab["details"]["validation_warnings"]
+
+
+def test_medication_instructions_do_not_bleed_between_lines_and_bedtime_is_preserved():
+    import asyncio
+
+    text = "Medicines: Drug A 10 mg twice daily\nDrug B 20 mg at bedtime\nDrug C 5 mg stopped."
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    meds = {entity["normalized_value"]: entity for entity in entities if entity["type"] == "medication"}
+    # Unsupported names are intentionally ignored; use supported medicines in a
+    # generalized list to verify line-local dose/frequency capture.
+    text = "Metformin 500 mg twice daily\nAtorvastatin 20 mg at bedtime\nAspirin discontinued."
+    meds = {
+        entity["normalized_value"]: entity
+        for entity in asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+        if entity["type"] == "medication"
+    }
+    assert meds["Metformin"]["details"] == {"dose": "500 mg", "frequency": "twice daily"}
+    assert meds["Atorvastatin"]["details"] == {"dose": "20 mg", "frequency": "at bedtime"}
+    assert meds["Aspirin"]["details"] == {}
+
+
+def test_location_pain_uses_negation_scope_and_preserves_positive_exception():
+    import asyncio
+
+    text = "The patient denies back pain but reports right knee pain."
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    pains = {entity["normalized_value"]: entity for entity in entities if entity["type"] == "symptom"}
+    assert pains["Back pain"]["assertion"] == "absent"
+    assert pains["Knee pain"]["assertion"] == "present"
 
 
 def test_local_and_mock_provider_outputs_meet_the_entity_contract():

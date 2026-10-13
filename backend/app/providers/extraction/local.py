@@ -27,6 +27,7 @@ class LocalExtractionProvider(BaseExtractionProvider):
             "ICD10",
         ),
         "hypertension": ("Hypertension", "I10", "ICD10"),
+        "htn": ("Hypertension", "I10", "ICD10"),
         "diabetes mellitus": ("Diabetes mellitus", "", ""),
         "diabetes": ("Diabetes mellitus", "", ""),
         "acute copd exacerbation": (
@@ -230,6 +231,18 @@ class LocalExtractionProvider(BaseExtractionProvider):
         ),
     ]
 
+    VITAL_PATTERNS = [
+        (r"\b(?:blood\s+pressure|b\s*/\s*p|bp)\s*(?:was|is|:|=)?\s*(\d{2,3})\s*(?:/|over)\s*(\d{2,3})\s*(mmhg)?", "Blood pressure", "85354-9", "blood_pressure"),
+        (r"(?<![\d/])\b(\d{2,3})\s*/\s*(\d{2,3})\s*mmhg\b", "Blood pressure", "85354-9", "blood_pressure"),
+        (r"\b(?:heart\s+rate|hr)\s*(?:was|is|:|=)?\s*(\d{2,3})\s*(bpm)?", "Heart rate", "8867-4", "heart_rate"),
+        (r"\b(?:respiratory\s+rate|respirations?|rr)\s*(?:was|is|:|=)?\s*(\d{1,2})\s*(?:breaths?/min|rpm)?", "Respiratory rate", "9279-1", "respiratory_rate"),
+        (r"\b(?:temperature|temp|t)\s*(?:was|is|:|=)?\s*(\d{2,3}(?:\.\d+)?)\s*(°?\s*[cf])\b", "Body temperature", "8290-1", "temperature"),
+        (r"\b(?:spo2|oxygen\s+saturation|o2\s+sat(?:uration)?)\s*(?:was|is|:|=)?\s*(\d{2,3})\s*%?\s*(ra|room\s+air)?", "Oxygen saturation", "59408-5", "spo2"),
+        (r"\b(?:weight|wt)\s*(?:was|is|:|=)?\s*(\d+(?:\.\d+)?)\s*(kg|lb|lbs?)\b", "Body weight", "29463-7", "weight"),
+        (r"\b(?:height|ht)\s*(?:was|is|:|=)?\s*(\d+(?:\.\d+)?)\s*(cm|m|in|ft)\b", "Body height", "8302-2", "height"),
+        (r"\b(?:bmi|body\s+mass\s+index)\s*(?:was|is|:|=)?\s*(\d+(?:\.\d+)?)\b", "Body mass index", "39156-5", "bmi"),
+    ]
+
     @staticmethod
     def _evidence(text: str, start: int, end: int) -> str:
         """Return a useful source window around the extracted value."""
@@ -247,6 +260,10 @@ class LocalExtractionProvider(BaseExtractionProvider):
             "procedure": 0.95,
             "lab": 0.93,
         }.get(entity_type, 0.90)
+
+    @staticmethod
+    def _is_finding_assertion(assertion: str) -> bool:
+        return assertion != "hypothetical"
 
     def _add_term_entities(
         self,
@@ -280,6 +297,11 @@ class LocalExtractionProvider(BaseExtractionProvider):
                     continue
 
                 raw = text[match.start():match.end()]
+                assertion = detect_assertion(
+                    text, match.start(), match.end(), detect_section(text, match.start())
+                ).value
+                if not self._is_finding_assertion(assertion):
+                    continue
 
                 entities.append(
                     {
@@ -289,9 +311,7 @@ class LocalExtractionProvider(BaseExtractionProvider):
                         "code": code or None,
                         "code_system": code_system or None,
                         "confidence": self._confidence(entity_type),
-                        "assertion": detect_assertion(
-                            text, match.start(), match.end(), detect_section(text, match.start())
-                        ).value,
+                        "assertion": assertion,
                         "section": detect_section(text, match.start()),
                         "evidence_text": raw,
                         "start_offset": match.start(),
@@ -331,6 +351,68 @@ class LocalExtractionProvider(BaseExtractionProvider):
                     }
                 )
 
+        row_pattern = re.compile(r"(?im)^(?P<name>[A-Za-z][A-Za-z0-9 /()_-]{2,40})(?:\s*[:|]\s*|\s{2,})(?P<value>[-+]?\d+(?:\.\d+)?)\s*$")
+        for match in row_pattern.finditer(text):
+            name, raw = match.group("name").strip(), match.group(0).strip()
+            if re.search(r"\b(?:blood pressure|bp|heart rate|hr|respiratory rate|rr|temperature|temp|spo2|weight|height|bmi)\b", name, re.I):
+                continue
+            if any(e["type"] == "lab" and e["start_offset"] < match.end() and e["end_offset"] > match.start() for e in entities):
+                continue
+            entities.append({"type": "lab", "raw_text": raw, "normalized_value": name, "code": None, "code_system": None, "confidence": 0.65, "assertion": "present", "section": detect_section(text, match.start()), "evidence_text": raw, "start_offset": match.start(), "end_offset": match.end(), "page_number": 1, "details": {"test_name": name, "value": match.group("value"), "unit": None, "reference_range": None, "flag": None, "validation_warnings": ["incomplete_lab_row"]}})
+
+    def _add_pain_entities(self, text: str, entities: list[ExtractedEntityData]) -> None:
+        patterns = [
+            re.compile(r"\b((?:(?P<severity>mild|moderate|severe)\s+)?(?:(?P<laterality>right|left|bilateral)\s+)?(?P<site>(?:upper|lower)\s+quadrant|(?:lower\s+)?back|chest|abdominal|abdomen|knee|throat|head|neck|shoulder|leg|arm|pelvic)\s+pain)\b", re.I),
+            re.compile(r"\bpain\s+in\s+(?:the\s+)?(?:(?P<laterality>right|left|bilateral)\s+)?(?P<site>knee|shoulder|hip|arm|leg|throat|quadrant)\b", re.I),
+        ]
+        spans: list[tuple[int, int, str]] = []
+        for pattern in patterns:
+            for match in pattern.finditer(text):
+                spans.append((match.start(), match.end(), match.group(0)))
+        coordinated = re.compile(r"\b(?P<first>chest|abdominal|back|head|throat)\s+and\s+(?P<second>chest|abdominal|back|head|throat)\s+pain\b", re.I)
+        for match in coordinated.finditer(text):
+            for group in ("first", "second"):
+                start = match.start(group)
+                spans.append((start, start + len(match.group(group)) + 5, match.group(group) + " pain"))
+        for start, end, raw in sorted(spans):
+            if any(e["type"] == "symptom" and e["start_offset"] < end and e["end_offset"] > start for e in entities):
+                continue
+            lower = raw.lower()
+            site = re.sub(r"^(?:mild|moderate|severe)\s+", "", lower)
+            site = re.sub(r"^(?:right|left|bilateral)\s+", "", site).removesuffix(" pain")
+            if lower.startswith("pain in "):
+                site_match = re.search(r"\b(?:right|left|bilateral)\s+(?P<site>[a-z ]+)$", lower)
+                if site_match:
+                    site = site_match.group("site").strip()
+                else:
+                    site = re.sub(r"^pain\s+in\s+(?:the\s+)?", "", lower).strip()
+            normalized_site = "back" if site == "lower back" else "abdominal" if site in {"abdomen", "upper quadrant", "lower quadrant"} else site
+            assertion = detect_assertion(text, start, end, detect_section(text, start)).value
+            if not self._is_finding_assertion(assertion):
+                continue
+            details = {"site": site}
+            for key, values in (("severity", ("mild", "moderate", "severe")), ("laterality", ("right", "left", "bilateral"))):
+                found = next((value for value in values if re.search(rf"\b{value}\b", lower)), None)
+                if found:
+                    details[key] = found
+            entities.append({"type": "symptom", "raw_text": raw, "normalized_value": normalized_site[:1].upper() + normalized_site[1:] + " pain", "code": None, "code_system": None, "confidence": self._confidence("symptom"), "assertion": assertion, "section": detect_section(text, start), "evidence_text": raw, "start_offset": start, "end_offset": end, "page_number": 1, "details": details})
+
+    def _add_vital_entities(self, text: str, entities: list[ExtractedEntityData]) -> None:
+        for pattern, name, code, vital_key in self.VITAL_PATTERNS:
+            for match in re.finditer(pattern, text, re.I):
+                if any(e["type"] == "vital" and e["start_offset"] < match.end() and e["end_offset"] > match.start() for e in entities):
+                    continue
+                groups = match.groups()
+                details: dict[str, object] = {"vital_sign": vital_key, "loinc": code, "raw_unit": None}
+                if vital_key == "blood_pressure":
+                    systolic, diastolic = int(groups[0]), int(groups[1]); details.update({"systolic": systolic, "diastolic": diastolic, "unit": (groups[2] or "mmHg").strip()}); details["validation_warnings"] = ["implausible_blood_pressure"] if systolic <= diastolic or not 50 <= systolic <= 300 or not 20 <= diastolic <= 200 else []
+                elif vital_key == "temperature": details.update({"value": float(groups[0]), "unit": re.sub(r"\s+", "", groups[1]).upper()})
+                elif vital_key == "spo2": details.update({"value": float(groups[0]), "unit": "%", "on_room_air": bool(groups[1])})
+                elif vital_key in {"heart_rate", "respiratory_rate"}: details.update({"value": float(groups[0]), "unit": ((groups[1] if len(groups) > 1 else None) or ("bpm" if vital_key == "heart_rate" else "breaths/min")).strip()})
+                elif vital_key in {"weight", "height"}: details.update({"value": float(groups[0]), "unit": groups[1]})
+                else: details.update({"value": float(groups[0]), "unit": None})
+                entities.append({"type": "vital", "raw_text": match.group(0), "normalized_value": name, "code": code, "code_system": "LOINC", "confidence": 0.96, "assertion": "present", "section": detect_section(text, match.start()), "evidence_text": match.group(0), "start_offset": match.start(), "end_offset": match.end(), "page_number": 1, "details": details})
+
     async def extract_clinical_entities(
         self,
         text: str,
@@ -368,6 +450,7 @@ class LocalExtractionProvider(BaseExtractionProvider):
             self.SYMPTOMS,
             "symptom",
         )
+        self._add_pain_entities(text, entities)
 
         self._add_term_entities(
             text,
@@ -376,7 +459,9 @@ class LocalExtractionProvider(BaseExtractionProvider):
             "procedure",
         )
 
+        self._add_vital_entities(text, entities)
         self._add_lab_entities(text, entities)
+        self._merge_entities(entities)
 
         # Stable ordering by source position.
         entities.sort(
@@ -396,3 +481,31 @@ class LocalExtractionProvider(BaseExtractionProvider):
                 "entity_count": len(entities),
             },
         )
+
+    @staticmethod
+    def _merge_entities(entities: list[ExtractedEntityData]) -> None:
+        groups: dict[tuple[str, str, str], list[ExtractedEntityData]] = {}
+        for entity in entities:
+            key = (entity["type"], re.sub(r"\s+", " ", entity["normalized_value"].strip().lower()), entity.get("assertion", "present"))
+            groups.setdefault(key, []).append(entity)
+        for group in groups.values():
+            if len(group) > 1:
+                if group[0]["type"] == "symptom":
+                    modifier_keys = ("site", "severity", "laterality")
+                    signatures = {
+                        tuple(item.get("details", {}).get(key) for key in modifier_keys)
+                        for item in group
+                    }
+                    if len(signatures) > 1:
+                        continue
+                group[0].setdefault("details", {})["evidence_spans"] = [{"text": x["evidence_text"], "start_offset": x["start_offset"], "end_offset": x["end_offset"]} for x in group]
+                for duplicate in group[1:]:
+                    entities.remove(duplicate)
+        concepts: dict[tuple[str, str], list[ExtractedEntityData]] = {}
+        for entity in entities:
+            key = (entity["type"], re.sub(r"\s+", " ", entity["normalized_value"].strip().lower()))
+            concepts.setdefault(key, []).append(entity)
+        for group in concepts.values():
+            if len(group) > 1 and len({x.get("assertion", "present") for x in group}) > 1:
+                for entity in group:
+                    entity.setdefault("details", {})["assertion_conflict"] = True

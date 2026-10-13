@@ -71,7 +71,8 @@ class Settings(BaseSettings):
     azure_doc_intel_endpoint: str = ""
     azure_doc_intel_key: str = ""
 
-    extraction_provider: str = "openai"  # local | mock | openai
+    extraction_provider: str = "openai"  # local | mock | openai | hybrid
+    extraction_llm_fallback_enabled: bool = False
     openai_api_key: str = ""
     openai_model: str = "gpt-4o"
 

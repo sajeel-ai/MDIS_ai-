@@ -13,7 +13,7 @@ class ExtractionProviderFailure(RuntimeError):
 
 
 class ExtractedEntityData(TypedDict):
-    type: str  # diagnosis, medication, symptom, procedure, lab
+    type: str  # diagnosis, medication, symptom, procedure, lab, vital
     raw_text: str
     normalized_value: str
     code: str
