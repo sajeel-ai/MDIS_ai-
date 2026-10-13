@@ -79,6 +79,48 @@ def test_each_vital_reading_is_kept_separate_and_implausible_values_flagged():
     assert "implausible_blood_pressure" in readings[-1]["details"]["validation_warnings"]
 
 
+def test_vitals_table_rows_are_parsed_without_capture_group_assumptions():
+    import asyncio
+
+    text = "Vital | Value | Unit\nTemperature | 37.2 | C\nHeart Rate | 72 | bpm\nSpO2 | 98 | %"
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    assert {entity["normalized_value"] for entity in entities} >= {"Body temperature", "Heart rate", "Oxygen saturation"}
+
+
+def test_two_column_blood_pressure_table_is_parsed():
+    import asyncio
+
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities("Blood Pressure | 120 | 80"))["entities"]
+    bp = next(entity for entity in entities if entity["normalized_value"] == "Blood pressure")
+    assert bp["details"]["systolic"] == 120
+    assert bp["details"]["diastolic"] == 80
+
+
+def test_vitals_table_missing_unit_is_kept_and_flagged():
+    import asyncio
+
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities("Temperature | 37.2"))["entities"]
+    temperature = next(entity for entity in entities if entity["normalized_value"] == "Body temperature")
+    assert "missing_vital_unit" in temperature["details"]["validation_warnings"]
+
+
+def test_mixed_table_and_sentence_vitals_are_both_retained():
+    import asyncio
+
+    text = "Heart Rate | 72 | bpm\nBP 128/80 mmHg; SpO2 97% RA"
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    assert sum(entity["normalized_value"] == "Heart rate" for entity in entities) == 1
+    assert sum(entity["normalized_value"] == "Blood pressure" for entity in entities) == 1
+    assert sum(entity["normalized_value"] == "Oxygen saturation" for entity in entities) == 1
+
+
+def test_malformed_vital_input_returns_empty_or_flagged_result():
+    import asyncio
+
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities("Blood Pressure | not available"))["entities"]
+    assert all(entity.get("details", {}).get("validation_warnings") or entity["type"] != "vital" for entity in entities)
+
+
 def test_advice_and_conditional_mentions_are_not_findings():
     import asyncio
 
@@ -160,6 +202,16 @@ def test_medication_instructions_do_not_bleed_between_lines_and_bedtime_is_prese
     assert meds["Metformin"]["details"] == {"dose": "500 mg", "frequency": "twice daily"}
     assert meds["Atorvastatin"]["details"] == {"dose": "20 mg", "frequency": "at bedtime"}
     assert meds["Aspirin"]["details"] == {}
+
+
+@pytest.mark.parametrize("instruction", ["at bedtime", "qHS", "nightly", "every night"])
+def test_nighttime_medication_instructions_are_preserved(instruction):
+    import asyncio
+
+    text = f"Rosuvastatin 10 mg {instruction}."
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    medication = next(entity for entity in entities if entity["type"] == "medication")
+    assert medication["details"]["frequency"].casefold() == instruction.casefold()
 
 
 def test_location_pain_uses_negation_scope_and_preserves_positive_exception():

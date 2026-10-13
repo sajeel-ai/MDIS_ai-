@@ -109,6 +109,7 @@ class LocalExtractionProvider(BaseExtractionProvider):
         r"(?:once|twice|three|four)\s+daily|"
         r"(?:\d+)\s+times?\s+(?:a|per)\s+day|"
         r"(?:every\s+\d+\s+(?:hours?|days?))|"
+        r"(?:at\s+bedtime|every\s+night|nightly|q\.?\s*h\.?s\.?)|"
         r"(?:daily|q\.?\s*(?:d|day)|bid|tid|qid)\b)",
         re.IGNORECASE,
     )
@@ -405,13 +406,84 @@ class LocalExtractionProvider(BaseExtractionProvider):
                 groups = match.groups()
                 details: dict[str, object] = {"vital_sign": vital_key, "loinc": code, "raw_unit": None}
                 if vital_key == "blood_pressure":
-                    systolic, diastolic = int(groups[0]), int(groups[1]); details.update({"systolic": systolic, "diastolic": diastolic, "unit": (groups[2] or "mmHg").strip()}); details["validation_warnings"] = ["implausible_blood_pressure"] if systolic <= diastolic or not 50 <= systolic <= 300 or not 20 <= diastolic <= 200 else []
-                elif vital_key == "temperature": details.update({"value": float(groups[0]), "unit": re.sub(r"\s+", "", groups[1]).upper()})
+                    try:
+                        systolic, diastolic = int(groups[0]), int(groups[1])
+                    except (IndexError, TypeError, ValueError):
+                        continue
+                    unit = groups[2] if len(groups) > 2 else None
+                    details.update({"systolic": systolic, "diastolic": diastolic, "unit": (unit or "mmHg").strip()})
+                    details["validation_warnings"] = ["implausible_blood_pressure"] if systolic <= diastolic or not 50 <= systolic <= 300 or not 20 <= diastolic <= 200 else []
+                elif vital_key == "temperature":
+                    try:
+                        details.update({"value": float(groups[0]), "unit": re.sub(r"\s+", "", groups[1]).upper()})
+                    except (IndexError, TypeError, ValueError):
+                        continue
                 elif vital_key == "spo2": details.update({"value": float(groups[0]), "unit": "%", "on_room_air": bool(groups[1])})
                 elif vital_key in {"heart_rate", "respiratory_rate"}: details.update({"value": float(groups[0]), "unit": ((groups[1] if len(groups) > 1 else None) or ("bpm" if vital_key == "heart_rate" else "breaths/min")).strip()})
-                elif vital_key in {"weight", "height"}: details.update({"value": float(groups[0]), "unit": groups[1]})
-                else: details.update({"value": float(groups[0]), "unit": None})
+                elif vital_key in {"weight", "height"}:
+                    try:
+                        details.update({"value": float(groups[0]), "unit": groups[1] if len(groups) > 1 else None})
+                    except (IndexError, TypeError, ValueError):
+                        continue
+                else:
+                    try:
+                        details.update({"value": float(groups[0]), "unit": None})
+                    except (IndexError, TypeError, ValueError):
+                        continue
                 entities.append({"type": "vital", "raw_text": match.group(0), "normalized_value": name, "code": code, "code_system": "LOINC", "confidence": 0.96, "assertion": "present", "section": detect_section(text, match.start()), "evidence_text": match.group(0), "start_offset": match.start(), "end_offset": match.end(), "page_number": 1, "details": details})
+
+        # Handle common pipe/tab tables without assuming a fixed column count.
+        table_specs = {
+            "blood pressure": ("Blood pressure", "85354-9", "blood_pressure"),
+            "bp": ("Blood pressure", "85354-9", "blood_pressure"),
+            "b/p": ("Blood pressure", "85354-9", "blood_pressure"),
+            "heart rate": ("Heart rate", "8867-4", "heart_rate"),
+            "hr": ("Heart rate", "8867-4", "heart_rate"),
+            "respiratory rate": ("Respiratory rate", "9279-1", "respiratory_rate"),
+            "rr": ("Respiratory rate", "9279-1", "respiratory_rate"),
+            "temperature": ("Body temperature", "8290-1", "temperature"),
+            "temp": ("Body temperature", "8290-1", "temperature"),
+            "spo2": ("Oxygen saturation", "59408-5", "spo2"),
+            "oxygen saturation": ("Oxygen saturation", "59408-5", "spo2"),
+            "weight": ("Body weight", "29463-7", "weight"),
+            "height": ("Body height", "8302-2", "height"),
+            "bmi": ("Body mass index", "39156-5", "bmi"),
+        }
+        cursor = 0
+        for line in text.splitlines(keepends=True):
+            raw_line = line.rstrip("\r\n")
+            start = cursor
+            cursor += len(line)
+            columns = [part.strip() for part in re.split(r"[|\t]", raw_line)]
+            if len(columns) < 2:
+                continue
+            spec = table_specs.get(columns[0].casefold())
+            if spec is None:
+                continue
+            name, code, vital_key = spec
+            if any(e["type"] == "vital" and e["start_offset"] < start + len(raw_line) and e["end_offset"] > start for e in entities):
+                continue
+            numbers = re.findall(r"[-+]?\d+(?:\.\d+)?", " ".join(columns[1:]))
+            if not numbers:
+                continue
+            details: dict[str, object] = {"vital_sign": vital_key, "loinc": code, "raw_unit": None}
+            unit = next((part for part in columns[1:] if re.fullmatch(r"(?:mmhg|bpm|rpm|kg|lb|lbs?|cm|m|in|ft|c|f|%)", part, re.I)), None)
+            warnings: list[str] = []
+            try:
+                if vital_key == "blood_pressure" and len(numbers) >= 2:
+                    systolic, diastolic = int(float(numbers[0])), int(float(numbers[1]))
+                    details.update({"systolic": systolic, "diastolic": diastolic, "unit": unit or "mmHg"})
+                    if systolic <= diastolic or not 50 <= systolic <= 300 or not 20 <= diastolic <= 200:
+                        warnings.append("implausible_blood_pressure")
+                else:
+                    details.update({"value": float(numbers[0]), "unit": unit})
+                if unit is None and vital_key not in {"bmi", "blood_pressure"}:
+                    warnings.append("missing_vital_unit")
+            except (TypeError, ValueError):
+                warnings.append("malformed_vital_value")
+            if warnings:
+                details["validation_warnings"] = warnings
+            entities.append({"type": "vital", "raw_text": raw_line, "normalized_value": name, "code": code, "code_system": "LOINC", "confidence": 0.9, "assertion": "present", "section": detect_section(text, start), "evidence_text": raw_line, "start_offset": start, "end_offset": start + len(raw_line), "page_number": 1, "details": details})
 
     async def extract_clinical_entities(
         self,
