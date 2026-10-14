@@ -35,7 +35,8 @@ from app.schemas.entity_contract import validate_entity_candidates, verify_or_re
 from app.providers.ocr import get_ocr_provider
 from app.providers.storage import get_storage_provider
 from app.config import settings
-from app.services.validation.engine import validate_entities
+from app.services.validation.engine import validate_entities, validate_document_level_issues
+from app.services.validation.rules.vital_mentioned_not_extracted import detect_missing_vitals
 from app.services.validation.review_policy import requires_review
 from app.workflows.states import PROCESSING_STEP_STATUSES
 
@@ -233,9 +234,25 @@ class ClinicalProcessingWorkflow:
                         message=issue.message,
                     ))
 
+            # Document-level vital flag (non-blocking, severity="info").
+            # Attach to the first extracted entity as an anchor; skip if no entities
+            # were created (ValidationResult.entity_id is a non-nullable FK).
+            doc_vital_issues = validate_document_level_issues(normalized_text, validated_entities)
+            if doc_vital_issues and entities_created:
+                anchor = entities_created[0]
+                for doc_issue in doc_vital_issues:
+                    self.session.add(ValidationResult(
+                        entity_id=anchor.id,
+                        validation_rule=doc_issue.rule_code,
+                        rule_code=doc_issue.rule_code,
+                        status="warning",
+                        severity="info",  # non-blocking: excluded by approve_clean filter
+                        message=doc_issue.message,
+                    ))
+
             job.warning_count = len(rejected_entities) + sum(
                 len(issues) for issues in validation_issues
-            )
+            ) + len(doc_vital_issues)
 
             await self._complete_step(step7, "completed", 100)
 
