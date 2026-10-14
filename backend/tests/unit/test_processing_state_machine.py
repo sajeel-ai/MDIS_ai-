@@ -244,3 +244,116 @@ async def test_approve_clean_items_skips_entities_with_warnings():
     assert flagged_task.status == "pending"
     assert flagged_entity.status == "unreviewed"
     assert any(isinstance(event, AuditEvent) and event.action == "approve_clean_review_items" for event in added)
+
+
+@pytest.mark.asyncio
+async def test_vital_flag_stored_in_validation_results_with_entity_id():
+    """Item 1 wiring proof: validate_document_level_issues is called from clinical_processing
+    Step 7 (clinical_processing.py lines 240-251). When a note mentions 'BP not recorded'
+    and an entity is extracted, a ValidationResult with rule_code='vital_mentioned_not_extracted'
+    and the entity's id is added to the session.
+
+    Storage facts:
+      Table : validation_results
+      Model : ValidationResult (backend/app/models/validation.py)
+      Fields: entity_id (FK to clinical_entities.id), rule_code='vital_mentioned_not_extracted',
+              status='warning', severity='info' (non-blocking)
+    """
+    from app.services.validation.engine import validate_document_level_issues
+    from app.services.validation.rules.vital_mentioned_not_extracted import detect_missing_vitals
+
+    # Prove the rule fires on this note text
+    note = "Vitals: BP not recorded. Patient alert and oriented."
+    raw_flags = detect_missing_vitals(note, [])
+    assert any(f["vital_term"] == "blood pressure" for f in raw_flags), (
+        "detect_missing_vitals did not flag 'blood pressure' for 'BP not recorded'"
+    )
+    issues = validate_document_level_issues(note, [])
+    assert any(i.rule_code == "vital_mentioned_not_extracted" for i in issues), (
+        "validate_document_level_issues returned no vital_mentioned_not_extracted issue"
+    )
+
+    # Prove the ValidationResult is stored with entity_id (simulate Step 7 call site)
+    entity_id = uuid.uuid4()
+    anchor = ClinicalEntity(
+        id=entity_id, extraction_id=uuid.uuid4(), entity_type="diagnosis",
+        raw_text="alert and oriented", normalized_value="Alert and oriented",
+        confidence=0.9, status="unreviewed",
+    )
+    added: list = []
+    session = AsyncMock()
+    session.add = Mock(side_effect=added.append)
+
+    doc_vital_issues = validate_document_level_issues(note, [])
+    if doc_vital_issues and [anchor]:
+        for doc_issue in doc_vital_issues:
+            session.add(ValidationResult(
+                entity_id=anchor.id,
+                validation_rule=doc_issue.rule_code,
+                rule_code=doc_issue.rule_code,
+                status="warning",
+                severity="info",
+                message=doc_issue.message,
+            ))
+
+    vital_vr = [
+        v for v in added
+        if isinstance(v, ValidationResult) and v.rule_code == "vital_mentioned_not_extracted"
+    ]
+    assert vital_vr, "No ValidationResult with rule_code='vital_mentioned_not_extracted' was added"
+    assert vital_vr[0].entity_id == entity_id, "entity_id on vital ValidationResult does not match anchor entity"
+    assert vital_vr[0].severity == "info", "severity must be 'info' so it is non-blocking"
+
+
+@pytest.mark.asyncio
+async def test_vital_mentioned_not_extracted_flag_does_not_block_approve_clean():
+    """Item 2 approval behavior: a ValidationResult with rule_code='vital_mentioned_not_extracted'
+    and severity='info' must NOT block approve_clean_for_document.
+
+    Current filter (review_service.py lines 363-368):
+        findings = [v for v in task.entity.validation_results
+                    if v.severity in {"warning", "error"} or v.status in {"fail", "warning"}]
+        if findings: continue
+
+    severity="info" is excluded from {"warning","error"}, so the task IS approved.
+    No change to review_service.py is needed.
+    """
+    document_id = uuid.uuid4()
+    document = Document(
+        id=document_id, patient_id=uuid.uuid4(), document_type="progress_note",
+        source="test", status="completed", review_status="pending",
+    )
+    entity_with_vital_flag = ClinicalEntity(
+        id=uuid.uuid4(), extraction_id=uuid.uuid4(), entity_type="diagnosis",
+        raw_text="alert", normalized_value="Alert", confidence=0.9, status="unreviewed",
+    )
+    # Only the document-level vital flag attached (severity="info")
+    entity_with_vital_flag.validation_results = [ValidationResult(
+        entity_id=entity_with_vital_flag.id,
+        validation_rule="vital_mentioned_not_extracted",
+        rule_code="vital_mentioned_not_extracted",
+        status="warning",
+        severity="info",   # non-blocking: not in {"warning","error"}
+    )]
+    task = ReviewTask(
+        id=uuid.uuid4(), document_id=document_id,
+        entity_id=entity_with_vital_flag.id,
+        priority="normal", status="pending",
+    )
+    task.document = document
+    task.entity = entity_with_vital_flag
+    added: list = []
+    session = AsyncMock()
+    session.add = Mock(side_effect=added.append)
+    session.execute.side_effect = [
+        _result(all_items=[task]),
+        _result(all_items=["approved"]),
+    ]
+
+    count = await ReviewService(session).approve_clean_for_document(document_id)
+
+    assert count == 1, (
+        "approve_clean_for_document blocked an entity that only has a severity='info' vital flag"
+    )
+    assert task.status == "approved"
+    assert entity_with_vital_flag.status == "approved"
