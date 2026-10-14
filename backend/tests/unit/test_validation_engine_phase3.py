@@ -95,3 +95,84 @@ def test_engine_marks_document_level_conflicts():
         })
     result = validate_entities("diabetes", [candidate("present"), candidate("absent")])
     assert all(any(issue.rule_code == "CONFLICT" for issue in issues) for issues in result)
+
+
+def test_missing_vital_flag_unextracted_mentions():
+    from app.services.validation.rules import vital_mentioned_not_extracted
+    from app.services.validation.engine import validate_document_level_issues
+
+    # 1. "BP not recorded" -> flags blood pressure
+    text_bp = "Patient arrived. BP not recorded. Alert and oriented."
+    flags = vital_mentioned_not_extracted.detect_missing_vitals(text_bp, [])
+    assert any(f["vital_term"] == "blood pressure" and f["flag"] == "vital_mentioned_not_extracted" for f in flags)
+    assert flags[0]["start_offset"] == text_bp.find("BP")
+
+    # 2. "Temperature: ___" -> flags temperature
+    text_temp = "Triage note: Temperature: ___ Heart rate 72 bpm"
+    hr_entity = entity(entity_type="vital", normalized_value="Heart rate", raw_text="Heart rate 72 bpm", start_offset=30, end_offset=47)
+    flags_temp = vital_mentioned_not_extracted.detect_missing_vitals(text_temp, [hr_entity])
+    assert any(f["vital_term"] == "temperature" for f in flags_temp)
+    # Heart rate was extracted, so heart rate is NOT flagged
+    assert not any(f["vital_term"] == "heart rate" for f in flags_temp)
+
+    # 3. "Pulse not obtained" -> flags pulse
+    text_pulse = "Pulse not obtained due to severe edema."
+    flags_pulse = vital_mentioned_not_extracted.detect_missing_vitals(text_pulse, [])
+    assert any(f["vital_term"] == "pulse" for f in flags_pulse)
+
+    # 4. "Vitals: see flowsheet" -> flags vitals when no vitals extracted
+    text_flow = "Physical Exam: Vitals: see flowsheet. Lungs clear."
+    flags_flow = vital_mentioned_not_extracted.detect_missing_vitals(text_flow, [])
+    assert any(f["vital_term"] == "vitals" for f in flags_flow)
+
+    # Document level validation issue check
+    issues = validate_document_level_issues(text_bp, [])
+    assert any(issue.rule_code == "vital_mentioned_not_extracted" and issue.severity == "warning" for issue in issues)
+
+
+def test_missing_vital_flag_does_not_flag_advice_or_history():
+    from app.services.validation.rules import vital_mentioned_not_extracted
+
+    # Advice / instructions: "check blood pressure at home"
+    text_advice = "Discharge instructions: check blood pressure at home daily."
+    assert vital_mentioned_not_extracted.detect_missing_vitals(text_advice, []) == []
+
+    # Historical context: "history of low blood pressure"
+    text_history = "Past history of low blood pressure noted in 2021."
+    assert vital_mentioned_not_extracted.detect_missing_vitals(text_history, []) == []
+
+    # Conditional / advice: "return if fever occurs or if temperature rises"
+    text_conditional = "Return to ED if fever develops or if temperature rises above 38.5 C."
+    assert vital_mentioned_not_extracted.detect_missing_vitals(text_conditional, []) == []
+
+
+def test_missing_vital_flag_negative_case_all_vitals_present():
+    from app.services.validation.rules import vital_mentioned_not_extracted
+
+    # All vitals present and extracted -> NO missing-vital flags
+    text_all = "BP 120/80 mmHg, pulse 72 bpm, temperature 37.0 C, SpO2 99%, RR 16, weight 70 kg, height 175 cm."
+    extracted = [
+        entity(entity_type="vital", normalized_value="Blood pressure", start_offset=0, end_offset=14),
+        entity(entity_type="vital", normalized_value="Heart rate", start_offset=16, end_offset=28),
+        entity(entity_type="vital", normalized_value="Body temperature", start_offset=30, end_offset=46),
+        entity(entity_type="vital", normalized_value="Oxygen saturation", start_offset=48, end_offset=56),
+        entity(entity_type="vital", normalized_value="Respiratory rate", start_offset=58, end_offset=64),
+        entity(entity_type="vital", normalized_value="Body weight", start_offset=66, end_offset=78),
+        entity(entity_type="vital", normalized_value="Body height", start_offset=80, end_offset=95),
+    ]
+    flags = vital_mentioned_not_extracted.detect_missing_vitals(text_all, extracted)
+    assert flags == []
+
+
+def test_missing_vital_flag_never_raises():
+    from app.services.validation.rules import vital_mentioned_not_extracted
+
+    # Various malformed, None, or abnormal inputs
+    assert vital_mentioned_not_extracted.detect_missing_vitals("", []) == []
+    assert vital_mentioned_not_extracted.detect_missing_vitals(None, []) == []
+    assert vital_mentioned_not_extracted.detect_missing_vitals(12345, None) == []  # type: ignore
+    assert vital_mentioned_not_extracted.validate_document_vitals(None, None) == []  # type: ignore
+    # Does not crash with malformed entity in list; correctly flags because BP was not extracted in entities
+    res = vital_mentioned_not_extracted.detect_missing_vitals("Blood pressure 120/80", [None])  # type: ignore
+    assert len(res) == 1 and res[0]["vital_term"] == "blood pressure"
+
