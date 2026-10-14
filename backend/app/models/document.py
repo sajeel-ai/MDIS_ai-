@@ -99,3 +99,6 @@ class Document(Base):
     review_tasks: Mapped[list["ReviewTask"]] = relationship(  # type: ignore[name-defined]
         back_populates="document", cascade="all, delete-orphan"
     )
+    validation_flags: Mapped[list["DocumentValidationFlag"]] = relationship(  # type: ignore[name-defined]
+        back_populates="document", cascade="all, delete-orphan"
+    )
