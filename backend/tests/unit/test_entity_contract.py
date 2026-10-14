@@ -104,6 +104,57 @@ def test_vitals_table_missing_unit_is_kept_and_flagged():
     assert "missing_vital_unit" in temperature["details"]["validation_warnings"]
 
 
+def test_space_aligned_vitals_table_from_pdf_text_layer_is_parsed():
+    """PDF text-layer tables use space-padding instead of pipe delimiters.
+
+    The extractor must identify vitals from fixed-width columns produced by
+    common PDF-to-text converters, where column alignment is the only
+    structural cue.
+    """
+    import asyncio
+
+    text = (
+        "Vital Sign                 Value       Unit\n"
+        "Blood Pressure             120/80      mmHg\n"
+        "Heart Rate                 72          bpm\n"
+        "Temperature                37.2        C\n"
+        "SpO2                       98          %\n"
+    )
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
+    vitals = {e["normalized_value"]: e for e in entities if e["type"] == "vital"}
+
+    assert {"Blood pressure", "Heart rate", "Body temperature", "Oxygen saturation"} <= set(vitals)
+
+    bp = vitals["Blood pressure"]
+    assert bp["details"]["systolic"] == 120
+    assert bp["details"]["diastolic"] == 80
+
+    hr = vitals["Heart rate"]
+    assert hr["details"]["value"] == 72.0
+
+    temp = vitals["Body temperature"]
+    assert temp["details"]["value"] == 37.2
+
+
+@pytest.mark.parametrize(
+    ("row", "name", "value_key", "expected_value"),
+    [
+        ("Respiratory Rate          16          rpm", "Respiratory rate", "value", 16.0),
+        ("Weight                    70          kg",  "Body weight",      "value", 70.0),
+        ("BMI                       22.9",            "Body mass index",  "value", 22.9),
+        ("Blood Pressure            118/76      mmHg", "Blood pressure",  "systolic", 118),
+    ],
+)
+def test_space_aligned_single_row_vitals_are_parsed(row, name, value_key, expected_value):
+    """Each recognised vital-sign label is parsed when space-aligned (PDF text-layer)."""
+    import asyncio
+
+    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(row))["entities"]
+    vitals = [e for e in entities if e["type"] == "vital" and e["normalized_value"] == name]
+    assert vitals, f"Expected vital '{name}' to be extracted from: {row!r}"
+    assert vitals[0]["details"][value_key] == expected_value
+
+
 def test_mixed_table_and_sentence_vitals_are_both_retained():
     import asyncio
 

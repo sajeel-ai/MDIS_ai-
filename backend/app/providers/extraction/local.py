@@ -36,6 +36,11 @@ class LocalExtractionProvider(BaseExtractionProvider):
             "ICD10",
         ),
         "copd": ("Chronic obstructive pulmonary disease", "J44.9", "ICD10"),
+        "chronic obstructive pulmonary disease": (
+            "Chronic obstructive pulmonary disease",
+            "J44.9",
+            "ICD10",
+        ),
         "nstemi": (
             "Non-ST elevation myocardial infarction",
             "I21.4",
@@ -121,12 +126,11 @@ class LocalExtractionProvider(BaseExtractionProvider):
         # the previous medication's dose when several medicines share a line.
         after_window = text[end:min(len(text), end + 100)]
         after_window = re.split(r"[\n;.]", after_window, maxsplit=1)[0]
-        before_window = text[max(0, start - 45):start]
         details: dict[str, str] = {}
-        dose = cls._DOSE_PATTERN.search(after_window) or cls._DOSE_PATTERN.search(before_window)
+        dose = cls._DOSE_PATTERN.search(after_window)
         if dose:
             details["dose"] = f"{dose.group(1)} {dose.group(2)}"
-        frequency = cls._FREQUENCY_PATTERN.search(after_window) or cls._FREQUENCY_PATTERN.search(before_window)
+        frequency = cls._FREQUENCY_PATTERN.search(after_window)
         if frequency:
             details["frequency"] = " ".join(frequency.group(1).split())
         return details
@@ -485,6 +489,38 @@ class LocalExtractionProvider(BaseExtractionProvider):
                 details["validation_warnings"] = warnings
             entities.append({"type": "vital", "raw_text": raw_line, "normalized_value": name, "code": code, "code_system": "LOINC", "confidence": 0.9, "assertion": "present", "section": detect_section(text, start), "evidence_text": raw_line, "start_offset": start, "end_offset": start + len(raw_line), "page_number": 1, "details": details})
 
+        aligned_specs = {key: value for key, value in table_specs.items()}
+        offset = 0
+        for line in text.splitlines(keepends=True):
+            raw_line = line.rstrip("\r\n")
+            start = offset
+            offset += len(line)
+            match = re.match(r"^\s*(Blood Pressure|BP|B/P|Heart Rate|HR|Respiratory Rate|RR|Temperature|Temp|SpO2|Oxygen Saturation|Weight|Height|BMI)\s{2,}(.+?)\s*$", raw_line, re.I)
+            if not match:
+                continue
+            spec = aligned_specs.get(match.group(1).casefold())
+            if spec is None:
+                continue
+            name, code, vital_key = spec
+            numbers = re.findall(r"[-+]?\d+(?:\.\d+)?", match.group(2))
+            if not numbers or any(e["type"] == "vital" and e["start_offset"] < start + len(raw_line) and e["end_offset"] > start for e in entities):
+                continue
+            unit = next((part for part in match.group(2).split() if re.fullmatch(r"(?:mmhg|bpm|rpm|kg|lb|lbs?|cm|m|in|ft|c|f|%)", part, re.I)), None)
+            details: dict[str, object] = {"vital_sign": vital_key, "loinc": code, "raw_unit": None}
+            warnings: list[str] = []
+            try:
+                if vital_key == "blood_pressure" and len(numbers) >= 2:
+                    details.update({"systolic": int(float(numbers[0])), "diastolic": int(float(numbers[1])), "unit": unit or "mmHg"})
+                else:
+                    details.update({"value": float(numbers[0]), "unit": unit})
+                if unit is None and vital_key not in {"blood_pressure", "bmi"}:
+                    warnings.append("missing_vital_unit")
+            except (TypeError, ValueError):
+                warnings.append("malformed_vital_value")
+            if warnings:
+                details["validation_warnings"] = warnings
+            entities.append({"type": "vital", "raw_text": raw_line, "normalized_value": name, "code": code, "code_system": "LOINC", "confidence": 0.9, "assertion": "present", "section": detect_section(text, start), "evidence_text": raw_line, "start_offset": start, "end_offset": start + len(raw_line), "page_number": 1, "details": details})
+
     async def extract_clinical_entities(
         self,
         text: str,
@@ -562,6 +598,8 @@ class LocalExtractionProvider(BaseExtractionProvider):
             groups.setdefault(key, []).append(entity)
         for group in groups.values():
             if len(group) > 1:
+                if group[0]["type"] == "vital":
+                    continue
                 if group[0]["type"] == "symptom":
                     modifier_keys = ("site", "severity", "laterality")
                     signatures = {
