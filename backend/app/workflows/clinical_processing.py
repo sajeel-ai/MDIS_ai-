@@ -246,7 +246,7 @@ class ClinicalProcessingWorkflow:
                         validation_rule=doc_issue.rule_code,
                         rule_code=doc_issue.rule_code,
                         status="warning",
-                        severity="info",  # non-blocking: excluded by approve_clean filter
+                        severity="warning",  # routes doc to manual review; non-blocking for manual approval
                         message=doc_issue.message,
                     ))
 

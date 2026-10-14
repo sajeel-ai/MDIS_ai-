@@ -306,17 +306,11 @@ async def test_vital_flag_stored_in_validation_results_with_entity_id():
 
 
 @pytest.mark.asyncio
-async def test_vital_mentioned_not_extracted_flag_does_not_block_approve_clean():
-    """Item 2 approval behavior: a ValidationResult with rule_code='vital_mentioned_not_extracted'
-    and severity='info' must NOT block approve_clean_for_document.
-
-    Current filter (review_service.py lines 363-368):
-        findings = [v for v in task.entity.validation_results
-                    if v.severity in {"warning", "error"} or v.status in {"fail", "warning"}]
-        if findings: continue
-
-    severity="info" is excluded from {"warning","error"}, so the task IS approved.
-    No change to review_service.py is needed.
+async def test_vital_warning_flag_blocks_approve_clean_routing_to_manual_review():
+    """Item 1a routing: a ValidationResult with rule_code='vital_mentioned_not_extracted'
+    and severity='warning' IS caught by approve_clean_for_document's filter
+    (v.severity in {"warning","error"}), so the task stays pending and the document
+    routes to manual review instead of being auto-approved.
     """
     document_id = uuid.uuid4()
     document = Document(
@@ -327,13 +321,13 @@ async def test_vital_mentioned_not_extracted_flag_does_not_block_approve_clean()
         id=uuid.uuid4(), extraction_id=uuid.uuid4(), entity_type="diagnosis",
         raw_text="alert", normalized_value="Alert", confidence=0.9, status="unreviewed",
     )
-    # Only the document-level vital flag attached (severity="info")
+    # severity="warning" → caught by approve_clean filter → task NOT auto-approved
     entity_with_vital_flag.validation_results = [ValidationResult(
         entity_id=entity_with_vital_flag.id,
         validation_rule="vital_mentioned_not_extracted",
         rule_code="vital_mentioned_not_extracted",
         status="warning",
-        severity="info",   # non-blocking: not in {"warning","error"}
+        severity="warning",   # routes to manual review
     )]
     task = ReviewTask(
         id=uuid.uuid4(), document_id=document_id,
@@ -347,13 +341,60 @@ async def test_vital_mentioned_not_extracted_flag_does_not_block_approve_clean()
     session.add = Mock(side_effect=added.append)
     session.execute.side_effect = [
         _result(all_items=[task]),
-        _result(all_items=["approved"]),
+        _result(all_items=["pending"]),
     ]
 
     count = await ReviewService(session).approve_clean_for_document(document_id)
 
-    assert count == 1, (
-        "approve_clean_for_document blocked an entity that only has a severity='info' vital flag"
+    assert count == 0, (
+        "approve_clean_for_document auto-approved a task that has a severity='warning' vital flag; "
+        "it should have left it pending for manual review"
     )
-    assert task.status == "approved"
-    assert entity_with_vital_flag.status == "approved"
+    assert task.status == "pending", "Task should remain pending (routed to manual review)"
+    assert entity_with_vital_flag.status == "unreviewed", "Entity status must not change"
+
+
+@pytest.mark.asyncio
+async def test_vital_warning_flag_does_not_block_manual_approval():
+    """Item 1a non-blocking: record_review_decision('approved') has no severity filter,
+    so a reviewer can still approve the task that carries only the vital flag.
+    """
+    document_id = uuid.uuid4()
+    document = Document(
+        id=document_id, patient_id=uuid.uuid4(), document_type="progress_note",
+        source="test", status="completed", review_status="pending",
+    )
+    entity_with_vital_flag = ClinicalEntity(
+        id=uuid.uuid4(), extraction_id=uuid.uuid4(), entity_type="diagnosis",
+        raw_text="alert", normalized_value="Alert", confidence=0.9, status="unreviewed",
+    )
+    entity_with_vital_flag.evidence_spans = []
+    entity_with_vital_flag.validation_results = [ValidationResult(
+        entity_id=entity_with_vital_flag.id,
+        validation_rule="vital_mentioned_not_extracted",
+        rule_code="vital_mentioned_not_extracted",
+        status="warning",
+        severity="warning",
+    )]
+    task = ReviewTask(
+        id=uuid.uuid4(), document_id=document_id,
+        entity_id=entity_with_vital_flag.id,
+        priority="normal", status="pending",
+    )
+    task.document = document
+    task.entity = entity_with_vital_flag
+    status_result = _result(all_items=["approved"])
+    session = AsyncMock()
+    session.add = Mock()
+    session.execute.side_effect = [
+        _result(first=task),          # fetch task
+        _result(first=document),      # fetch document
+        status_result,                # aggregate statuses
+        _result(first=task),          # audit fetch
+    ]
+
+    # Must not raise; reviewer can always approve manually
+    await ReviewService(session).record_review_decision(task.id, "approved")
+
+    assert task.status == "approved", "Manual approval must succeed even with vital warning flag"
+    assert task.completed_at is not None
