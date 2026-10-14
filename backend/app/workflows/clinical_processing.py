@@ -10,12 +10,13 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     ClinicalEntity,
     Document,
+    DocumentValidationFlag,
     DocumentVersion,
     EvidenceSpan,
     Extraction,
@@ -234,21 +235,28 @@ class ClinicalProcessingWorkflow:
                         message=issue.message,
                     ))
 
-            # Document-level vital flag (non-blocking, severity="info").
-            # Attach to the first extracted entity as an anchor; skip if no entities
-            # were created (ValidationResult.entity_id is a non-nullable FK).
+            # Document-level vital flags — stored unconditionally, even with zero entities.
+            # Re-processing: supersede flags from previous extractions for this document,
+            # then write new flags tagged with the current extraction_id.
             doc_vital_issues = validate_document_level_issues(normalized_text, validated_entities)
-            if doc_vital_issues and entities_created:
-                anchor = entities_created[0]
-                for doc_issue in doc_vital_issues:
-                    self.session.add(ValidationResult(
-                        entity_id=anchor.id,
-                        validation_rule=doc_issue.rule_code,
-                        rule_code=doc_issue.rule_code,
-                        status="warning",
-                        severity="warning",  # routes doc to manual review; non-blocking for manual approval
-                        message=doc_issue.message,
-                    ))
+            await self.session.execute(
+                update(DocumentValidationFlag)
+                .where(
+                    DocumentValidationFlag.document_id == doc.id,
+                    DocumentValidationFlag.superseded_at.is_(None),
+                )
+                .values(superseded_at=datetime.now(timezone.utc))
+            )
+            for doc_issue in doc_vital_issues:
+                self.session.add(DocumentValidationFlag(
+                    document_id=doc.id,
+                    extraction_id=extraction.id,
+                    rule_code=doc_issue.rule_code,
+                    severity="warning",  # routes doc to manual review; non-blocking for manual approval
+                    status="warning",
+                    message=doc_issue.message,
+                    details=doc_issue.details,
+                ))
 
             job.warning_count = len(rejected_entities) + sum(
                 len(issues) for issues in validation_issues

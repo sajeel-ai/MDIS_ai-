@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -7,6 +7,7 @@ class ValidationIssue:
     rule_code: str
     severity: str
     message: str
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -23,5 +24,5 @@ class EntityData:
     evidence_text: str | None = None
 
 
-def issue(code: str, severity: str, message: str) -> ValidationIssue:
-    return ValidationIssue(code, severity, message)
+def issue(code: str, severity: str, message: str, details: dict[str, Any] | None = None) -> ValidationIssue:
+    return ValidationIssue(code, severity, message, details or {})

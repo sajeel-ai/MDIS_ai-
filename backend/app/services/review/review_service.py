@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.models import (
     ReviewTask,
     Document,
+    DocumentValidationFlag,
     Patient,
     Extraction,
     ClinicalEntity,
@@ -357,6 +358,29 @@ class ReviewService:
             query = query.where(Document.organization_id == organization_id)
         result = await self.session.execute(query)
         tasks = result.scalars().all()
+
+        # Document-level flag gate: if any active (non-superseded) document-level flag
+        # has severity warning or error, the entire document must go to manual review.
+        doc_flag_res = await self.session.execute(
+            select(DocumentValidationFlag).where(
+                DocumentValidationFlag.document_id == document_id,
+                DocumentValidationFlag.superseded_at.is_(None),
+                DocumentValidationFlag.severity.in_({"warning", "error"}),
+            ).limit(1)
+        )
+        if doc_flag_res.scalars().first() is not None:
+            document = tasks[0].document if tasks else None
+            await record_audit_event(
+                self.session,
+                action="approve_clean_review_items",
+                user_id=reviewer_user_id,
+                organization_id=document.organization_id if document else None,
+                resource_type="document",
+                resource_id=document_id,
+            )
+            await self.session.commit()
+            return 0
+
         approved = 0
         now = datetime.now(timezone.utc)
         for task in tasks:

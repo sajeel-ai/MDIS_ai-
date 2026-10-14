@@ -122,6 +122,12 @@ def validate_document_vitals(source_text: str, entities: list[EntityData]) -> li
                     "vital_mentioned_not_extracted",
                     "warning",
                     f"Vital sign '{f['vital_term']}' mentioned but no value extracted (offset {f['start_offset']}-{f['end_offset']}).",
+                    details={
+                        "vital_term": f["vital_term"],
+                        "start_offset": f["start_offset"],
+                        "end_offset": f["end_offset"],
+                        "evidence": f["evidence"],
+                    },
                 )
             )
         return issues
