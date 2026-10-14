@@ -239,11 +239,8 @@ def test_incomplete_lab_rows_are_retained_for_validation():
 def test_medication_instructions_do_not_bleed_between_lines_and_bedtime_is_preserved():
     import asyncio
 
-    text = "Medicines: Drug A 10 mg twice daily\nDrug B 20 mg at bedtime\nDrug C 5 mg stopped."
-    entities = asyncio.run(LocalExtractionProvider().extract_clinical_entities(text))["entities"]
-    meds = {entity["normalized_value"]: entity for entity in entities if entity["type"] == "medication"}
-    # Unsupported names are intentionally ignored; use supported medicines in a
-    # generalized list to verify line-local dose/frequency capture.
+    # Use supported medicines in a generalized multiline list to verify
+    # line-local dose/frequency capture without backward bleed.
     text = "Metformin 500 mg twice daily\nAtorvastatin 20 mg at bedtime\nAspirin discontinued."
     meds = {
         entity["normalized_value"]: entity

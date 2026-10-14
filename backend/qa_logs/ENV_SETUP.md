@@ -28,9 +28,16 @@ before the probe. The previous failures showed `ConnectionRefusedError` and
 `WinError 1225` while asyncpg attempted `127.0.0.1:5432`; they are database
 startup/connectivity failures, not tests to skip.
 
-Then run:
+Then run with `$env:DEBUG='false'`:
 
 ```powershell
 $env:DEBUG='false'
 .\venv\Scripts\python.exe -m pytest tests --timeout=60 -q
 ```
+
+## Mandatory environment flag: `DEBUG=false`
+
+In this environment/sandbox, `DEBUG` may inherit string values such as `"release"` from system environment variables. Because Pydantic `Settings` strictly validates `debug: bool`, running pytest when `DEBUG` is set to any non-boolean string causes `Settings()` instantiation to raise a `pydantic_core.ValidationError` during `conftest.py` loading, aborting test collection before any tests run.
+
+* **Requirement:** Pytest must always be run with `$env:DEBUG='false'` (or `DEBUG=false`).
+* **Rule:** Do not change application code (such as `app/config.py`) to coerce misconfigured `DEBUG` strings. Keep application config strict and pass the explicit flag in test runners.
