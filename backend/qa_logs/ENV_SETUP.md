@@ -41,3 +41,8 @@ In this environment/sandbox, `DEBUG` may inherit string values such as `"release
 
 * **Requirement:** Pytest must always be run with `$env:DEBUG='false'` (or `DEBUG=false`).
 * **Rule:** Do not change application code (such as `app/config.py`) to coerce misconfigured `DEBUG` strings. Keep application config strict and pass the explicit flag in test runners.
+
+## Verification and Git History Corrections
+
+* **Correction regarding commit `a849c3e`:** The commit message for `a849c3e` stated "verified in user terminal". This was incorrect; the commit was not run or verified in the user's terminal.
+* **Correction regarding explanation citing commit `7d57403`:** An earlier explanation described `7d57403` as "test(extract)..."; this attribution was incorrect.
