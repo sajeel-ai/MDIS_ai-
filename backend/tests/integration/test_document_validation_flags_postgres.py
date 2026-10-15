@@ -453,3 +453,121 @@ async def test_pg_cross_org_isolation(pg_test_env):
 
     await db.refresh(task_b)
     assert task_b.status == "approved"
+
+
+@pytest.mark.asyncio
+async def test_pg_workflow_zero_entity_note_stores_active_flag(pg_test_env, tmp_path):
+    """Real ClinicalProcessingWorkflow execution on a zero-entity note with 'BP not recorded'.
+    
+    Proves that running the workflow through execute_job (the real pipeline path)
+    unconditionally records exactly one active DocumentValidationFlag without anchor entities.
+    """
+    from app.providers.ocr.mock import MockOCRProvider
+    from app.providers.extraction.local import LocalExtractionProvider
+    from app.providers.storage.local import LocalStorageProvider
+
+    db = pg_test_env["db"]
+    doc = pg_test_env["doc_a"]
+
+    note_text = "Vitals: BP not recorded. Patient resting comfortably."
+    storage = LocalStorageProvider(str(tmp_path / "storage"))
+    storage_key = f"documents/{doc.id}/note.txt"
+    await storage.save_file(storage_key, note_text.encode("utf-8"))
+
+    doc.storage_key = storage_key
+    doc.status = "uploaded"
+    job = ProcessingJob(
+        document_id=doc.id,
+        status="queued",
+        pipeline_version="test-pipeline",
+    )
+    db.add(job)
+    await db.commit()
+
+    workflow = ClinicalProcessingWorkflow(db)
+    workflow.storage_provider = storage
+    workflow.ocr_provider = MockOCRProvider()
+    workflow.extraction_provider = LocalExtractionProvider()
+
+    completed_job = await workflow.execute_job(job.id)
+    assert completed_job.status == "completed"
+
+    res = await db.execute(
+        select(DocumentValidationFlag).where(
+            DocumentValidationFlag.document_id == doc.id,
+            DocumentValidationFlag.superseded_at.is_(None),
+        )
+    )
+    flags = res.scalars().all()
+    assert len(flags) == 1
+    flag = flags[0]
+    assert flag.rule_code == "vital_mentioned_not_extracted"
+    assert flag.severity == "warning"
+    assert flag.status == "warning"
+    assert flag.details["vital_term"] == "blood pressure"
+    assert flag.superseded_at is None
+
+
+@pytest.mark.asyncio
+async def test_pg_workflow_reprocess_supersedes_and_keeps_old_rows(pg_test_env, tmp_path):
+    """Running ClinicalProcessingWorkflow twice for the same document supersedes the first flag and keeps both."""
+    from app.providers.ocr.mock import MockOCRProvider
+    from app.providers.extraction.local import LocalExtractionProvider
+    from app.providers.storage.local import LocalStorageProvider
+
+    db = pg_test_env["db"]
+    doc = pg_test_env["doc_a"]
+
+    note_text = "Vitals: BP not recorded. Patient resting comfortably."
+    storage = LocalStorageProvider(str(tmp_path / "storage"))
+    storage_key = f"documents/{doc.id}/note.txt"
+    await storage.save_file(storage_key, note_text.encode("utf-8"))
+
+    doc.storage_key = storage_key
+    doc.status = "uploaded"
+    job1 = ProcessingJob(
+        document_id=doc.id,
+        status="queued",
+        pipeline_version="test-pipeline",
+    )
+    db.add(job1)
+    await db.commit()
+
+    # First workflow execution
+    wf1 = ClinicalProcessingWorkflow(db)
+    wf1.storage_provider = storage
+    wf1.ocr_provider = MockOCRProvider()
+    wf1.extraction_provider = LocalExtractionProvider()
+    await wf1.execute_job(job1.id)
+
+    # Prepare second job (reprocessing)
+    doc.status = "queued"
+    job2 = ProcessingJob(
+        document_id=doc.id,
+        status="queued",
+        pipeline_version="test-pipeline",
+    )
+    db.add(job2)
+    await db.commit()
+
+    # Second workflow execution
+    wf2 = ClinicalProcessingWorkflow(db)
+    wf2.storage_provider = storage
+    wf2.ocr_provider = MockOCRProvider()
+    wf2.extraction_provider = LocalExtractionProvider()
+    await wf2.execute_job(job2.id)
+
+    # Verify both records exist and supersession state in PostgreSQL
+    res = await db.execute(
+        select(DocumentValidationFlag)
+        .where(DocumentValidationFlag.document_id == doc.id)
+        .order_by(DocumentValidationFlag.created_at.asc())
+    )
+    all_flags = res.scalars().all()
+    assert len(all_flags) == 2
+    first_flag, second_flag = all_flags[0], all_flags[1]
+
+    assert first_flag.superseded_at is not None
+    assert second_flag.superseded_at is None
+    assert first_flag.extraction_id != second_flag.extraction_id
+
