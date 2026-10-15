@@ -233,6 +233,7 @@ async def test_approve_clean_items_skips_entities_with_warnings():
     session.add = Mock(side_effect=added.append)
     session.execute.side_effect = [
         _result(all_items=[clean_task, flagged_task]),
+        _result(first=None),
         _result(all_items=["approved", "pending"]),
     ]
 
