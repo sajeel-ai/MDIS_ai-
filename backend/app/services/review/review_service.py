@@ -49,6 +49,7 @@ class ReviewService:
                 "file_name": doc.file_name,
                 "document_type": doc.document_type,
                 "created_at": doc.created_at.isoformat() if doc.created_at else None,
+                "review_status": doc.review_status,
             }
 
         # Target entity & evidence

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cognate AI — Typed REST API Client
  * Connects to the FastAPI backend at http://127.0.0.1:8001/api/v1
  *
@@ -483,6 +483,8 @@ export interface DocumentReviewSummary {
   document_type: string
 
   created_at?: string | null
+
+  review_status?: string | null
 }
 
 export interface PatientReviewSummary {

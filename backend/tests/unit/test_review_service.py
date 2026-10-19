@@ -161,3 +161,27 @@ async def test_review_endpoints():
         stats = stats_res.json()
         assert "pending" in stats
         assert "high_priority" in stats
+
+
+@pytest.mark.asyncio
+async def test_review_service_queue_document_id_filter():
+    mock_session = AsyncMock()
+    captured_statements = []
+
+    def fake_execute(statement, *args, **kwargs):
+        captured_statements.append(statement)
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 0
+        mock_result.scalars.return_value.all.return_value = []
+        return mock_result
+
+    mock_session.execute = AsyncMock(side_effect=fake_execute)
+
+    service = ReviewService(mock_session)
+    target_doc_id = uuid.uuid4()
+    await service.get_review_queue(document_id=target_doc_id)
+
+    assert len(captured_statements) >= 2
+    main_query = captured_statements[0]
+    compiled_sql = str(main_query.compile(compile_kwargs={"literal_binds": False}))
+    assert "review_tasks.document_id =" in compiled_sql

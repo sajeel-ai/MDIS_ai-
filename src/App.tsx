@@ -39,6 +39,7 @@ type RouteState = {
   path: string
   documentId: string | null
   reviewTaskId: string | null
+  fromStatus?: string | null
 }
 const ROLE_NAMES = [
   "admin",
@@ -55,14 +56,25 @@ const RESTRICTED_VIEW_ROLES: Partial<Record<View, readonly string[]>> = {
   users: ["admin"],
 }
 
-function parseRoute(pathname: string): RouteState {
+function parseRoute(pathname: string, search: string = ""): RouteState {
   const cleanPath = pathname.length > 1 ? pathname.replace(/\/$/, "") : pathname
+  const searchParams = new URLSearchParams(search)
+  const fromStatusRaw = searchParams.get("fromStatus")?.trim() || null
+  const fromStatus =
+    fromStatusRaw &&
+    ["pending", "in_review", "approved", "rejected", "escalated"].includes(
+      fromStatusRaw.toLowerCase(),
+    )
+      ? fromStatusRaw.toLowerCase()
+      : null
+
   if (cleanPath === "/login")
     return {
       view: "login",
       path: cleanPath,
       documentId: null,
       reviewTaskId: null,
+      fromStatus: null,
     }
   const clinicalMatch = cleanPath.match(/^\/clinical(?:\/([^/]+))?$/)
   if (clinicalMatch)
@@ -73,6 +85,7 @@ function parseRoute(pathname: string): RouteState {
         ? decodeURIComponent(clinicalMatch[1])
         : null,
       reviewTaskId: null,
+      fromStatus: null,
     }
   const reviewMatch = cleanPath.match(/^\/review(?:\/([^/]+))?$/)
   if (reviewMatch)
@@ -81,6 +94,7 @@ function parseRoute(pathname: string): RouteState {
       path: cleanPath,
       documentId: null,
       reviewTaskId: reviewMatch[1] ? decodeURIComponent(reviewMatch[1]) : null,
+      fromStatus,
     }
   const pathViews: Record<string, View> = {
     "/": "dashboard",
@@ -117,26 +131,32 @@ function parseRoute(pathname: string): RouteState {
       path: cleanPath,
       documentId: null,
       reviewTaskId: decodeURIComponent(reviewDocumentMatch[1]),
+      fromStatus,
     }
   const view = pathViews[cleanPath] ?? "dashboard"
-  return { view, path: cleanPath, documentId: null, reviewTaskId: null }
+  return { view, path: cleanPath, documentId: null, reviewTaskId: null, fromStatus: null }
 }
 
 function readRoute(): RouteState {
-  return parseRoute(window.location.pathname)
+  return parseRoute(window.location.pathname, window.location.search)
 }
 
 function pathForView(
   view: string,
   documentId?: string,
   reviewTaskId?: string,
+  fromStatus?: string | null,
 ): string {
   if (view === "clinical" && documentId)
     return `/clinical/${encodeURIComponent(documentId)}`
-  if (view === "review" && reviewTaskId)
-    return `/review/${encodeURIComponent(reviewTaskId)}`
-  if (view === "review-document" && reviewTaskId)
-    return `/review/document/${encodeURIComponent(reviewTaskId)}`
+  if (view === "review" && reviewTaskId) {
+    const qs = fromStatus ? `?fromStatus=${encodeURIComponent(fromStatus)}` : ""
+    return `/review/${encodeURIComponent(reviewTaskId)}${qs}`
+  }
+  if (view === "review-document" && reviewTaskId) {
+    const qs = fromStatus ? `?fromStatus=${encodeURIComponent(fromStatus)}` : ""
+    return `/review/document/${encodeURIComponent(reviewTaskId)}${qs}`
+  }
   if (view === "audit" && documentId)
     return `/audit?resource_id=${encodeURIComponent(documentId)}`
   const paths: Record<string, string> = {
@@ -177,8 +197,8 @@ function AppContent() {
   )
 
   const navigate = useCallback(
-    (view: string, documentId?: string, reviewTaskId?: string) => {
-      changePath(pathForView(view, documentId, reviewTaskId))
+    (view: string, documentId?: string, reviewTaskId?: string, fromStatus?: string | null) => {
+      changePath(pathForView(view, documentId, reviewTaskId, fromStatus))
     },
     [changePath],
   )
@@ -278,6 +298,7 @@ function AppContent() {
         <ReviewCenterPage
           onNavigate={navigate}
           reviewTaskId={route.reviewTaskId}
+          fromStatus={route.fromStatus}
         />
       )
       break
@@ -286,6 +307,7 @@ function AppContent() {
         <ReviewDocumentPage
           onNavigate={navigate}
           reviewTaskId={route.reviewTaskId}
+          fromStatus={route.fromStatus}
         />
       )
       break

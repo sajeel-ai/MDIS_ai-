@@ -9,6 +9,7 @@ class DocumentReviewSummary(BaseModel):
     file_name: str
     document_type: str
     created_at: Optional[str] = None
+    review_status: Optional[str] = None
 
 
 class PatientReviewSummary(BaseModel):

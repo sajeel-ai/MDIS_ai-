@@ -13,6 +13,7 @@ import {
   type ReviewTask,
   type ReviewStats,
   type ReviewPolicy,
+  type DocumentReviewSummary,
   safeApiErrorMessage,
 } from '../services/api';
 import {
@@ -31,10 +32,30 @@ import {
   Database,
 } from 'lucide-react';
 
-interface ReviewCenterProps {
-  onNavigate?: (view: string, documentId?: string, reviewTaskId?: string) => void;
+export type ReviewStatus = 'all' | 'pending' | 'in_review' | 'approved' | 'rejected' | 'corrected' | 'escalated';
+
+export function resolveDocumentReviewStatus(
+  document?: DocumentReviewSummary | null,
+  items: ReviewTask[] = [],
+): string {
+  const docStatus = document?.review_status?.toLowerCase();
+  if (docStatus && ['pending', 'in_review', 'approved', 'rejected', 'escalated'].includes(docStatus)) {
+    return docStatus;
+  }
+  if (!items.length) return 'unknown';
+  if (items.some((item) => item.status === 'pending')) return 'pending';
+  if (items.some((item) => item.status === 'in_review')) return 'in_review';
+  if (items.some((item) => item.status === 'rejected')) return 'rejected';
+  if (items.every((item) => item.status === 'approved')) return 'approved';
+  if (items.some((item) => item.status === 'corrected')) return 'corrected';
+  return 'unknown';
+}
+
+export interface ReviewCenterProps {
+  onNavigate?: (view: string, documentId?: string, reviewTaskId?: string, fromStatus?: string | null) => void;
   initialTaskId?: string | null;
   detailOnly?: boolean;
+  fromStatus?: string | null;
 }
 
 const PriorityBadge = ({ priority }: { priority: string }) => {
@@ -63,7 +84,9 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: ReviewCenterProps) {
+export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fromStatus }: ReviewCenterProps) {
+  // Validate fromStatus to prevent injection of arbitrary values into query
+  const validFromStatus = fromStatus && ['pending', 'in_review', 'approved', 'rejected', 'escalated'].includes(fromStatus) ? fromStatus : null;
   const [tasks, setTasks] = useState<ReviewTask[]>([]);
   const [stats, setStats] = useState<ReviewStats>({
     pending: 0,
@@ -102,12 +125,12 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
     setTimeout(() => setActionFeedback(null), 5000);
   };
 
-  const loadData = async () => {
+  const loadData = async (targetDocumentId?: string) => {
     setLoading(true);
     setError(null);
     try {
       const [queueRes, statsRes] = await Promise.all([
-        fetchReviewQueue(1, 50, priorityFilter, statusFilter, searchQuery),
+        fetchReviewQueue(1, 50, priorityFilter, validFromStatus || statusFilter, searchQuery, targetDocumentId),
         fetchReviewStats(),
       ]);
 
@@ -132,8 +155,11 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
   };
 
   useEffect(() => {
+    // In detailOnly mode without a status context the header cards are loaded
+    // after the task detail resolves (see the selectedTaskId effect below).
+    if (detailOnly && !validFromStatus) return;
     loadData();
-  }, [statusFilter, priorityFilter]);
+  }, [statusFilter, priorityFilter, detailOnly, validFromStatus]);
 
   useEffect(() => {
     fetchReviewPolicy().then(setReviewPolicy).catch(() => setReviewPolicy(null));
@@ -173,6 +199,11 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
           setCorrectedValueInput(t.entity?.normalized_value || t.entity?.raw_text || '');
           setCommentInput('');
           setCorrectionMode(false);
+          // In detailOnly mode without a list context, derive the document from
+          // the loaded task and fetch ONLY tasks for that document.
+          if (detailOnly && !validFromStatus && t.document_id) {
+            loadData(t.document_id);
+          }
         }
       })
       .catch((err) => {
@@ -188,6 +219,22 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
     };
   }, [detailOnly, selectedTaskId, canReview]);
 
+  // Shared post-action refresh: reload the list (scoped by document in detailOnly mode)
+  // and refresh the detail task so status badges update immediately.
+  const refreshAfterAction = async (targetTaskId?: string) => {
+    const taskId = targetTaskId || selectedTaskId || undefined;
+    const docId = detailTask?.document_id;
+    await loadData(detailOnly && !validFromStatus && docId ? docId : undefined);
+    if (taskId) {
+      try {
+        const refreshed = await fetchReviewTaskDetail(taskId);
+        setDetailTask(refreshed);
+      } catch {
+        // handled gracefully
+      }
+    }
+  };
+
   // Actions
   const handleApprove = async () => {
     if (!selectedTaskId || !canReview) return;
@@ -195,7 +242,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
     try {
       await approveReviewTask(selectedTaskId, commentInput || undefined);
       showFeedback('success', 'Document approved successfully.');
-      await loadData();
+      await refreshAfterAction(selectedTaskId);
     } catch (err: any) {
       showFeedback('error', safeApiErrorMessage(err, 'Unable to approve the document. Please try again.'));
     } finally {
@@ -211,7 +258,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
       showFeedback('success', 'Document rejected and recorded in audit log.');
       setShowRejectModal(false);
       setRejectReasonInput('');
-      await loadData();
+      await refreshAfterAction(selectedTaskId);
     } catch (err: any) {
       showFeedback('error', 'Unable to reject the document. Please try again.');
     } finally {
@@ -226,7 +273,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
       await correctReviewTask(selectedTaskId, correctedValueInput.trim(), commentInput || undefined);
       showFeedback('success', 'Correction saved and recorded in audit log.');
       setCorrectionMode(false);
-      await loadData();
+      await refreshAfterAction(selectedTaskId);
     } catch (err: any) {
       showFeedback('error', 'Unable to save the correction. Please try again.');
     } finally {
@@ -286,7 +333,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
     try {
       const result = await approveCleanReviewItems(detailTask.document_id);
       showFeedback('success', `Approved clean items: ${result.approved_count}.`);
-      await loadData();
+      await refreshAfterAction(selectedTaskId ?? undefined);
     } catch {
       showFeedback('error', 'Unable to approve clean items. Please try again.');
     } finally {
@@ -305,15 +352,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
     const activeTask = items.find((item) => item.status === 'pending')
       || items.find((item) => item.status === 'in_review')
       || items[0];
-    const status = items.some((item) => item.status === 'pending')
-      ? 'pending'
-      : items.some((item) => item.status === 'in_review')
-        ? 'in_review'
-        : items.some((item) => item.status === 'rejected')
-          ? 'rejected'
-          : items.some((item) => item.status === 'corrected')
-            ? 'corrected'
-            : 'approved';
+    const status = resolveDocumentReviewStatus(activeTask.document, items);
     const priority = items.some((item) => item.priority === 'high')
       ? 'high'
       : items.some((item) => item.priority === 'medium')
@@ -373,7 +412,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
                 <button
                   key={task.id}
                   type="button"
-                  onClick={() => onNavigate?.('review-document', undefined, task.id)}
+                  onClick={() => onNavigate?.('review-document', undefined, task.id, validFromStatus || statusFilter || undefined)}
                   aria-current={active ? 'page' : undefined}
                   className={`min-w-[13rem] max-w-[18rem] shrink-0 rounded-lg border px-3 py-2 text-left transition-colors ${
                     active
@@ -480,7 +519,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
             </div>
             <button
               type="button"
-              onClick={loadData}
+              onClick={() => loadData()}
               className="p-2 text-[#52627A] hover:text-[#071A3D] hover:bg-[#EAF5FF] rounded-md transition-colors"
               title="Refresh queue"
             >
@@ -519,7 +558,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
                 <div className="font-sans text-xs font-semibold text-[#071A3D]">Unable to load review tasks</div>
                 <div className="text-[11px] text-[#52627A] mt-1">{error}</div>
                 <button
-                  onClick={loadData}
+                  onClick={() => loadData()}
                   className="mt-3 px-3 py-1.5 bg-[#146EF5] text-white text-xs font-medium rounded-md hover:bg-[#146EF5]"
                 >
                   Retry
@@ -544,7 +583,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
                   <button
                     key={t.id}
                     onClick={() => detailOnly
-                      ? onNavigate?.('review-document', undefined, t.id)
+                      ? onNavigate?.('review-document', undefined, t.id, validFromStatus || statusFilter || undefined)
                       : setSelectedTaskId(t.id)}
                     aria-pressed={isSelected}
                     aria-label={`Review document: ${docName} — ${patientName}, ${group.items.length} clinical findings`}
@@ -613,7 +652,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false }: 
                   </p>
                   <button
                     type="button"
-                    onClick={() => onNavigate?.('review-document', undefined, selectedQueueDocument.activeTask.id)}
+                    onClick={() => onNavigate?.('review-document', undefined, selectedQueueDocument.activeTask.id, validFromStatus || statusFilter || undefined)}
                     className="mt-5 rounded-md bg-[#146EF5] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#0f5dcc]"
                   >
                     Open full review
