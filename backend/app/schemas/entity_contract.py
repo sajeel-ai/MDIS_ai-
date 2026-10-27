@@ -3,7 +3,10 @@
 from enum import Enum
 
 from typing import Any
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
+from app.services.extraction.review_contract import locate_evidence
+from app.config import settings
 
 
 class EntityType(str, Enum):
@@ -49,6 +52,11 @@ class ExtractedEntity(BaseModel):
     evidence_text: str = Field(min_length=1)
     page_number: int = Field(ge=1)
     details: dict[str, Any] = Field(default_factory=dict)
+    experiencer: Literal["patient", "family", "other"] | None = None
+    temporality: Literal["current", "historical", "planned"] | None = None
+    exclusion_reason: str | None = None
+    ocr_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    bbox: list[float] | None = None
 
     @field_validator("type", "code_system", "assertion", mode="before")
     @classmethod
@@ -88,14 +96,21 @@ def validate_entity_candidates(candidates: list) -> tuple[list[ExtractedEntity],
 
 
 def verify_or_relocate_evidence(source_text: str, entity: ExtractedEntity) -> tuple[ExtractedEntity, bool]:
-    if source_text[entity.start_offset:entity.end_offset] == entity.evidence_text:
-        return entity, True
-    relocated = source_text.find(entity.evidence_text)
-    if relocated < 0:
+    match = locate_evidence(
+        source_text,
+        entity.evidence_text,
+        fuzzy_threshold=settings.evidence_fuzzy_match_threshold,
+    )
+    if not match.get("verified"):
         return entity, False
     return entity.model_copy(update={
-        "start_offset": relocated,
-        "end_offset": relocated + len(entity.evidence_text),
+        "start_offset": match["start"],
+        "end_offset": match["end"],
+        "evidence_text": source_text[match["start"]:match["end"]],
+        "details": {
+            **entity.details,
+            **({"evidence_fuzzy_match": True, "evidence_review_reason": match.get("reason")} if match.get("fuzzy") else {}),
+        },
     }), True
 
 

@@ -328,6 +328,7 @@ class DocumentService:
                         "exact_text": s.text,
                         "sentence_text": None,
                         "section_name": None,
+                        "bbox": s.bbox,
                     }
                     for s in entity.evidence_spans
                 ]
@@ -342,6 +343,14 @@ class DocumentService:
                     "section": entity.section,
                     "status": entity.status,
                     "details": entity.details,
+                    "experiencer": entity.experiencer,
+                    "temporality": entity.temporality,
+                    "exclusion_reason": entity.exclusion_reason,
+                    "ocr_confidence": float(entity.ocr_confidence) if entity.ocr_confidence is not None else None,
+                    "extraction_confidence": float(entity.confidence),
+                    "group": (entity.details or {}).get("group"),
+                    "source": entity.source,
+                    "version": entity.version,
                     "validation_rule_codes": [v.rule_code or v.validation_rule.upper() for v in entity.validation_results if v.status in {"fail", "warning"}],
                     "evidence_spans": spans,
                 })

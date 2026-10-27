@@ -340,11 +340,15 @@ class LocalOCRProvider(BaseOCRProvider):
         words = []
         confidences = []
         word_boxes = []
+        word_confidences = []
+        text_cursor = 0
         final_w, final_h = image.size
         for index, (word, raw_confidence) in enumerate(zip(data.get("text", []), data.get("conf", []))):
             if not word or not word.strip():
                 continue
             words.append(word)
+            if text_cursor:
+                text_cursor += 1
             left, top = float(data["left"][index]), float(data["top"][index])
             right, bottom = left + float(data["width"][index]), top + float(data["height"][index])
             box = map_bbox_to_original(
@@ -354,13 +358,25 @@ class LocalOCRProvider(BaseOCRProvider):
                 processed_size=(final_w, final_h),
                 angle_degrees=deskew_angle,
             )
-            word_boxes.append({"text": word, "bounding_box": [round(v, 2) for v in box]})
             try:
                 confidence = float(raw_confidence)
             except (TypeError, ValueError):
-                continue
-            if confidence != -1:
+                confidence = None
+            if confidence is not None and confidence != -1:
                 confidences.append(confidence)
+                word_confidences.append(confidence / 100.0)
+            else:
+                word_confidences.append(None)
+            original_w, original_h = original_size
+            word_boxes.append({
+                "text": word,
+                "bounding_box": [round(v, 2) for v in box],
+                "bbox": [round(box[0] / original_w, 6), round(box[1] / original_h, 6), round(box[2] / original_w, 6), round(box[3] / original_h, 6)],
+                "start_offset": text_cursor,
+                "end_offset": text_cursor + len(word),
+                "confidence": confidence / 100.0 if confidence is not None and confidence >= 0 else None,
+            })
+            text_cursor += len(word)
         text = " ".join(words).strip()
         average = (sum(confidences) / len(confidences) / 100.0) if confidences else None
         return text, average, word_boxes

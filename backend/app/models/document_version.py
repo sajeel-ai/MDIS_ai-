@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -32,6 +32,7 @@ class DocumentVersion(Base):
     # SHA-256 of raw_text — used for deduplication and change detection.
     text_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     page_count: Mapped[int | None] = mapped_column(Integer)
+    ocr_pages: Mapped[list[dict] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

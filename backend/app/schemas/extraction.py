@@ -12,6 +12,7 @@ class EvidenceSpanResponse(BaseModel):
     exact_text: str
     sentence_text: Optional[str] = None
     section_name: Optional[str] = None
+    bbox: Optional[list[float]] = None
 
 
 class ClinicalEntityResponse(BaseModel):
@@ -27,6 +28,14 @@ class ClinicalEntityResponse(BaseModel):
     details: Optional[Dict[str, Any]] = None
     validation_rule_codes: List[str] = []
     evidence_spans: List[EvidenceSpanResponse] = []
+    experiencer: Optional[str] = None
+    temporality: Optional[str] = None
+    exclusion_reason: Optional[str] = None
+    ocr_confidence: Optional[float] = None
+    extraction_confidence: Optional[float] = None
+    group: Optional[str] = None
+    source: Optional[str] = None
+    version: Optional[int] = None
 
 
 class ExtractionResponse(BaseModel):

@@ -1,6 +1,7 @@
 """Documents API Router."""
 
 import hashlib
+from io import BytesIO
 import os
 import re
 import tempfile
@@ -10,7 +11,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, Response, BackgroundTasks, UploadFile, File, Form, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import pymupdf as fitz
-from PIL import Image
+from PIL import Image, ImageOps
+from pydantic import BaseModel
 
 from app.db import get_db, AsyncSessionLocal
 from app.dependencies import UserContext, get_current_user, audit_read_access
@@ -38,6 +40,33 @@ router = APIRouter(
     prefix="/documents", tags=["documents"],
     dependencies=[Depends(require_roles(*tuple(UserRole)))],
 )
+
+
+class PatientLinkRequest(BaseModel):
+    patient_id: uuid.UUID
+
+
+def render_page_png(content: bytes, mime_type: str, page_number: int, max_edge: int = 2048) -> bytes:
+    """Render a PDF/image page in memory with a bounded longest edge."""
+    source = BytesIO(content)
+    if mime_type == "application/pdf":
+        with fitz.open(stream=content, filetype="pdf") as pdf:
+            if page_number > pdf.page_count:
+                raise ValueError("Document page not found")
+            page = pdf.load_page(page_number - 1)
+            scale = min(2.0, max_edge / max(page.rect.width, page.rect.height))
+            return page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False).tobytes("png")
+    if mime_type.startswith("image/"):
+        with Image.open(source) as opened:
+            if page_number > getattr(opened, "n_frames", 1):
+                raise ValueError("Document page not found")
+            opened.seek(page_number - 1)
+            image = ImageOps.exif_transpose(opened.copy())
+            image.thumbnail((max_edge, max_edge))
+            output = BytesIO()
+            image.convert("RGB").save(output, format="PNG")
+            return output.getvalue()
+    raise NotImplementedError("Page rendering is unavailable for this document type")
 
 
 async def run_async_processing_task(job_id: uuid.UUID):
@@ -219,6 +248,58 @@ async def list_documents(
     }
 
 
+@router.post("/{document_id}/patient", dependencies=[Depends(require_roles(UserRole.CLINICIAN, UserRole.ADMIN))])
+async def link_document_patient(
+    document_id: uuid.UUID,
+    payload: PatientLinkRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserContext = Depends(get_current_user),
+):
+    document = await authorize_document_access(document_id, current_user, db, request)
+    patient = await authorize_patient_access(payload.patient_id, current_user, db, request)
+    if patient.deleted_at is not None:
+        raise HTTPException(status_code=409, detail="Deleted patients cannot be linked to documents")
+    document.patient_id = patient.id
+    await record_audit_event(
+        db, action="link_document_patient", user_id=current_user.id,
+        organization_id=current_user.organization_id, resource_type="document",
+        resource_id=document.id, request=request,
+    )
+    await db.commit()
+    return {"document_id": str(document.id), "patient_id": str(patient.id)}
+
+
+@router.get("/{document_id}/processing", dependencies=[Depends(audit_read_access("read_processing_status"))])
+async def get_document_processing_status(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserContext = Depends(get_current_user),
+    request: Request = None,
+):
+    document = await authorize_document_access(document_id, current_user, db, request)
+    from app.models import ProcessingJob, ProcessingStep
+
+    job = await db.scalar(
+        select(ProcessingJob)
+        .where(ProcessingJob.document_id == document_id)
+        .order_by(ProcessingJob.created_at.desc())
+        .limit(1)
+    )
+    if job is None:
+        return {"status": "uploaded", "stages": [], "failure_reason": None, "retryable": None}
+    steps = (await db.scalars(
+        select(ProcessingStep).where(ProcessingStep.processing_job_id == job.id)
+        .order_by(ProcessingStep.created_at)
+    )).all()
+    return {
+        "status": "failed" if job.status == "failed" else "ready_for_review" if job.status == "completed" else job.status,
+        "stages": [{"name": step.step_name, "status": step.status} for step in steps],
+        "failure_reason": job.error_message if job.status == "failed" else None,
+        "retryable": True if job.status == "failed" and job.error_code and job.error_code.startswith("PROCESSING_") else False if job.status == "failed" else None,
+    }
+
+
 @router.get("/{document_id}", response_model=DocumentDetailResponse, dependencies=[Depends(audit_read_access("view_document"))])
 async def get_document(
     document_id: uuid.UUID,
@@ -323,7 +404,37 @@ async def get_document_file(
         content = await provider.read_file(document.storage_key)
     except FileNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file not found in storage")
-    return Response(content=content, media_type=document.mime_type or "application/octet-stream")
+    return Response(content=content, media_type=document.mime_type or "application/octet-stream", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/{document_id}/pages/{page_number}/image", dependencies=[Depends(audit_read_access("read_page_image"))])
+async def get_document_page_image(
+    document_id: uuid.UUID,
+    page_number: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserContext = Depends(get_current_user),
+    request: Request = None,
+):
+    """Render one authenticated page in memory; do not create plaintext temp files."""
+    if page_number < 1:
+        raise HTTPException(status_code=404, detail="Document page not found")
+    document = await authorize_document_access(document_id, current_user, db, request)
+    if not document.storage_key:
+        raise HTTPException(status_code=404, detail="Document file not found")
+    from app.providers.storage import get_storage_provider
+
+    try:
+        content = await get_storage_provider().read_file(document.storage_key)
+        if not document.mime_type:
+            raise HTTPException(status_code=415, detail="Page rendering is unavailable for this document type")
+        rendered = render_page_png(content, document.mime_type, page_number)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Document file not found in storage") from None
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except NotImplementedError as exc:
+        raise HTTPException(status_code=415, detail=str(exc)) from exc
+    return Response(content=rendered, media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 

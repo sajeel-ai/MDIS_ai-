@@ -25,6 +25,7 @@ from app.models.validation import ValidationResult  # noqa: F401
 from app.models.review import ReviewTask  # noqa: F401
 from app.models.audit import AuditEvent  # noqa: F401
 from app.models.document_validation_flag import DocumentValidationFlag  # noqa: F401
+from app.models.clinical_entity_revision import ClinicalEntityRevision  # noqa: F401
 
 __all__ = [
     "Base",
@@ -50,4 +51,5 @@ __all__ = [
     "ReviewTask",
     "AuditEvent",
     "DocumentValidationFlag",
+    "ClinicalEntityRevision",
 ]

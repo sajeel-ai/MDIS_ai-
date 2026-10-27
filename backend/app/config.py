@@ -106,6 +106,8 @@ class Settings(BaseSettings):
 
     # OCR memory cap (Item 2)
     ocr_max_image_pixels: int = 89_478_485  # ~10k×10k px, half Pillow's bomb limit
+    ocr_low_confidence_threshold: float = Field(default=0.65, ge=0.0, le=1.0)
+    evidence_fuzzy_match_threshold: float = Field(default=0.97, ge=0.0, le=1.0)
 
     extraction_provider: str = "openai"  # local | mock | openai | hybrid
     extraction_llm_fallback_enabled: bool = False

@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -51,6 +51,7 @@ class ReviewTask(Base):
     decision: Mapped[str | None] = mapped_column(String(32))
     # 'approved' | 'rejected' | 'corrected'
     comment: Mapped[str | None] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     # Relationships
     document: Mapped["Document"] = relationship(  # type: ignore[name-defined]

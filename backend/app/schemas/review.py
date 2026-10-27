@@ -29,6 +29,15 @@ class EntityReviewSummary(BaseModel):
     status: str
     details: Optional[Dict[str, Any]] = None
     original_ai_value: Optional[str] = None
+    experiencer: Optional[str] = None
+    temporality: Optional[str] = None
+    exclusion_reason: Optional[str] = None
+    ocr_confidence: Optional[float] = None
+    extraction_confidence: Optional[float] = None
+    bbox: Optional[list[float]] = None
+    group: Optional[str] = None
+    source: Optional[str] = None
+    version: Optional[int] = None
 
 
 class EvidenceReviewSummary(BaseModel):
@@ -37,6 +46,7 @@ class EvidenceReviewSummary(BaseModel):
     start_offset: int
     end_offset: int
     page_number: int
+    bbox: Optional[list[float]] = None
 
 
 class ValidationReviewSummary(BaseModel):
@@ -66,6 +76,9 @@ class ReviewTaskResponse(BaseModel):
     validation: Optional[ValidationReviewSummary] = None
     validation_results: List[ValidationReviewSummary] = []
     source_text: Optional[str] = None
+    version: Optional[int] = None
+    decision_actor: Optional[str] = None
+    decision_at: Optional[str] = None
 
 
 class ReviewDecisionRequest(BaseModel):
@@ -74,3 +87,4 @@ class ReviewDecisionRequest(BaseModel):
     corrected_value: Optional[str] = None
     acknowledged: Optional[bool] = False
     justification: Optional[str] = None
+    expected_version: Optional[int] = None

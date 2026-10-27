@@ -1,6 +1,7 @@
 """Patients API Router."""
 
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select, func
@@ -30,7 +31,7 @@ async def list_patients(
 ):
     """List patients with optional MRN/name search."""
     await record_audit_event(db, action="list_patients", user_id=current_user.id, organization_id=current_user.organization_id)
-    base_query = select(Patient)
+    base_query = select(Patient).where(Patient.deleted_at.is_(None))
     if current_user.organization_id is not None:
         base_query = base_query.where(Patient.organization_id == current_user.organization_id)
 
@@ -74,6 +75,26 @@ async def list_patients(
         "page_size": page_size,
         "has_next": (page * page_size) < total,
     }
+
+
+@router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_roles(UserRole.ADMIN))])
+async def soft_delete_patient(
+    patient_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserContext = Depends(get_current_user),
+):
+    """Hide a patient from active search without cascading deletion to records."""
+    patient = await authorize_patient_access(patient_id, current_user, db, request)
+    if patient.deleted_at is None:
+        patient.deleted_at = datetime.now(timezone.utc)
+        await record_audit_event(
+            db, action="soft_delete_patient", user_id=current_user.id,
+            organization_id=current_user.organization_id, resource_type="patient",
+            resource_id=patient.id, request=request,
+        )
+        await db.commit()
+    return None
 
 
 @router.get("/{patient_id}/timeline", response_model=PatientTimelineResponse)

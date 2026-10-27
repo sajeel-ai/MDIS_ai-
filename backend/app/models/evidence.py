@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -36,6 +36,7 @@ class EvidenceSpan(Base):
     start_offset: Mapped[int] = mapped_column(Integer, nullable=False)
     end_offset: Mapped[int] = mapped_column(Integer, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
+    bbox: Mapped[list[float] | None] = mapped_column(JSONB)
     # The exact characters raw_text[start_offset:end_offset] — stored for
     # fast retrieval without re-slicing the full text.
     created_at: Mapped[datetime] = mapped_column(

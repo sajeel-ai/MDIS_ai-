@@ -6,23 +6,45 @@ from app.schemas.entity_contract import Assertion
 
 
 SECTION_ALIASES = {
+    "CHIEF COMPLAINT": "CHIEF COMPLAINT",
+    "CC": "CHIEF COMPLAINT",
+    "HISTORY OF PRESENT ILLNESS": "HISTORY OF PRESENT ILLNESS",
+    "HISTORY PRESENT ILLNESS": "HISTORY OF PRESENT ILLNESS",
+    "HPI": "HISTORY OF PRESENT ILLNESS",
+    "PAST MEDICAL HISTORY": "PAST MEDICAL HISTORY",
+    "MEDICAL HISTORY": "PAST MEDICAL HISTORY",
+    "PMH": "PAST MEDICAL HISTORY",
+    "PAST SURGICAL HISTORY": "SURGICAL HISTORY",
+    "SURGICAL HISTORY": "SURGICAL HISTORY",
+    "MEDICATION": "MEDICATIONS",
+    "MEDICATIONS": "MEDICATIONS",
+    "CURRENT MEDICATIONS": "MEDICATIONS",
+    "ALLERGY": "ALLERGIES",
+    "ALLERGIES": "ALLERGIES",
     "FAMILY HISTORY": "FAMILY HISTORY",
     "FAMILY MEDICAL HISTORY": "FAMILY HISTORY",
-    "PAST MEDICAL HISTORY": "PAST MEDICAL HISTORY",
-    "PMH": "PAST MEDICAL HISTORY",
-    "ALLERGIES": "ALLERGIES",
-    "ALLERGY": "ALLERGIES",
+    "SOCIAL HISTORY": "SOCIAL HISTORY",
+    "SOCIAL": "SOCIAL HISTORY",
+    "REVIEW OF SYSTEMS": "REVIEW OF SYSTEMS",
+    "ROS": "REVIEW OF SYSTEMS",
+    "PHYSICAL EXAMINATION": "EXAM",
+    "PHYSICAL EXAM": "EXAM",
+    "EXAMINATION": "EXAM",
+    "EXAM": "EXAM",
+    "LABS": "LABS",
+    "LABORATORY": "LABS",
+    "LAB RESULTS": "LABS",
+    "LAB RESULT": "LABS",
+    "ASSESSMENT": "ASSESSMENT",
+    "IMPRESSION": "ASSESSMENT",
+    "PLAN": "PLAN",
+    "TREATMENT PLAN": "PLAN",
+    "DISCHARGE INSTRUCTIONS": "DISCHARGE INSTRUCTIONS",
+    "DISCHARGE INSTRUCTION": "DISCHARGE INSTRUCTIONS",
+    "RETURN PRECAUTIONS": "DISCHARGE INSTRUCTIONS",
     "MEDICATIONS ON DISCHARGE": "MEDICATIONS ON DISCHARGE",
     "DISCHARGE MEDICATIONS": "MEDICATIONS ON DISCHARGE",
-    "MEDICATIONS": "MEDICATIONS",
-    "ASSESSMENT": "ASSESSMENT",
     "DIAGNOSIS": "DIAGNOSIS",
-    "HISTORY OF PRESENT ILLNESS": "HISTORY OF PRESENT ILLNESS",
-    "HPI": "HISTORY OF PRESENT ILLNESS",
-    "REVIEW OF SYSTEMS": "REVIEW OF SYSTEMS",
-    "PLAN": "PLAN",
-    "LABORATORY": "LABORATORY",
-    "LAB RESULTS": "LABORATORY",
 }
 
 _SECTION_RE = re.compile(r"^\s*([A-Za-z][A-Za-z /_-]{1,50})\s*:?\s*$")
@@ -45,7 +67,7 @@ _RECOMMENDED_RE = re.compile(r"\b(?:recommended|recommend|advised|advised to|sta
 # Conditional: "if fever persists", "return if", "return precautions", etc.
 # More specific than hypothetical — checked first.
 _CONDITIONAL_RE = re.compile(
-    r"\b(?:if\s+\w+\s+(?:persists?|returns?|worsens?|develops?)|return\s+(?:if|precautions?)|precautions?\s+if)\b",
+    r"\b(?:if\b|return\s+precautions?|precautions?\s+if)\b",
     re.IGNORECASE,
 )
 
@@ -56,7 +78,7 @@ _POST_NEGATION_RE = re.compile(
 )
 
 
-def detect_section(text: str, offset: int) -> str | None:
+def detect_section(text: str, offset: int) -> str:
     current = None
     line_start = 0
     for line in text[:offset].splitlines(keepends=True):
@@ -75,7 +97,23 @@ def detect_section(text: str, offset: int) -> str | None:
         heading = re.sub(r"\s+", " ", candidate).upper()
         if heading in SECTION_ALIASES:
             current = SECTION_ALIASES[heading]
-    return current
+    return current or "unknown"
+
+
+def detect_experiencer(section: str, text: str = "") -> str:
+    if section == "FAMILY HISTORY" or _FAMILY_RE.search(text):
+        return "family"
+    if re.search(r"\b(?:caregiver|friend|spouse|husband|wife|partner)\b", text, re.IGNORECASE):
+        return "other"
+    return "patient"
+
+
+def detect_temporality(assertion: Assertion, section: str, text: str = "") -> str:
+    if assertion in {Assertion.HISTORICAL, Assertion.DISCONTINUED} or section in {"PAST MEDICAL HISTORY", "SURGICAL HISTORY"}:
+        return "historical"
+    if assertion in {Assertion.CONDITIONAL, Assertion.HYPOTHETICAL} or section in {"PLAN", "DISCHARGE INSTRUCTIONS"}:
+        return "planned"
+    return "current"
 
 
 def _clause_bounds(text: str, start: int, end: int) -> tuple[int, int]:

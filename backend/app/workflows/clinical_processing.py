@@ -31,7 +31,7 @@ from app.providers.extraction import (
     get_extraction_provider,
 )
 from app.providers.extraction.base import ExtractionProviderFailure
-from app.providers.extraction.context import detect_section
+from app.providers.extraction.context import detect_assertion, detect_experiencer, detect_section, detect_temporality
 from app.schemas.entity_contract import validate_entity_candidates, verify_or_relocate_evidence
 from app.providers.ocr import get_ocr_provider
 from app.providers.storage import get_storage_provider
@@ -39,6 +39,12 @@ from app.config import settings
 from app.services.validation.engine import validate_entities, validate_document_level_issues
 from app.services.validation.rules.vital_mentioned_not_extracted import detect_missing_vitals
 from app.services.validation.review_policy import requires_review
+from app.services.extraction.review_contract import (
+    build_ocr_page_metadata,
+    derive_entity_group,
+    derive_exclusion_reason,
+    evidence_bbox_and_confidence,
+)
 from app.workflows.states import PROCESSING_STEP_STATUSES
 
 logger = logging.getLogger(__name__)
@@ -122,6 +128,7 @@ class ClinicalProcessingWorkflow:
                 raise RuntimeError("OCR_EMPTY_RESULT: OCR produced no usable text")
 
             text_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+            ocr_pages = build_ocr_page_metadata(raw_text, ocr_res.get("pages"))
 
             # OCR retries that produce the same source text reuse the existing
             # provenance version instead of creating duplicate versions.
@@ -138,6 +145,7 @@ class ClinicalProcessingWorkflow:
                     raw_text=raw_text,
                     text_hash=text_hash,
                     page_count=ocr_res.get("page_count", 0),
+                    ocr_pages=ocr_pages,
                 )
                 self.session.add(doc_version)
                 await self.session.flush()
@@ -178,7 +186,23 @@ class ClinicalProcessingWorkflow:
             for item in validated_entities:
                 item, evidence_verified = verify_or_relocate_evidence(normalized_text, item)
 
-                section = detect_section(normalized_text, item.start_offset) or item.section
+                section = detect_section(normalized_text, item.start_offset)
+                if section == "unknown" and item.section:
+                    section = item.section
+                assertion = detect_assertion(
+                    normalized_text, item.start_offset, item.end_offset, section
+                ).value
+                experiencer = detect_experiencer(section, item.evidence_text)
+                temporality = detect_temporality(
+                    type(item.assertion)(assertion), section, item.evidence_text
+                )
+                page_words = next(
+                    (page.get("word_boxes", []) for page in ocr_pages if page.get("page_number") == item.page_number),
+                    [],
+                )
+                bbox, ocr_confidence = evidence_bbox_and_confidence(
+                    page_words, item.start_offset, item.end_offset
+                )
                 conf = item.confidence
 
                 details_dict = {}
@@ -189,6 +213,29 @@ class ClinicalProcessingWorkflow:
                 details_dict.update(item.details)
                 if not evidence_verified:
                     details_dict["evidence_unverified"] = True
+                    details_dict["evidence_review_reason"] = "evidence not found"
+                if item.details.get("evidence_fuzzy_match"):
+                    details_dict["evidence_fuzzy_match"] = True
+                    details_dict["evidence_review_reason"] = item.details.get("evidence_review_reason")
+
+                exclusion_reason = item.exclusion_reason or derive_exclusion_reason(
+                    normalized_text, item.start_offset
+                )
+                initial_status = "unreviewed" if evidence_verified else "needs_correction"
+                if item.details.get("evidence_fuzzy_match"):
+                    initial_status = "needs_correction"
+                if ocr_confidence is not None and ocr_confidence < settings.ocr_low_confidence_threshold:
+                    initial_status = "needs_correction"
+                    details_dict["low_ocr_confidence"] = True
+                    details_dict["low_ocr_confidence_threshold"] = settings.ocr_low_confidence_threshold
+
+                group = derive_entity_group(
+                    assertion,
+                    status=initial_status,
+                    section=section,
+                    evidence_verified=evidence_verified,
+                )
+                details_dict["group"] = group
 
                 entity = ClinicalEntity(
                     extraction_id=extraction.id,
@@ -197,9 +244,14 @@ class ClinicalProcessingWorkflow:
                     normalized_value=item.normalized_value,
                     original_ai_value=item.normalized_value,
                     confidence=conf,
-                    status="unreviewed" if evidence_verified else "needs_correction",
-                    assertion=item.assertion.value,
+                    status=initial_status,
+                    assertion=assertion,
                     section=section,
+                    experiencer=experiencer,
+                    temporality=temporality,
+                    exclusion_reason=exclusion_reason,
+                    ocr_confidence=ocr_confidence,
+                    source="ai_extracted",
                     details=details_dict if details_dict else None,
                 )
                 self.session.add(entity)
@@ -216,6 +268,7 @@ class ClinicalProcessingWorkflow:
                         start_offset=item.start_offset,
                         end_offset=item.end_offset,
                         text=item.evidence_text,
+                        bbox=bbox,
                     )
                     self.session.add(span)
             await self._complete_step(step5, "completed", 120)
@@ -225,6 +278,35 @@ class ClinicalProcessingWorkflow:
             step7 = await self._record_step(job.id, "validation", "running")
 
             for ent, issues in zip(entities_created, validation_issues):
+                if any(issue.severity in {"warning", "error"} for issue in issues):
+                    ent.details = {
+                        **(ent.details or {}),
+                        "group": derive_entity_group(
+                            ent.assertion,
+                            status=ent.status,
+                            section=ent.section,
+                            evidence_verified=not bool((ent.details or {}).get("evidence_unverified")),
+                            unresolved_flag=True,
+                        ),
+                    }
+                if ent.ocr_confidence is not None and ent.ocr_confidence < settings.ocr_low_confidence_threshold:
+                    self.session.add(ValidationResult(
+                        entity_id=ent.id,
+                        validation_rule="low_ocr_confidence",
+                        rule_code="low_ocr_confidence",
+                        status="warning",
+                        severity="warning",
+                        message="OCR confidence is below the configured review threshold.",
+                    ))
+                if ent.details and ent.details.get("evidence_fuzzy_match"):
+                    self.session.add(ValidationResult(
+                        entity_id=ent.id,
+                        validation_rule="evidence_fuzzy_match",
+                        rule_code="evidence_fuzzy_match",
+                        status="warning",
+                        severity="warning",
+                        message="Evidence was fuzzy matched and requires reviewer confirmation.",
+                    ))
                 for issue in issues:
                     self.session.add(ValidationResult(
                         entity_id=ent.id,

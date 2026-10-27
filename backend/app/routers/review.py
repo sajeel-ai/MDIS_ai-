@@ -12,7 +12,7 @@ from app.dependencies.auth import UserRole
 from app.dependencies.permissions import require_roles
 from app.schemas.common import PaginatedResponse
 from app.schemas.review import ReviewTaskResponse, ReviewDecisionRequest
-from app.services.review.review_service import ReviewService
+from app.services.review.review_service import ReviewService, ReviewVersionConflict
 from app.services.audit_service import record_audit_event
 from app.config import settings
 from sqlalchemy import select
@@ -170,7 +170,10 @@ async def submit_review_decision(
             reviewer_user_id=reviewer_id,
             acknowledged=bool(payload.acknowledged),
             justification=payload.justification,
+            expected_version=payload.expected_version,
         )
+    except ReviewVersionConflict as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND if "not found" in str(exc) else status.HTTP_400_BAD_REQUEST,

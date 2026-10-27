@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,6 +39,12 @@ class ClinicalEntity(Base):
     )
     assertion: Mapped[str] = mapped_column(String(24), nullable=False, default="present", server_default="present")
     section: Mapped[str | None] = mapped_column(String(64))
+    experiencer: Mapped[str | None] = mapped_column(String(16))
+    temporality: Mapped[str | None] = mapped_column(String(16))
+    exclusion_reason: Mapped[str | None] = mapped_column(Text)
+    ocr_confidence: Mapped[float | None] = mapped_column(Numeric(5, 4))
+    source: Mapped[str | None] = mapped_column(String(24))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     # 'unreviewed' | 'approved' | 'rejected' | 'needs_correction'
 
     # Entity-type-specific fields stored as JSONB.

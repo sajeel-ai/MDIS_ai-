@@ -16,10 +16,15 @@ from app.models import (
     ClinicalEntity,
     EvidenceSpan,
     ValidationResult,
+    ClinicalEntityRevision,
 )
 from app.workflows.states import aggregate_review_status
 from app.services.audit_service import record_audit_event
 from app.config import settings
+
+
+class ReviewVersionConflict(ValueError):
+    """Raised when a reviewer submits a stale review task version."""
 
 
 
@@ -183,6 +188,14 @@ class ReviewService:
                 "status": entity.status,
                 "details": entity.details,
                 "original_ai_value": entity.original_ai_value,
+                "experiencer": entity.experiencer,
+                "temporality": entity.temporality,
+                "exclusion_reason": entity.exclusion_reason,
+                "ocr_confidence": float(entity.ocr_confidence) if entity.ocr_confidence is not None else None,
+                "extraction_confidence": float(entity.confidence),
+                "group": (entity.details or {}).get("group"),
+                "source": entity.source,
+                "version": entity.version,
             }
 
             if entity.evidence_spans:
@@ -193,6 +206,7 @@ class ReviewService:
                     "start_offset": span.start_offset,
                     "end_offset": span.end_offset,
                     "page_number": span.page_number or 1,
+                    "bbox": span.bbox,
                 }
 
             validation_results = [{
@@ -242,6 +256,9 @@ class ReviewService:
             "evidence": evidence_dict,
             "validation": validation_dict,
             "source_text": source_text,
+            "version": task.version,
+            "decision_actor": str(task.assigned_to) if task.completed_at and task.assigned_to else None,
+            "decision_at": task.completed_at.isoformat() if task.completed_at else None,
         }
 
     async def get_review_queue(
@@ -395,6 +412,7 @@ class ReviewService:
         reviewer_user_id: uuid.UUID | None = None,
         acknowledged: bool = False,
         justification: str | None = None,
+        expected_version: int | None = None,
     ) -> Dict[str, Any]:
         query = (
             select(ReviewTask)
@@ -408,6 +426,8 @@ class ReviewService:
         task = res.scalars().first()
         if not task:
             raise ValueError(f"ReviewTask {task_id} not found")
+        if expected_version is not None and task.version != expected_version:
+            raise ReviewVersionConflict("Review task changed; reload before submitting this decision")
 
         valid_decisions = ["approved", "rejected", "corrected", "needs_correction"]
         if decision not in valid_decisions:
@@ -439,6 +459,13 @@ class ReviewService:
                 raise_on_violation=True,
             )
 
+        entity_before = None
+        if task.entity:
+            entity_before = {
+                "status": task.entity.status,
+                "normalized_value": task.entity.normalized_value,
+                "assertion": task.entity.assertion,
+            }
         task.status = target_status
         task.decision = target_status
         task.comment = comment
@@ -462,6 +489,21 @@ class ReviewService:
                     if corrected_value and corrected_value.strip():
                         entity.original_ai_value = entity.original_ai_value or entity.normalized_value
                         entity.normalized_value = corrected_value.strip()
+                entity.version += 1
+                self.session.add(ClinicalEntityRevision(
+                    entity_id=entity.id,
+                    actor_user_id=reviewer_user_id,
+                    source="reviewer_edited",
+                    action=target_status,
+                    before=entity_before,
+                    after={
+                        "status": entity.status,
+                        "normalized_value": entity.normalized_value,
+                        "assertion": entity.assertion,
+                    },
+                    comment=comment,
+                ))
+        task.version += 1
 
         # Keep processing status independent from the review lifecycle.
         doc_res = await self.session.execute(
@@ -573,10 +615,29 @@ class ReviewService:
 
             task.status = task.decision = "approved"
             task.completed_at = now
+            task.version += 1
             if reviewer_user_id:
                 task.assigned_to = reviewer_user_id
             if task.entity:
+                before = {
+                    "status": task.entity.status,
+                    "normalized_value": task.entity.normalized_value,
+                    "assertion": task.entity.assertion,
+                }
                 task.entity.status = "approved"
+                task.entity.version += 1
+                self.session.add(ClinicalEntityRevision(
+                    entity_id=task.entity.id,
+                    actor_user_id=reviewer_user_id,
+                    source="reviewer_edited",
+                    action="approved",
+                    before=before,
+                    after={
+                        "status": task.entity.status,
+                        "normalized_value": task.entity.normalized_value,
+                        "assertion": task.entity.assertion,
+                    },
+                ))
             approved += 1
         document = tasks[0].document if tasks else None
         if document:
