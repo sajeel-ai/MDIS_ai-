@@ -20,6 +20,7 @@ from app.db import AsyncSessionLocal, engine
 from app.models import (
     AuditEvent,
     ClinicalEntity,
+    ClinicalEntityRevision,
     Document,
     DocumentValidationFlag,
     DocumentVersion,
@@ -34,7 +35,7 @@ from app.models import (
     User,
     UserRole,
 )
-from app.services.review.review_service import ReviewService
+from app.services.review.review_service import ReviewService, ReviewVersionConflict
 from app.services.documents.document_service import DocumentService
 from app.services.validation.engine import validate_document_level_issues
 from app.workflows.clinical_processing import ClinicalProcessingWorkflow
@@ -777,4 +778,60 @@ async def test_pg_single_and_batch_approval_share_critical_flag_gate(pg_test_env
     await db.refresh(task)
     assert approved_count == 0
     assert task.status == "pending"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pg_review_decision_persists_revision_and_rejects_stale_version(pg_test_env):
+    db = pg_test_env["db"]
+    document = pg_test_env["doc_a"]
+    reviewer = pg_test_env["reviewer"]
+    extraction = Extraction(document_id=document.id, status="completed", model_name="synthetic")
+    db.add(extraction)
+    await db.flush()
+    entity = ClinicalEntity(
+        extraction_id=extraction.id, entity_type="symptom", raw_text="cough",
+        normalized_value="cough", original_ai_value="cough", confidence=0.9,
+        status="unreviewed", assertion="present", section="HPI", version=1,
+    )
+    db.add(entity)
+    await db.flush()
+    task = ReviewTask(document_id=document.id, entity_id=entity.id, priority="normal", reason="synthetic review", status="pending", version=1)
+    db.add(task)
+    await db.flush()
+    task_id, entity_id, reviewer_id = task.id, entity.id, reviewer.id
+
+    await ReviewService(db).record_review_decision(
+        task_id=task_id, decision="corrected", corrected_value="cough symptom",
+        reviewer_user_id=reviewer_id, expected_version=1,
+    )
+    revision = await db.scalar(select(ClinicalEntityRevision).where(ClinicalEntityRevision.entity_id == entity_id))
+    assert revision is not None
+    assert revision.actor_user_id == reviewer_id
+    assert revision.source == "reviewer_edited"
+    assert revision.after["normalized_value"] == "cough symptom"
+    assert revision.created_at is not None
+    audit = await db.scalar(select(AuditEvent).where(AuditEvent.action == "review_decision", AuditEvent.resource_id == task_id))
+    assert audit is not None and audit.user_id == reviewer_id
+
+    with pytest.raises(ReviewVersionConflict, match="changed"):
+        await ReviewService(db).record_review_decision(
+            task_id=task_id, decision="rejected", reviewer_user_id=reviewer_id,
+            expected_version=1,
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pg_soft_delete_patient_preserves_document_link_and_hides_active_search(pg_test_env):
+    from datetime import datetime, timezone
+
+    db = pg_test_env["db"]
+    document = pg_test_env["doc_a"]
+    patient_id = document.patient_id
+    patient = await db.get(Patient, patient_id)
+    patient.deleted_at = datetime.now(timezone.utc)
+    await db.flush()
+    assert document.patient_id == patient_id
+    assert await db.scalar(select(Patient.id).where(Patient.id == patient_id, Patient.deleted_at.is_(None))) is None
 

@@ -4,6 +4,7 @@ import uuid
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -16,11 +17,171 @@ from app.services.review.review_service import ReviewService, ReviewVersionConfl
 from app.services.audit_service import record_audit_event
 from app.config import settings
 from sqlalchemy import select
-from app.models import Document
+from sqlalchemy.orm import selectinload
+from app.models import ClinicalEntity, ClinicalEntityRevision, Document, Extraction, ReviewTask
+from app.security.authorization import authorize_document_access
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/review", tags=["review"], dependencies=[Depends(require_roles(*tuple(UserRole)))])
+
+
+class EntityVersionRequest(BaseModel):
+    expected_version: int = Field(ge=1)
+
+
+class EntityEditRequest(EntityVersionRequest):
+    normalized_value: str | None = None
+    assertion: str | None = None
+    section: str | None = None
+
+
+class EntityCommentRequest(EntityVersionRequest):
+    comment: str = Field(min_length=1, max_length=4000)
+
+
+async def _load_scoped_entity(entity_id: uuid.UUID, db: AsyncSession, user: UserContext):
+    result = await db.execute(
+        select(ClinicalEntity, Document)
+        .join(Extraction, ClinicalEntity.extraction_id == Extraction.id)
+        .join(Document, Extraction.document_id == Document.id)
+        .options(selectinload(ClinicalEntity.evidence_spans), selectinload(ClinicalEntity.validation_results))
+        .where(ClinicalEntity.id == entity_id, Document.organization_id == user.organization_id)
+    )
+    row = result.first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Clinical entity not found")
+    return row[0], row[1]
+
+
+def _entity_snapshot(entity: ClinicalEntity) -> dict:
+    return {
+        "status": entity.status,
+        "normalized_value": entity.normalized_value,
+        "assertion": entity.assertion,
+        "section": entity.section,
+    }
+
+
+async def _persist_entity_revision(entity, before, actor_id, action, db, request, organization_id, comment=None):
+    after = _entity_snapshot(entity)
+    db.add(ClinicalEntityRevision(
+        entity_id=entity.id, actor_user_id=actor_id, source="reviewer_edited",
+        action=action, before=before, after=after, comment=comment,
+    ))
+    await record_audit_event(
+        db, action=f"review_entity_{action}", user_id=actor_id,
+        organization_id=organization_id, resource_type="clinical_entity",
+        resource_id=entity.id, request=request,
+    )
+    await db.commit()
+
+
+@router.post("/entities/{entity_id}/edit", dependencies=[Depends(require_roles(UserRole.REVIEWER, UserRole.ADMIN))])
+async def edit_review_entity(
+    entity_id: uuid.UUID, payload: EntityEditRequest, request: Request,
+    db: AsyncSession = Depends(get_db), current_user: UserContext = Depends(get_current_user),
+):
+    entity, document = await _load_scoped_entity(entity_id, db, current_user)
+    if entity.version != payload.expected_version:
+        raise HTTPException(status_code=409, detail="Entity changed; reload before editing")
+    before = _entity_snapshot(entity)
+    if payload.normalized_value is not None:
+        if not payload.normalized_value.strip():
+            raise HTTPException(status_code=422, detail="Corrected value must not be empty")
+        entity.normalized_value = payload.normalized_value.strip()
+        entity.original_ai_value = entity.original_ai_value or before["normalized_value"]
+    if payload.assertion is not None:
+        entity.assertion = payload.assertion
+    if payload.section is not None:
+        entity.section = payload.section
+    entity.status = "needs_correction"
+    entity.source = "reviewer_edited"
+    entity.version += 1
+    await _persist_entity_revision(entity, before, current_user.id, "edited", db, request, document.organization_id)
+    return {"entity_id": str(entity.id), "version": entity.version, "status": entity.status}
+
+
+@router.post("/entities/{entity_id}/reject", dependencies=[Depends(require_roles(UserRole.REVIEWER, UserRole.ADMIN))])
+async def reject_review_entity(
+    entity_id: uuid.UUID, payload: EntityVersionRequest, request: Request,
+    db: AsyncSession = Depends(get_db), current_user: UserContext = Depends(get_current_user),
+):
+    entity, document = await _load_scoped_entity(entity_id, db, current_user)
+    if entity.version != payload.expected_version:
+        raise HTTPException(status_code=409, detail="Entity changed; reload before rejecting")
+    before = _entity_snapshot(entity)
+    entity.status = "rejected"
+    entity.source = "reviewer_edited"
+    entity.version += 1
+    await _persist_entity_revision(entity, before, current_user.id, "rejected", db, request, document.organization_id)
+    return {"entity_id": str(entity.id), "version": entity.version, "status": entity.status}
+
+
+@router.post("/entities/{entity_id}/comment", dependencies=[Depends(require_roles(UserRole.REVIEWER, UserRole.ADMIN))])
+async def comment_on_review_entity(
+    entity_id: uuid.UUID, payload: EntityCommentRequest, request: Request,
+    db: AsyncSession = Depends(get_db), current_user: UserContext = Depends(get_current_user),
+):
+    entity, document = await _load_scoped_entity(entity_id, db, current_user)
+    if entity.version != payload.expected_version:
+        raise HTTPException(status_code=409, detail="Entity changed; reload before commenting")
+    before = _entity_snapshot(entity)
+    entity.version += 1
+    await _persist_entity_revision(entity, before, current_user.id, "commented", db, request, document.organization_id, payload.comment.strip())
+    return {"entity_id": str(entity.id), "version": entity.version, "comment_saved": True}
+
+
+@router.post("/entities/{entity_id}/accept", dependencies=[Depends(require_roles(UserRole.REVIEWER, UserRole.ADMIN))])
+async def accept_review_entity(
+    entity_id: uuid.UUID, payload: EntityVersionRequest, request: Request,
+    db: AsyncSession = Depends(get_db), current_user: UserContext = Depends(get_current_user),
+):
+    entity, document = await _load_scoped_entity(entity_id, db, current_user)
+    if entity.version != payload.expected_version:
+        raise HTTPException(status_code=409, detail="Entity changed; reload before accepting")
+    task = await db.scalar(select(ReviewTask).where(ReviewTask.entity_id == entity.id).order_by(ReviewTask.created_at.desc()).limit(1))
+    if task is None:
+        raise HTTPException(status_code=409, detail="Entity has no review task to approve")
+    try:
+        return await ReviewService(db).record_review_decision(
+            task_id=task.id, decision="approved", reviewer_user_id=current_user.id,
+            expected_version=task.version,
+        )
+    except ReviewVersionConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/entities/{entity_id}/undo", dependencies=[Depends(require_roles(UserRole.REVIEWER, UserRole.ADMIN))])
+async def undo_review_entity(
+    entity_id: uuid.UUID, payload: EntityVersionRequest, request: Request,
+    db: AsyncSession = Depends(get_db), current_user: UserContext = Depends(get_current_user),
+):
+    entity, document = await _load_scoped_entity(entity_id, db, current_user)
+    if entity.version != payload.expected_version:
+        raise HTTPException(status_code=409, detail="Entity changed; reload before undo")
+    if entity.status == "approved":
+        raise HTTPException(status_code=409, detail="An approved entity cannot be undone")
+    previous = await db.scalar(
+        select(ClinicalEntityRevision)
+        .where(ClinicalEntityRevision.entity_id == entity.id)
+        .order_by(ClinicalEntityRevision.created_at.desc(), ClinicalEntityRevision.id.desc())
+        .limit(1)
+    )
+    if previous is None or previous.before is None:
+        raise HTTPException(status_code=409, detail="No prior reviewer revision is available to restore")
+    before = _entity_snapshot(entity)
+    restored = previous.before
+    entity.status = restored.get("status", entity.status)
+    entity.normalized_value = restored.get("normalized_value", entity.normalized_value)
+    entity.assertion = restored.get("assertion", entity.assertion)
+    entity.section = restored.get("section", entity.section)
+    entity.source = "reviewer_edited"
+    entity.version += 1
+    await _persist_entity_revision(entity, before, current_user.id, "undo", db, request, document.organization_id)
+    return {"entity_id": str(entity.id), "version": entity.version, "status": entity.status}
 
 
 @router.get("/policy")
