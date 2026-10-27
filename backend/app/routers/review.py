@@ -110,12 +110,18 @@ async def reject_review_entity(
     entity, document = await _load_scoped_entity(entity_id, db, current_user)
     if entity.version != payload.expected_version:
         raise HTTPException(status_code=409, detail="Entity changed; reload before rejecting")
-    before = _entity_snapshot(entity)
-    entity.status = "rejected"
-    entity.source = "reviewer_edited"
-    entity.version += 1
-    await _persist_entity_revision(entity, before, current_user.id, "rejected", db, request, document.organization_id)
-    return {"entity_id": str(entity.id), "version": entity.version, "status": entity.status}
+    task = await db.scalar(select(ReviewTask).where(ReviewTask.entity_id == entity.id).order_by(ReviewTask.created_at.desc()).limit(1))
+    if task is None:
+        raise HTTPException(status_code=409, detail="Entity has no review task to reject")
+    try:
+        return await ReviewService(db).record_review_decision(
+            task_id=task.id, decision="rejected", reviewer_user_id=current_user.id,
+            expected_version=task.version,
+        )
+    except ReviewVersionConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.post("/entities/{entity_id}/comment", dependencies=[Depends(require_roles(UserRole.REVIEWER, UserRole.ADMIN))])
