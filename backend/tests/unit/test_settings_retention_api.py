@@ -43,6 +43,8 @@ async def test_trigger_retention_purge_endpoint_admin_success():
         email="admin@cognate.test",
     )
     mock_db = AsyncMock()
+    added_events = []
+    mock_db.add = MagicMock(side_effect=added_events.append)
 
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_db] = lambda: mock_db
@@ -72,6 +74,11 @@ async def test_trigger_retention_purge_endpoint_admin_success():
                 assert data["scratchpad_records_eligible"] == 3
                 assert instance.run_retention_purge.called
                 assert instance.run_retention_purge.call_args.kwargs["dry_run"] is True
+                from app.models import AuditEvent
+                assert any(
+                    isinstance(event, AuditEvent) and event.action == "retention_purge_requested"
+                    for event in added_events
+                )
     finally:
         app.dependency_overrides.clear()
 

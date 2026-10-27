@@ -17,6 +17,8 @@ from app.services.review.review_service import ReviewService
 @pytest.mark.asyncio
 async def test_batch_approve_rejects_document_without_linked_patient():
     session = AsyncMock()
+    added_events = []
+    session.add = MagicMock(side_effect=added_events.append)
     service = ReviewService(session)
 
     doc_id = uuid.uuid4()
@@ -48,6 +50,8 @@ async def test_batch_approve_rejects_document_without_linked_patient():
     approved_count = await service.approve_clean_for_document(doc_id)
     assert approved_count == 0
     assert mock_task.status == "pending"
+    from app.models import AuditEvent
+    assert any(isinstance(event, AuditEvent) and event.action == "approve_clean_review_items" for event in added_events)
 
 
 @pytest.mark.asyncio
