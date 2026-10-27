@@ -12,6 +12,20 @@ from app.config import settings
 from app.workflows.states import derive_lifecycle_status
 
 
+def _serialize_evidence_span(span: EvidenceSpan) -> dict:
+    return {
+        "id": str(span.id),
+        "entity_id": str(span.entity_id),
+        "start_offset": span.start_offset,
+        "end_offset": span.end_offset,
+        "exact_text": span.text,
+        "sentence_text": None,
+        "section_name": None,
+        "page_number": span.page_number,
+        "bbox": span.bbox,
+    }
+
+
 class DocumentService:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -319,19 +333,7 @@ class DocumentService:
         entities = []
         for ext in doc.extractions:
             for entity in ext.entities:
-                spans = [
-                    {
-                        "id": str(s.id),
-                        "entity_id": str(s.entity_id),
-                        "start_offset": s.start_offset,
-                        "end_offset": s.end_offset,
-                        "exact_text": s.text,
-                        "sentence_text": None,
-                        "section_name": None,
-                        "bbox": s.bbox,
-                    }
-                    for s in entity.evidence_spans
-                ]
+                spans = [_serialize_evidence_span(span) for span in entity.evidence_spans]
                 entities.append({
                     "id": str(entity.id),
                     "extraction_id": str(entity.extraction_id),

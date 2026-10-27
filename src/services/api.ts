@@ -505,13 +505,29 @@ export interface EntityReviewSummary {
   normalized_value?: string | null
 
   confidence: number
-  assertion: "present" | "absent" | "possible" | "historical" | "family" | "hypothetical"
+  assertion: "present" | "absent" | "possible" | "historical" | "family" | "hypothetical" | "conditional" | "discontinued"
   section: string | null
   status: string
 
   details?: Record<string, any> | null
   original_ai_value?: string | null
+  experiencer?: "patient" | "family" | "other" | null
+  temporality?: "current" | "historical" | "planned" | null
+  exclusion_reason?: string | null
+  ocr_confidence?: number | null
+  extraction_confidence?: number | null
+  group?: ReviewEntityGroup | null
+  source?: "ai_extracted" | "reviewer_edited" | "reviewer_added" | null
+  version?: number | null
 }
+
+export type ReviewEntityGroup =
+  | "confirmed-active"
+  | "historical-resolved"
+  | "family"
+  | "denied-ruled-out"
+  | "uncertain-review"
+  | "instructions-conditional"
 
 export interface EvidenceReviewSummary {
   id?: string | null
@@ -523,6 +539,7 @@ export interface EvidenceReviewSummary {
   end_offset: number
 
   page_number: number
+  bbox?: [number, number, number, number] | null
 }
 
 export interface ValidationReviewSummary {
@@ -568,6 +585,9 @@ export interface ReviewTask {
   validation?: ValidationReviewSummary | null
   validation_results?: ValidationReviewSummary[]
   source_text?: string | null
+  version?: number | null
+  decision_actor?: string | null
+  decision_at?: string | null
 }
 
 export interface ReviewStats {
@@ -598,6 +618,9 @@ export interface ReviewDecisionPayload {
   comment?: string
 
   corrected_value?: string
+  acknowledged?: boolean
+  justification?: string
+  expected_version?: number
 }
 
 export async function fetchReviewQueue(
@@ -698,6 +721,76 @@ export async function correctReviewTask(
   if (comment) params.set("comment", comment)
 
   return apiFetch(`/review/${taskId}/correct?${params}`, { method: "POST" })
+}
+
+export async function editReviewEntity(
+  entityId: string,
+  payload: { expected_version: number; normalized_value?: string; assertion?: string; section?: string },
+): Promise<{ entity_id: string; version: number; status: string }> {
+  return apiFetch(`/review/entities/${entityId}/edit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function rejectReviewEntity(
+  entityId: string,
+  expectedVersion: number,
+): Promise<ReviewTask> {
+  return apiFetch(`/review/entities/${entityId}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expected_version: expectedVersion }),
+  })
+}
+
+export async function commentOnReviewEntity(
+  entityId: string,
+  expectedVersion: number,
+  comment: string,
+): Promise<{ entity_id: string; version: number; comment_saved: boolean }> {
+  return apiFetch(`/review/entities/${entityId}/comment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expected_version: expectedVersion, comment }),
+  })
+}
+
+export async function undoReviewEntity(
+  entityId: string,
+  expectedVersion: number,
+): Promise<{ entity_id: string; version: number; status: string }> {
+  return apiFetch(`/review/entities/${entityId}/undo`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expected_version: expectedVersion }),
+  })
+}
+
+export async function fetchDocumentPageImage(documentId: string, pageNumber: number): Promise<Blob> {
+  const path = `/documents/${documentId}/pages/${pageNumber}/image`
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+  let response: Response
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      method: "GET", credentials: "include", cache: "no-store", signal: controller.signal,
+    })
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("Request timed out")
+    throw new Error("Network request failed")
+  } finally {
+    clearTimeout(timeout)
+  }
+  if (!response.ok) {
+    let detail = response.statusText
+    try { detail = (await response.json())?.detail ?? detail } catch { /* no response body */ }
+    if (response.status === 401) window.dispatchEvent(new Event("cognate-auth-expired"))
+    if (response.status === 403) window.dispatchEvent(new CustomEvent("cognate-access-restricted"))
+    throw new ApiError(response.status, detail)
+  }
+  return response.blob()
 }
 
 export async function approveCleanReviewItems(
@@ -1035,6 +1128,8 @@ export interface EvidenceSpanItem {
   sentence_text?: string | null
 
   section_name?: string | null
+  page_number?: number | null
+  bbox?: [number, number, number, number] | null
 }
 
 export interface ClinicalEntityItem {
@@ -1049,7 +1144,7 @@ export interface ClinicalEntityItem {
   normalized_value: string
 
   confidence: number
-  assertion: "present" | "absent" | "possible" | "historical" | "family" | "hypothetical"
+  assertion: "present" | "absent" | "possible" | "historical" | "family" | "hypothetical" | "conditional" | "discontinued"
   section: string | null
   status: string
 
@@ -1057,6 +1152,14 @@ export interface ClinicalEntityItem {
   original_ai_value?: string | null
   validation_rule_codes?: string[]
   evidence_spans: EvidenceSpanItem[]
+  experiencer?: "patient" | "family" | "other" | null
+  temporality?: "current" | "historical" | "planned" | null
+  exclusion_reason?: string | null
+  ocr_confidence?: number | null
+  extraction_confidence?: number | null
+  group?: ReviewEntityGroup | null
+  source?: "ai_extracted" | "reviewer_edited" | "reviewer_added" | null
+  version?: number | null
 }
 
 export async function fetchDocuments(

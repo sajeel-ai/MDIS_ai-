@@ -12,6 +12,7 @@ class EvidenceSpanResponse(BaseModel):
     exact_text: str
     sentence_text: Optional[str] = None
     section_name: Optional[str] = None
+    page_number: Optional[int] = None
     bbox: Optional[list[float]] = None
 
 
