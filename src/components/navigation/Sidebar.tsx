@@ -33,6 +33,7 @@ interface NavItem {
   badgeKey?: keyof ReviewStats;
   section?: string;
   adminOnly?: boolean;
+  featureFlag?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -45,7 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'review', label: 'Review Center', badgeKey: 'pending', icon: <CheckSquare size={16} /> },
   { id: 'aiops', label: 'AI Operations', icon: <Activity size={16} /> },
   { id: 'pipeline', label: 'Pipeline', icon: <Activity size={16} /> },
-  { id: 'workflows', label: 'Workflows', icon: <GitBranch size={16} /> },
+  { id: 'workflows', label: 'Workflows', icon: <GitBranch size={16} />, featureFlag: 'workflows' },
   { id: 'integrations', label: 'Integrations', section: 'System', icon: <ActivitySquare size={16} /> },
   { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={16} /> },
   { id: 'audit', label: 'Audit & Compliance', icon: <ShieldCheck size={16} /> },
@@ -61,7 +62,20 @@ export function Sidebar({ activeView, onNavigate, isMobileDrawer = false, onClos
   const accountRole = auth?.user?.role
     ? auth.user.role.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
     : 'Signed out';
-  const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || auth?.hasRole('admin'));
+  const isFeatureEnabled = (flag?: string) => {
+    if (!flag) return true;
+    if (flag === 'workflows') {
+      return typeof window !== 'undefined' && Boolean(
+        (window as any).__ENABLE_WORKFLOWS__ ||
+        (import.meta as any).env?.VITE_ENABLE_WORKFLOWS === 'true'
+      );
+    }
+    return false;
+  };
+
+  const navItems = NAV_ITEMS
+    .filter((item) => isFeatureEnabled(item.featureFlag))
+    .filter((item) => !item.adminOnly || auth?.hasRole('admin'));
   let currentSection = '';
 
   useEffect(() => {

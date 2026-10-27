@@ -710,6 +710,7 @@ describe("9. Sidebar navigation", () => {
   })
 
   it("shows all main nav items", async () => {
+    (window as any).__ENABLE_WORKFLOWS__ = true
     const { Sidebar } = await import("../components/navigation/Sidebar")
     render(<Sidebar activeView="dashboard" onNavigate={vi.fn()} />)
     expect(
@@ -724,6 +725,7 @@ describe("9. Sidebar navigation", () => {
     expect(
       screen.getByRole("button", { name: /Settings/i }),
     ).toBeInTheDocument()
+    delete (window as any).__ENABLE_WORKFLOWS__
   })
 
   it('does NOT show hardcoded "Dr. Sarah Chen"', async () => {

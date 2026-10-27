@@ -106,7 +106,30 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
   const canReview = currentUserRole === 'reviewer' || currentUserRole === 'admin';
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState(initialTaskId ? 'all' : 'pending');
+  const getInitialStatusFilter = () => {
+    if (initialTaskId) return 'all';
+    try {
+      const saved = typeof window !== 'undefined' ? sessionStorage.getItem('mdis_review_status_filter') : null;
+      if (saved && ['pending', 'in_review', 'approved', 'rejected', 'all'].includes(saved)) {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return 'pending';
+  };
+  const [statusFilter, setStatusFilter] = useState(getInitialStatusFilter);
+
+  const handleStatusFilterChange = (st: string) => {
+    setStatusFilter(st);
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('mdis_review_status_filter', st);
+      }
+    } catch {
+      // ignore
+    }
+  };
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -117,6 +140,8 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
   const [correctedValueInput, setCorrectedValueInput] = useState('');
   const [rejectReasonInput, setRejectReasonInput] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [conflictAcknowledged, setConflictAcknowledged] = useState(false);
+  const [justificationInput, setJustificationInput] = useState('');
   // Inline action feedback — replaces browser alert()
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -236,11 +261,67 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
   };
 
   // Actions
+  useEffect(() => {
+    setConflictAcknowledged(false);
+    setJustificationInput('');
+  }, [selectedTaskId]);
+
+  const hasLinkedPatient = !!(detailTask?.patient?.id || detailTask?.patient?.mrn);
+  const allValidationResults = detailTask?.validation_results || [];
+  const singleValidationRule = detailTask?.validation?.rule_code;
+
+  const hasConflict =
+    allValidationResults.some(
+      (v) =>
+        ['CONFLICT', 'CRITICAL'].includes((v.rule_code || '').toUpperCase()) ||
+        (v.severity || '').toLowerCase() === 'critical'
+    ) || ['CONFLICT', 'CRITICAL'].includes((singleValidationRule || '').toUpperCase());
+
+  const hasMedOrLabFlag =
+    allValidationResults.some((v) =>
+      ['MED_DOSE_UNIT', 'LAB_VALUE_UNIT', 'DRUG_INTERACTION', 'ABNORMAL_LAB'].includes(
+        (v.rule_code || '').toUpperCase()
+      )
+    ) ||
+    ['MED_DOSE_UNIT', 'LAB_VALUE_UNIT', 'DRUG_INTERACTION', 'ABNORMAL_LAB'].includes(
+      (singleValidationRule || '').toUpperCase()
+    );
+
+  const hasAnyBatchValidationFlag = allValidationResults.length > 0 || Boolean(singleValidationRule);
+  const belowBatchConfidenceThreshold = Boolean(
+    detailTask?.entity && reviewPolicy && detailTask.entity.confidence < reviewPolicy.confidence_threshold
+  );
+  const batchApprovalDisabledReason = !hasLinkedPatient
+    ? 'Cannot batch approve: document has no linked patient record.'
+    : hasAnyBatchValidationFlag
+      ? 'Cannot batch approve: validation flags require manual review.'
+      : belowBatchConfidenceThreshold
+        ? 'Cannot batch approve: confidence is below the review threshold.'
+        : null;
+
+  let approvalDisabledReason: string | null = null;
+  if (detailTask) {
+    if (!hasLinkedPatient) {
+      approvalDisabledReason = 'Cannot approve: document has no linked patient record.';
+    } else if (hasConflict && !conflictAcknowledged) {
+      approvalDisabledReason =
+        'Cannot approve: unacknowledged conflict validation flag. Please review and acknowledge below.';
+    } else if (hasMedOrLabFlag && !justificationInput.trim()) {
+      approvalDisabledReason = 'Override justification required for medication or lab validation flags.';
+    }
+  }
+
   const handleApprove = async () => {
     if (!selectedTaskId || !canReview) return;
     setSubmitting(true);
+    if (approvalDisabledReason) return;
     try {
-      await approveReviewTask(selectedTaskId, commentInput || undefined);
+      await approveReviewTask(
+        selectedTaskId,
+        commentInput || undefined,
+        conflictAcknowledged,
+        justificationInput.trim() || undefined
+      );
       showFeedback('success', 'Document approved successfully.');
       await refreshAfterAction(selectedTaskId);
     } catch (err: any) {
@@ -477,7 +558,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
             {['pending', 'in_review', 'approved', 'rejected', 'all'].map((st) => (
               <button
                 key={st}
-                onClick={() => setStatusFilter(st)}
+                onClick={() => handleStatusFilterChange(st)}
                 className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${
                   statusFilter === st
                     ? 'bg-[#071A3D] text-white'
@@ -650,6 +731,15 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
                     This document has {selectedQueueDocument.items.length} clinical finding{selectedQueueDocument.items.length === 1 ? '' : 's'}.
                     Open the full review page to inspect the source, AI extraction, and human decision panels.
                   </p>
+                  {selectedQueueDocument.items.length > 0 && (
+                    <div className="mt-4 flex max-w-md flex-wrap justify-center gap-1.5">
+                      {selectedQueueDocument.items.map((item) => (
+                        <span key={item.id} className="rounded-md border border-[#DCE7F3] bg-[#EAF5FF] px-2 py-0.5 text-xs font-medium text-[#071A3D]">
+                          {item.entity?.normalized_value || item.entity?.raw_text || 'Clinical finding'}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => onNavigate?.('review-document', undefined, selectedQueueDocument.activeTask.id, validFromStatus || statusFilter || undefined)}
@@ -829,11 +919,26 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
                               className="w-full px-2.5 py-1.5 text-xs font-sans border border-[#DCE7F3] rounded outline-none focus:ring-1 focus:ring-[#146EF5]"
                               placeholder="Enter clinician corrected value..."
                             />
+                            {/* Live Correction Diff View */}
+                            <div className="p-2.5 rounded bg-[#F8FAFC] border border-[#E2E8F0] space-y-1 text-xs" data-testid="correction-diff-view">
+                              <div className="text-[10px] font-semibold text-[#64748B] uppercase tracking-wider">
+                                Correction Diff
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[11px] font-medium text-rose-700 bg-rose-50 px-2 py-0.5 rounded line-through border border-rose-200">
+                                  {detailTask.entity.raw_text || detailTask.entity.normalized_value}
+                                </span>
+                                <span className="text-slate-400 font-bold">→</span>
+                                <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                  {correctedValueInput.trim() || '(empty)'}
+                                </span>
+                              </div>
+                            </div>
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={handleCorrectSubmit}
-                                disabled={!canReview || submitting}
-                                className="px-3 py-1 bg-[#146EF5] text-white text-xs font-medium rounded hover:bg-[#146EF5]"
+                                disabled={!canReview || submitting || !correctedValueInput.trim()}
+                                className="px-3 py-1 bg-[#146EF5] text-white text-xs font-medium rounded hover:bg-[#146EF5] disabled:opacity-50"
                               >
                                 Save Correction
                               </button>
@@ -939,20 +1044,67 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
                     />
                   </div>
 
+                  {/* Clinical Safety Gates: Overrides & Conflicts */}
+                  {detailTask && (hasMedOrLabFlag || hasConflict) && (
+                    <div className="p-3 rounded-lg border border-[#DCE7F3] bg-[#F5FAFF] space-y-2.5">
+                      <div className="font-sans text-xs font-semibold text-[#071A3D] flex items-center gap-1.5">
+                        <ShieldAlert size={14} className="text-amber-600" />
+                        <span>Clinical Override & Safety Acknowledgment</span>
+                      </div>
+                      {hasConflict && (
+                        <label className="flex items-start gap-2 cursor-pointer text-xs text-[#071A3D]">
+                          <input
+                            type="checkbox"
+                            checked={conflictAcknowledged}
+                            onChange={(e) => setConflictAcknowledged(e.target.checked)}
+                            className="mt-0.5 rounded border-[#DCE7F3] text-[#146EF5] focus:ring-[#146EF5]"
+                          />
+                          <span>I have reviewed and acknowledge the conflicting clinical assertions or doses.</span>
+                        </label>
+                      )}
+                      {hasMedOrLabFlag && (
+                        <div>
+                          <label htmlFor="override-justification" className="block text-xs font-medium text-[#52627A] mb-1">
+                            Override Justification (Required) *
+                          </label>
+                          <textarea
+                            id="override-justification"
+                            value={justificationInput}
+                            onChange={(e) => setJustificationInput(e.target.value)}
+                            disabled={!canReview}
+                            placeholder="State clinical reason for overriding medication or lab validation flag..."
+                            className="w-full p-2.5 border border-[#DCE7F3] rounded-md text-xs outline-none focus:border-[#146EF5]"
+                            rows={2}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Visible reason when approval is disabled */}
+                  {approvalDisabledReason && (
+                    <div role="alert" className="p-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 text-xs flex items-center gap-2">
+                      <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+                      <span>{approvalDisabledReason}</span>
+                    </div>
+                  )}
+
                   {/* Decision Buttons */}
                   <div className="space-y-2 pt-2" role="group" aria-label="Review decision actions">
                     <button
                       onClick={handleApproveCleanItems}
-                      disabled={!canReview || submitting}
-                      className="w-full rounded-lg border border-[#146EF5] bg-white px-4 py-2.5 text-xs font-medium text-[#146EF5] hover:bg-[#EAF5FF] disabled:opacity-50"
+                      disabled={!canReview || submitting || Boolean(batchApprovalDisabledReason)}
+                      title={batchApprovalDisabledReason || 'Batch approve only findings with high confidence, no flags, and a linked patient'}
+                      className="w-full rounded-lg border border-[#146EF5] bg-white px-4 py-2.5 text-xs font-medium text-[#146EF5] hover:bg-[#EAF5FF] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Approve all clean items in this document
+                      Approve clean items in this document
                     </button>
                     <button
                       onClick={handleApprove}
-                      disabled={!canReview || submitting}
+                      disabled={!canReview || submitting || !!approvalDisabledReason}
                       aria-busy={submitting}
-                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-600 text-white font-medium text-xs hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                      title={approvalDisabledReason || undefined}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-600 text-white font-medium text-xs hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <CheckCircle2 size={16} aria-hidden="true" /> Approve Extraction (A)
                     </button>

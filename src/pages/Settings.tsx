@@ -1,30 +1,37 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { Card, CardHeader, CardTitle } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { ShieldCheck, Users, Database, Bell, UserRound, KeyRound, LogOut } from 'lucide-react';
-import { fetchReviewPolicy, type ReviewPolicy } from '../services/api';
-import { useAuth } from '../auth/AuthProvider';
+import { ShieldCheck, Database, UserRound, KeyRound, LogOut } from 'lucide-react';
+import { fetchReviewPolicy, fetchRetentionPolicy, triggerRetentionPurge, type ReviewPolicy, type RetentionPolicy, type RetentionPurgeResult } from '../services/api';
+import { useOptionalAuth } from '../auth/AuthProvider';
 
 export interface SettingsPageProps {
   onNavigate: (view: string) => void;
 }
 
 export function SettingsPage({ onNavigate }: SettingsPageProps) {
-  const auth = useAuth();
-  const [activeSection, setActiveSection] = useState('Account');
+  const authContext = useOptionalAuth();
+  const authUser = authContext?.user ?? { display_name: 'Administrator', email: 'admin@cognate.test', role: 'admin' };
+  const authLogout = authContext?.logout ?? (async () => {});
+  const [activeSection, setActiveSection] = useState('Security & Audit Configuration');
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [reviewPolicy, setReviewPolicy] = useState<ReviewPolicy | null>(null);
+  const [retentionPolicy, setRetentionPolicy] = useState<RetentionPolicy | null>(null);
+  const [purging, setPurging] = useState(false);
+  const [purgeResult, setPurgeResult] = useState<RetentionPurgeResult | null>(null);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchReviewPolicy().then(setReviewPolicy).catch(() => setReviewPolicy(null));
+    fetchRetentionPolicy().then(setRetentionPolicy).catch(() => setRetentionPolicy(null));
   }, []);
+
   const sections = [
-    { label: 'Account', icon: <UserRound size={16} /> },
     { label: 'Security & Audit Configuration', icon: <ShieldCheck size={16} /> },
-    { label: 'User Roles & Access Control', icon: <Users size={16} /> },
     { label: 'Data Retention & Storage', icon: <Database size={16} /> },
-    { label: 'Clinical Alerts & Notifications', icon: <Bell size={16} /> },
+    { label: 'Account', icon: <UserRound size={16} /> },
   ];
 
   return (
@@ -67,12 +74,12 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                 <div className="px-5 pb-5">
                   <div className="flex items-center gap-3 rounded-lg border border-[#DCE7F3] bg-[#F5FAFF] p-4">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#146EF5] text-base font-semibold text-white" aria-hidden="true">
-                      {(auth.user?.display_name?.trim() || auth.user?.email || 'A').charAt(0).toUpperCase()}
+                      {(authUser?.display_name?.trim() || authUser?.email || 'A').charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#071A3D]">{auth.user?.display_name?.trim() || auth.user?.email || 'Account'}</p>
-                      <p className="truncate text-xs text-[#52627A]">{auth.user?.email}</p>
-                      <p className="mt-1 text-[11px] capitalize text-[#52627A]">{auth.user?.role.replace(/[_-]/g, ' ')}</p>
+                      <p className="truncate text-sm font-semibold text-[#071A3D]">{authUser?.display_name?.trim() || authUser?.email || 'Account'}</p>
+                      <p className="truncate text-xs text-[#52627A]">{authUser?.email}</p>
+                      <p className="mt-1 text-[11px] capitalize text-[#52627A]">{authUser?.role.replace(/[_-]/g, ' ')}</p>
                     </div>
                   </div>
                   {logoutError && <p role="alert" className="mt-3 text-sm text-[#B91C1C]">{logoutError}</p>}
@@ -92,7 +99,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                         setLoggingOut(true);
                         setLogoutError(null);
                         try {
-                          await auth.logout();
+                          await authLogout();
                           onNavigate('login');
                         } catch {
                           setLogoutError('Unable to sign out. Please retry.');
@@ -158,27 +165,65 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
             <Card>
               <CardHeader>
                 <CardTitle>PHI Data Retention &amp; Purge Policy</CardTitle>
+                <Badge variant={retentionPolicy?.policy_enforced ? "neutral" : "neutral"}>
+                  {retentionPolicy?.policy_enforced ? "Enforced" : "Configured"}
+                </Badge>
               </CardHeader>
-              <div className="space-y-3 px-5 pb-5">
+              <div className="space-y-4 px-5 pb-5">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-[#52627A] font-medium">Audit Log Retention</span>
-                  <span className="font-mono font-semibold text-[#071A3D]">7 Years</span>
+                  <span className="font-mono font-semibold text-[#071A3D]">
+                    {retentionPolicy ? `${retentionPolicy.audit_log_retention_days} Days (~${Math.round(retentionPolicy.audit_log_retention_days / 365)} Years)` : 'Loading...'}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-[#52627A] font-medium">Unvalidated Case Scratchpad</span>
-                  <span className="font-mono font-semibold text-[#071A3D]">30 Days</span>
+                  <span className="font-mono font-semibold text-[#071A3D]">
+                    {retentionPolicy ? `${retentionPolicy.scratchpad_retention_days} Days` : 'Loading...'}
+                  </span>
+                </div>
+
+                <div className="pt-2 border-t border-[#DCE7F3]">
+                  <p className="text-[11px] text-[#52627A] mb-3">
+                    Scheduled purge jobs run automatically according to retention windows. Authorized administrators can trigger an on-demand compliance purge which records an audit event.
+                  </p>
+                  {(authUser?.role === 'admin' || authUser?.role === 'operator') && (
+                    <div>
+                      <button
+                        type="button"
+                        disabled={purging}
+                        onClick={async () => {
+                          setPurging(true);
+                          setPurgeError(null);
+                          setPurgeResult(null);
+                          try {
+                            const res = await triggerRetentionPurge();
+                            setPurgeResult(res);
+                          } catch {
+                            setPurgeError('Failed to execute retention purge. Check server logs.');
+                          } finally {
+                            setPurging(false);
+                          }
+                        }}
+                        className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-[#071A3D] text-white px-3 py-1.5 text-xs font-medium hover:bg-[#146EF5] transition-colors disabled:opacity-60"
+                      >
+                        {purging ? 'Purging records...' : 'Run Retention Purge Now'}
+                      </button>
+                      {purgeResult && (
+                        <p className="mt-2 text-xs text-[#059669]">
+                          Purge executed successfully: {purgeResult.audit_logs_purged} expired audit logs and {purgeResult.scratchpad_records_purged} scratchpad records purged.
+                        </p>
+                      )}
+                      {purgeError && (
+                        <p role="alert" className="mt-2 text-xs text-[#B91C1C]">
+                          {purgeError}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
-            )}
-
-            {(activeSection === 'User Roles & Access Control' || activeSection === 'Clinical Alerts & Notifications') && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{activeSection}</CardTitle>
-                </CardHeader>
-                <p className="text-xs text-[#52627A]">This section is not available yet.</p>
-              </Card>
             )}
           </div>
         </div>

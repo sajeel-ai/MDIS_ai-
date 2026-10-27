@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from app.services.fhir.fhir_service import build_document_fhir_bundle
+from app.config import settings
 
 
 def synthetic_document(index: int):
@@ -34,19 +35,21 @@ def main() -> int:
     if not validator.is_file():
         raise SystemExit("HL7 validator_cli.jar was not found")
     with tempfile.TemporaryDirectory(prefix="cognate-fhir-synthetic-") as temp_dir:
-        for index in range(10):
-            path = Path(temp_dir) / f"synthetic-{index}.json"
-            bundle = build_document_fhir_bundle(synthetic_document(index))
-            path.write_text(json.dumps(bundle), encoding="utf-8")
-            result = subprocess.run(
-                ["java", "-jar", str(validator), str(path), "-version", "4.0.1"],
-                capture_output=True, text=True, check=False,
-            )
-            if result.returncode:
-                print(result.stdout)
-                print(result.stderr)
-                raise SystemExit(f"FHIR R4 validation failed for synthetic fixture {index}")
-    print("Official HL7 validator accepted all 10 synthetic FHIR R4 bundles.")
+        for setting_name, version in (("R4", "4.0.1"), ("R4B", "4.3.0")):
+            settings.fhir_version = setting_name
+            for index in range(10):
+                path = Path(temp_dir) / f"{setting_name}-synthetic-{index}.json"
+                bundle = build_document_fhir_bundle(synthetic_document(index))
+                path.write_text(json.dumps(bundle), encoding="utf-8")
+                result = subprocess.run(
+                    ["java", "-jar", str(validator), str(path), "-version", version],
+                    capture_output=True, text=True, check=False,
+                )
+                if result.returncode:
+                    print(result.stdout)
+                    print(result.stderr)
+                    raise SystemExit(f"FHIR {setting_name} validation failed for synthetic fixture {index}")
+    print("Official HL7 validator accepted all 10 synthetic bundles for FHIR R4 and R4B.")
     return 0
 
 

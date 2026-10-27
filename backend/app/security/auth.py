@@ -38,12 +38,19 @@ _dummy_password_hash = _password_hasher.hash(secrets.token_urlsafe(32))
 DUMMY_PASSWORD_HASH = _dummy_password_hash
 
 
-def validate_jwt_configuration() -> None:
-    """Fail closed when an unsafe auth or production configuration is selected."""
+def is_development_environment() -> bool:
+    """Return True if both app_env and environment point to development."""
     environment_values = [settings.app_env.strip().lower()]
     if settings.environment and settings.environment.strip():
         environment_values.append(settings.environment.strip().lower())
-    is_development = all(value == "development" for value in environment_values)
+    return all(value == "development" for value in environment_values)
+
+
+def validate_jwt_configuration() -> None:
+    """Fail closed when an unsafe auth or production configuration is selected."""
+    is_development = is_development_environment()
+    if settings.allow_anonymous_access and not is_development:
+        raise RuntimeError("ALLOW_ANONYMOUS_ACCESS may only be enabled in development")
     if settings.auth_disabled and not is_development:
         raise RuntimeError("AUTH_DISABLED may only be enabled in development")
     if os.getenv("VITE_AUTH_BYPASS", "").strip().lower() == "true" and not is_development:
@@ -63,7 +70,7 @@ def validate_jwt_configuration() -> None:
         raise RuntimeError("JWT issuer and audience must be configured")
     origins = settings.cors_origins_list
     if not origins or any(origin == "*" for origin in origins):
-        raise RuntimeError("CORS_ORIGINS must be a non-empty explicit origin allowlist")
+        raise RuntimeError("CORS_ORIGINS must be a non-empty explicit origin allowlist; wildcard '*' is forbidden")
     if not is_development:
         if not settings.auth_cookie_secure:
             raise RuntimeError("AUTH_COOKIE_SECURE must be true outside development")
@@ -71,6 +78,8 @@ def validate_jwt_configuration() -> None:
             raise RuntimeError("DEBUG must be false outside development")
         if settings.ocr_provider.strip().lower() == "mock" or settings.extraction_provider.strip().lower() == "mock":
             raise RuntimeError("Mock OCR and extraction providers may only be used in development")
+        if not settings.storage_encryption_key and not os.getenv("STORAGE_ENCRYPTION_KEY"):
+            raise RuntimeError("STORAGE_ENCRYPTION_KEY must be configured outside development")
         try:
             from app.security.mfa import _key
             _key()
@@ -187,6 +196,27 @@ async def get_current_user(
     cookie_token = request.cookies.get(ACCESS_COOKIE)
     credential = token or cookie_token
     if not credential:
+        is_development = is_development_environment()
+        if settings.allow_anonymous_access and is_development:
+            from app.models.organization import DEFAULT_ORGANIZATION_ID
+            anon_user = await db.scalar(
+                select(User).where(User.email == "anon@dev.local").limit(1)
+            )
+            if not anon_user:
+                anon_user = User(
+                    id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                    email="anon@dev.local",
+                    role=UserRole.ADMIN,
+                    organization_id=DEFAULT_ORGANIZATION_ID,
+                    is_active=True,
+                    mfa_enabled=True,
+                )
+                db.add(anon_user)
+                await db.commit()
+                await db.refresh(anon_user)
+            db.info["organization_id"] = anon_user.organization_id
+            return anon_user
+
         await record_audit_event(db, action="AUTHZ_DENIED", request=request)
         await db.commit()
         raise unauthorized()

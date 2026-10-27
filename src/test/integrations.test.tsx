@@ -79,9 +79,9 @@ describe("Integrations page health status", () => {
     render(<IntegrationsPage onNavigate={vi.fn()} />)
 
     expect(
-      await screen.findByText("FHIR R4 export (base-resource validated)"),
+      await screen.findByText("FHIR export (R4 / R4B)"),
     ).toBeInTheDocument()
-    expect(await screen.findByText("FHIR 4.0.1")).toBeInTheDocument()
+    expect(await screen.findByText("Configured for FHIR 4.0.1")).toBeInTheDocument()
     expect(fetchFHIRMetadata).toHaveBeenCalledOnce()
   })
 })

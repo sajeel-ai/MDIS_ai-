@@ -98,6 +98,7 @@ async def test_start_review_moves_only_the_review_lifecycle_to_in_review():
         review_status="pending",
     )
     document.versions = []
+    document.validation_flags = []
     task = ReviewTask(
         id=uuid.uuid4(),
         document_id=document_id,
@@ -135,6 +136,7 @@ async def test_review_decision_does_not_change_document_processing_status():
         review_status="pending",
     )
     document.versions = []
+    document.validation_flags = []
     task = ReviewTask(
         id=uuid.uuid4(),
         document_id=document_id,
@@ -170,6 +172,7 @@ async def test_correction_preserves_original_ai_value_and_records_decision_audit
         source="test", status="completed", review_status="pending",
     )
     document.versions = []
+    document.validation_flags = []
     entity = ClinicalEntity(
         id=uuid.uuid4(), extraction_id=uuid.uuid4(), entity_type="diagnosis",
         raw_text="pneumonia", normalized_value="Pneumonia", confidence=.8,
@@ -318,6 +321,7 @@ async def test_vital_warning_flag_blocks_approve_clean_routing_to_manual_review(
         id=document_id, patient_id=uuid.uuid4(), document_type="progress_note",
         source="test", status="completed", review_status="pending",
     )
+    document.validation_flags = []
     entity_with_vital_flag = ClinicalEntity(
         id=uuid.uuid4(), extraction_id=uuid.uuid4(), entity_type="diagnosis",
         raw_text="alert", normalized_value="Alert", confidence=0.9, status="unreviewed",
@@ -365,6 +369,7 @@ async def test_vital_warning_flag_does_not_block_manual_approval():
         id=document_id, patient_id=uuid.uuid4(), document_type="progress_note",
         source="test", status="completed", review_status="pending",
     )
+    document.validation_flags = []
     entity_with_vital_flag = ClinicalEntity(
         id=uuid.uuid4(), extraction_id=uuid.uuid4(), entity_type="diagnosis",
         raw_text="alert", normalized_value="Alert", confidence=0.9, status="unreviewed",
@@ -389,6 +394,7 @@ async def test_vital_warning_flag_does_not_block_manual_approval():
     session.add = Mock()
     session.execute.side_effect = [
         _result(first=task),          # fetch task
+        _result(all_items=[]),        # doc flags query
         _result(first=document),      # fetch document
         status_result,                # aggregate statuses
         _result(first=task),          # audit fetch

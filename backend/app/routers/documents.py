@@ -1,6 +1,5 @@
 """Documents API Router."""
 
-import codecs
 import hashlib
 import os
 import re
@@ -14,7 +13,7 @@ import pymupdf as fitz
 from PIL import Image
 
 from app.db import get_db, AsyncSessionLocal
-from app.dependencies import UserContext, get_current_user
+from app.dependencies import UserContext, get_current_user, audit_read_access
 from app.dependencies.auth import UserRole
 from app.dependencies.permissions import require_roles
 from app.schemas.common import PaginatedResponse
@@ -30,6 +29,8 @@ from app.services.fhir.fhir_service import FHIRProjectionService
 from app.services.export.exporter import ExporterService
 from app.providers.extraction import ExtractionProviderConfigurationError
 from app.config import settings
+from app.models import DocumentValidationFlag
+from sqlalchemy import select
 from app.security.authorization import authorize_document_access, authorize_patient_access
 from app.services.audit_service import record_audit_event
 
@@ -83,7 +84,6 @@ async def upload_document(
     temp_path = None
     size_bytes = 0
     digest = hashlib.sha256()
-    decoder = codecs.getincrementaldecoder("utf-8")("strict") if extension == ".txt" else None
     try:
         with tempfile.NamedTemporaryFile(prefix="upload-", suffix=extension, dir=settings.storage_local_path, delete=False) as staged:
             temp_path = staged.name
@@ -91,22 +91,25 @@ async def upload_document(
                 size_bytes += len(chunk)
                 if size_bytes > settings.max_upload_size_bytes:
                     raise HTTPException(status_code=413, detail="File exceeds the configured upload size limit.")
-                if decoder is not None:
-                    if b"\x00" in chunk:
-                        raise HTTPException(status_code=415, detail="TXT upload must be valid UTF-8 text.")
-                    try:
-                        decoder.decode(chunk)
-                    except UnicodeDecodeError as exc:
-                        raise HTTPException(status_code=415, detail="TXT upload must be valid UTF-8 text.") from exc
                 digest.update(chunk)
                 staged.write(chunk)
         if size_bytes == 0:
             raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-        if decoder is not None:
-            try:
-                decoder.decode(b"", final=True)
-            except UnicodeDecodeError as exc:
-                raise HTTPException(status_code=415, detail="TXT upload must be valid UTF-8 text.") from exc
+
+        # Item 4: charset_normalizer-based encoding detection for .txt files.
+        # Accepts UTF-8, Windows-1252, Latin-1, and other common encodings.
+        if extension == ".txt":
+            with open(temp_path, "rb") as _f:
+                _raw = _f.read()
+            if b"\x00" in _raw:
+                raise HTTPException(status_code=415, detail="TXT upload must not contain null bytes.")
+            from charset_normalizer import from_bytes as _detect
+            _best = _detect(_raw).best()
+            if _best is None:
+                raise HTTPException(
+                    status_code=415,
+                    detail="Unable to detect text encoding; upload a UTF-8 or common 8-bit encoded text file.",
+                )
 
         with open(temp_path, "rb") as staged:
             header = staged.read(16)
@@ -165,11 +168,15 @@ async def upload_document(
     finally:
         await file.close()
         if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
 
 
 @router.get("", response_model=PaginatedResponse[DocumentResponse])
 async def list_documents(
+    request: Request,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     doc_status: Optional[str] = Query(None, alias="status"),
@@ -179,7 +186,8 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
     current_user: UserContext = Depends(get_current_user),
 ):
-    await record_audit_event(db, action="list_documents", user_id=current_user.id, organization_id=current_user.organization_id)
+    await record_audit_event(db, action="list_documents", user_id=current_user.id, organization_id=current_user.organization_id, resource_type="document_collection", request=request)
+    await db.commit()
     service = DocumentService(db)
     items, total = await service.list_documents(
         page=page,
@@ -190,6 +198,18 @@ async def list_documents(
         sort=sort,
         organization_id=current_user.organization_id,
     )
+    for item in items:
+        await record_audit_event(
+            db,
+            action="view_document_in_list",
+            user_id=current_user.id,
+            organization_id=current_user.organization_id,
+            resource_type="document",
+            resource_id=uuid.UUID(str(item["id"])),
+            request=request,
+        )
+    if items:
+        await db.commit()
     return {
         "items": items,
         "total": total,
@@ -199,7 +219,7 @@ async def list_documents(
     }
 
 
-@router.get("/{document_id}", response_model=DocumentDetailResponse)
+@router.get("/{document_id}", response_model=DocumentDetailResponse, dependencies=[Depends(audit_read_access("view_document"))])
 async def get_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -214,11 +234,10 @@ async def get_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document '{document_id}' not found",
         )
-    await record_audit_event(db, action="view_document", user_id=current_user.id, organization_id=current_user.organization_id, resource_type="document", resource_id=document_id)
     return doc_data
 
 
-@router.get("/{document_id}/entities", response_model=List[ClinicalEntityResponse])
+@router.get("/{document_id}/entities", response_model=List[ClinicalEntityResponse], dependencies=[Depends(audit_read_access("view_entities"))])
 async def get_document_entities(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -233,11 +252,45 @@ async def get_document_entities(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document '{document_id}' not found",
         )
-    await record_audit_event(db, action="view_entities", user_id=current_user.id, organization_id=current_user.organization_id, resource_type="document", resource_id=document_id)
     return entities
 
 
-@router.get("/{document_id}/evidence", response_model=List[EvidenceSpanResponse])
+@router.get(
+    "/{document_id}/validation-flags",
+    dependencies=[Depends(audit_read_access("view_validation_flags"))],
+)
+async def get_document_validation_flags(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserContext = Depends(get_current_user),
+    request: Request = None,
+):
+    """Read active and superseded validation findings with PHI access auditing."""
+    await authorize_document_access(document_id, current_user, db, request)
+    result = await db.execute(
+        select(DocumentValidationFlag)
+        .where(DocumentValidationFlag.document_id == document_id)
+        .order_by(DocumentValidationFlag.created_at.asc())
+    )
+    flags = result.scalars().all()
+    return [
+        {
+            "id": str(flag.id),
+            "document_id": str(flag.document_id),
+            "extraction_id": str(flag.extraction_id),
+            "rule_code": flag.rule_code,
+            "severity": flag.severity,
+            "status": flag.status,
+            "message": flag.message,
+            "details": flag.details,
+            "superseded_at": flag.superseded_at.isoformat() if flag.superseded_at else None,
+            "created_at": flag.created_at.isoformat() if flag.created_at else None,
+        }
+        for flag in flags
+    ]
+
+
+@router.get("/{document_id}/evidence", response_model=List[EvidenceSpanResponse], dependencies=[Depends(audit_read_access("view_evidence"))])
 async def get_document_evidence(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -252,8 +305,26 @@ async def get_document_evidence(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document '{document_id}' not found",
         )
-    await record_audit_event(db, action="view_evidence", user_id=current_user.id, organization_id=current_user.organization_id, resource_type="document", resource_id=document_id)
     return evidence
+
+@router.get("/{document_id}/file", dependencies=[Depends(audit_read_access("read_file"))])
+async def get_document_file(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserContext = Depends(get_current_user),
+    request: Request = None,
+):
+    document = await authorize_document_access(document_id, current_user, db, request)
+    if not document.storage_key:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file not found")
+    from app.providers.storage import get_storage_provider
+    provider = get_storage_provider()
+    try:
+        content = await provider.read_file(document.storage_key)
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file not found in storage")
+    return Response(content=content, media_type=document.mime_type or "application/octet-stream")
+
 
 
 @router.post("/{document_id}/process", response_model=DocumentProcessResponse, dependencies=[Depends(require_roles(UserRole.CLINICIAN, UserRole.ADMIN))])
@@ -276,9 +347,15 @@ async def process_document(
     except ProcessingConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     except ValueError as exc:
+        msg = str(exc)
+        if "not found" in msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=msg,
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg,
         )
     job = request.job
     await record_audit_event(db, action="process_document", user_id=current_user.id, organization_id=current_user.organization_id, resource_type="document", resource_id=document_id)
@@ -366,7 +443,7 @@ async def reprocess_document(
     }
 
 
-@router.get("/{document_id}/fhir", dependencies=[Depends(require_roles(UserRole.CLINICIAN, UserRole.REVIEWER, UserRole.ADMIN))])
+@router.get("/{document_id}/fhir", dependencies=[Depends(require_roles(UserRole.CLINICIAN, UserRole.REVIEWER, UserRole.ADMIN)), Depends(audit_read_access("export_fhir"))])
 async def get_document_fhir(
     document_id: uuid.UUID,
     include_unreviewed: bool = Query(False),
@@ -376,17 +453,23 @@ async def get_document_fhir(
 ):
     await authorize_document_access(document_id, current_user, db, request)
     service = FHIRProjectionService(db)
-    bundle = await service.generate_document_fhir_bundle(document_id, include_unreviewed=include_unreviewed)
+    try:
+        bundle = await service.generate_document_fhir_bundle(document_id, include_unreviewed=include_unreviewed)
+    except ValueError as exc:
+        msg = str(exc)
+        if "not found" in msg.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=msg)
+
     if not bundle:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document '{document_id}' not found",
         )
-    await record_audit_event(db, action="export_fhir", user_id=current_user.id, organization_id=current_user.organization_id, resource_type="document", resource_id=document_id)
     return bundle
 
 
-@router.get("/{document_id}/export/{export_format}", dependencies=[Depends(require_roles(UserRole.CLINICIAN, UserRole.REVIEWER, UserRole.ADMIN))])
+@router.get("/{document_id}/export/{export_format}", dependencies=[Depends(require_roles(UserRole.CLINICIAN, UserRole.REVIEWER, UserRole.ADMIN)), Depends(audit_read_access("export_document"))])
 async def export_document(
     document_id: uuid.UUID,
     export_format: str,
@@ -399,15 +482,24 @@ async def export_document(
     exporter = ExporterService(db)
     try:
         content, media_type, filename = await exporter.export_document(document_id, export_format, include_unreviewed=include_unreviewed)
-        export_action = "export_csv" if export_format.lower() == "csv" else "export_fhir" if export_format.lower() == "fhir" else "export_json"
-        await record_audit_event(db, action=export_action, user_id=current_user.id, organization_id=current_user.organization_id, resource_type="document", resource_id=document_id)
         return Response(
             content=content,
             media_type=media_type,
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except ValueError as exc:
+        msg = str(exc)
+        if "not found" in msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=msg,
+            )
+        if "linked patient" in msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=msg,
+            ) from exc
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg,
         )

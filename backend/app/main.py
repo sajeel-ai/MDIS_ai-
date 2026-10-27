@@ -64,7 +64,7 @@ async def security_headers_and_request_id(request: Request, call_next):
     try:
         response = await call_next(request)
     except Exception:
-        security_logger.error("Unhandled request failure request_id=%s", request_id)
+        security_logger.exception("Unhandled request failure request_id=%s", request_id)
         response = JSONResponse(status_code=500, content={"detail": "Internal server error"})
     response.headers["X-Request-ID"] = request_id
     response.headers["Content-Security-Policy"] = "frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
@@ -93,11 +93,15 @@ async def generic_server_error_handler(_request: Request, _exc: Exception):
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 # ---------------------------------------------------------------------------
-# CORS — allow the Vite dev server (and Figma Make preview) to call the API
+# CORS — allow explicit origins from configuration allowlist (no wildcards)
 # ---------------------------------------------------------------------------
+cors_origins = settings.cors_origins_list
+if not cors_origins or any(origin == "*" for origin in cors_origins):
+    raise RuntimeError("CORS_ORIGINS must be a non-empty explicit origin allowlist; wildcard '*' is forbidden")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"],
@@ -106,7 +110,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------
-from app.routers import health, dashboard, documents, processing, review, aiops, patients, audit, auth, integrations, admin_auth, notifications, search
+from app.routers import health, dashboard, documents, processing, review, aiops, patients, audit, auth, integrations, admin_auth, notifications, search, settings as settings_router
 
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(auth.router, prefix=settings.api_prefix)
@@ -121,3 +125,4 @@ app.include_router(integrations.router, prefix=settings.api_prefix)
 app.include_router(admin_auth.router, prefix=settings.api_prefix)
 app.include_router(notifications.router, prefix=settings.api_prefix)
 app.include_router(search.router, prefix=settings.api_prefix)
+app.include_router(settings_router.router, prefix=settings.api_prefix)

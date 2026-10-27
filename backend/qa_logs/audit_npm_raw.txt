@@ -1,0 +1,151 @@
+
+> figma-make-app@1.0.0 test
+> vitest run
+
+
+ RUN  v5.0.3 C:/Users/Meta/project z/Cognate-AI main/Cognate-AI
+
+ ❯ src/test/navigation_workflows_redirect.test.tsx (0 test)
+ ❯ src/test/audit.test.tsx (0 test)
+ ❯ src/test/authCore.test.tsx (0 test)
+ ❯ src/test/integrations.test.tsx (0 test)
+ ❯ src/test/review_ux_features.test.tsx (0 test)
+ ❯ src/test/reviewDisabledApprove.test.tsx (0 test)
+ ❯ src/test/authClient.test.ts (0 test)
+ ❯ src/test/reviewDocumentStatus.test.tsx (0 test)
+ ❯ src/test/authCookies.test.ts (0 test)
+ ❯ src/test/encoding.test.ts (0 test)
+ ❯ src/test/pages.test.tsx (71 tests | 35 failed) 8967ms
+   ❯ 4. Settings page (6)
+     × renders without crashing 412ms
+     × shows "Security Controls" section 1ms
+     × does NOT contain "HIPAA Compliant" 1ms
+     × does NOT contain "AES-256 Bit Encryption enabled" 1ms
+     × does NOT contain "TLS 1.3 Transmission Security" 2ms
+     × shows "Deployment-Managed" badge 1ms
+   ❯ 5. Workflows page (8)
+     × renders without crashing 193ms
+     × shows the Workflows heading 1ms
+     × renders Document Input node 1ms
+     × renders OCR Processing node 1ms
+     × workflow nodes are accessible buttons with aria-pressed 1ms
+     × Test Pipeline shows info banner on click 1ms
+     × New Workflow shows info banner on click 1ms
+     × clicking a node toggles aria-pressed to true 1ms
+   ❯ 6. Documents page (5)
+     × renders without crashing 218ms
+     × shows document list from API 1ms
+     × shows patient list from API 1ms
+     × does NOT crash when last_updated is undefined 1ms
+     × does NOT crash when doc_type is undefined 1ms
+   ❯ 7. Integrations page (4)
+     × renders without crashing 84ms
+     × shows System Connections heading 1ms
+     × shows connection cards 1ms
+     × shows FHIR version from API 1ms
+   ❯ 8. Header component (5)
+     × renders without crashing 126ms
+     × does NOT show hardcoded "All systems nominal" 1ms
+     × shows dynamic system status after health check 1ms
+     × Notifications button has aria-label 1ms
+     × Help button has aria-label 1ms
+   ❯ 9. Sidebar navigation (7)
+     × renders without crashing 1ms
+     × shows all main nav items 1ms
+     × does NOT show hardcoded "Dr. Sarah Chen" 1ms
+     × does NOT show hardcoded badge 60 1ms
+     × shows live badge count from API (8) 1ms
+     × active view gets aria-current="page" 1ms
+     × nav button calls onNavigate correctly 1ms
+ ❯ src/test/documentLifecycle.test.ts (0 test)
+ ❯ src/test/authBypass.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 12 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/test/audit.test.tsx [ src/test/audit.test.tsx ]
+ FAIL  src/test/authBypass.test.ts [ src/test/authBypass.test.ts ]
+ FAIL  src/test/authClient.test.ts [ src/test/authClient.test.ts ]
+ FAIL  src/test/authCookies.test.ts [ src/test/authCookies.test.ts ]
+ FAIL  src/test/authCore.test.tsx [ src/test/authCore.test.tsx ]
+ FAIL  src/test/documentLifecycle.test.ts [ src/test/documentLifecycle.test.ts ]
+ FAIL  src/test/encoding.test.ts [ src/test/encoding.test.ts ]
+ FAIL  src/test/integrations.test.tsx [ src/test/integrations.test.tsx ]
+ FAIL  src/test/navigation_workflows_redirect.test.tsx [ src/test/navigation_workflows_redirect.test.tsx ]
+ FAIL  src/test/reviewDisabledApprove.test.tsx [ src/test/reviewDisabledApprove.test.tsx ]
+ FAIL  src/test/reviewDocumentStatus.test.tsx [ src/test/reviewDocumentStatus.test.tsx ]
+ FAIL  src/test/review_ux_features.test.tsx [ src/test/review_ux_features.test.tsx ]
+Error: ENOENT: no such file or directory, open 'C:\Users\Meta\AppData\Local\Packages\sandbox.{a5face68-bff1-4c7b-96a3-11f25573418e}\AC\Temp\BC3LEbdlTB56iBp9Y5p-j\client\4e6147d99a579bb4c6bfce996a9cd06367c5feec'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/47]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 35 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/test/pages.test.tsx > 4. Settings page > renders without crashing
+ FAIL  src/test/pages.test.tsx > 4. Settings page > shows "Security Controls" section
+ FAIL  src/test/pages.test.tsx > 4. Settings page > does NOT contain "HIPAA Compliant"
+ FAIL  src/test/pages.test.tsx > 4. Settings page > does NOT contain "AES-256 Bit Encryption enabled"
+ FAIL  src/test/pages.test.tsx > 4. Settings page > does NOT contain "TLS 1.3 Transmission Security"
+ FAIL  src/test/pages.test.tsx > 4. Settings page > shows "Deployment-Managed" badge
+ FAIL  src/test/pages.test.tsx > 5. Workflows page > renders without crashing
+ FAIL  src/test/pages.test.tsx > 5. Workflows page > shows the Workflows heading
+ FAIL  src/test/pages.test.tsx > 5. Workflows page > renders Document Input node
+ FAIL  src/test/pages.test.tsx > 5. Workflows page > renders OCR Processing node
+ FAIL  src/test/pages.test.tsx > 5. Workflows page > workflow nodes are accessible buttons with aria-pressed
+ FAIL  src/test/pages.test.tsx > 5. Workflows page > Test Pipeline shows info banner on click
+ FAIL  src/test/pages.test.tsx > 5. Workflows page > New Workflow shows info banner on click
+ FAIL  src/test/pages.test.tsx > 5. Workflows page > clicking a node toggles aria-pressed to true
+ FAIL  src/test/pages.test.tsx > 6. Documents page > renders without crashing
+ FAIL  src/test/pages.test.tsx > 6. Documents page > shows document list from API
+ FAIL  src/test/pages.test.tsx > 6. Documents page > shows patient list from API
+ FAIL  src/test/pages.test.tsx > 6. Documents page > does NOT crash when last_updated is undefined
+ FAIL  src/test/pages.test.tsx > 6. Documents page > does NOT crash when doc_type is undefined
+ FAIL  src/test/pages.test.tsx > 7. Integrations page > renders without crashing
+ FAIL  src/test/pages.test.tsx > 7. Integrations page > shows System Connections heading
+ FAIL  src/test/pages.test.tsx > 7. Integrations page > shows connection cards
+ FAIL  src/test/pages.test.tsx > 7. Integrations page > shows FHIR version from API
+ FAIL  src/test/pages.test.tsx > 9. Sidebar navigation > renders without crashing
+ FAIL  src/test/pages.test.tsx > 9. Sidebar navigation > shows all main nav items
+ FAIL  src/test/pages.test.tsx > 9. Sidebar navigation > does NOT show hardcoded "Dr. Sarah Chen"
+ FAIL  src/test/pages.test.tsx > 9. Sidebar navigation > does NOT show hardcoded badge 60
+ FAIL  src/test/pages.test.tsx > 9. Sidebar navigation > shows live badge count from API (8)
+ FAIL  src/test/pages.test.tsx > 9. Sidebar navigation > active view gets aria-current="page"
+ FAIL  src/test/pages.test.tsx > 9. Sidebar navigation > nav button calls onNavigate correctly
+Error: ENOENT: no such file or directory, open 'C:\Users\Meta\AppData\Local\Packages\sandbox.{a5face68-bff1-4c7b-96a3-11f25573418e}\AC\Temp\BC3LEbdlTB56iBp9Y5p-j\client\ee5a18ab84a18439f78171b92b6457902453742e'
+ ❯ src/components/navigation/Sidebar.tsx:18:1
+     16| } from 'lucide-react';
+     17| import { fetchReviewStats, type ReviewStats } from '../../services/api…
+     18| import logoUrl from '../../public/Glossy Blue Ribbon M Emblem.png';
+       | ^
+     19| import { useOptionalAuth } from '../../auth/AuthProvider';
+     20|
+ ❯ src/layouts/AppLayout.tsx:2:1
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/47]⎯
+
+ FAIL  src/test/pages.test.tsx > 8. Header component > renders without crashing
+ FAIL  src/test/pages.test.tsx > 8. Header component > does NOT show hardcoded "All systems nominal"
+ FAIL  src/test/pages.test.tsx > 8. Header component > shows dynamic system status after health check
+ FAIL  src/test/pages.test.tsx > 8. Header component > Notifications button has aria-label
+ FAIL  src/test/pages.test.tsx > 8. Header component > Help button has aria-label
+Error: ENOENT: no such file or directory, open 'C:\Users\Meta\AppData\Local\Packages\sandbox.{a5face68-bff1-4c7b-96a3-11f25573418e}\AC\Temp\BC3LEbdlTB56iBp9Y5p-j\client\ee5a18ab84a18439f78171b92b6457902453742e'
+ ❯ src/components/navigation/Header.tsx:12:1
+     10| } from "../../services/api"
+     11|
+     12| import logoUrl from "../../public/Glossy Blue Ribbon M Emblem.png"
+       | ^
+     13|
+     14| export interface HeaderProps {
+ ❯ src/test/pages.test.tsx:634:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/47]⎯
+
+
+ Test Files  13 failed | 1 passed (14)
+      Tests  35 failed | 48 passed (83)
+   Start at  12:57:14
+   Duration  36.17s (environment 79%, tests 12%, setup 4%, import 2%, transform 2%, worker 1%)
+
+Environment  jsdom was created 14 times · 152.53s total, 79% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

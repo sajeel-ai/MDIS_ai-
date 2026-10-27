@@ -1,6 +1,7 @@
 {
-  "measured_at": "2026-10-05T12:07:05.159466+00:00",
+  "measured_at": "2026-10-27T08:28:12.853846+00:00",
   "fixtures_evaluated": 32,
+  "labelled_eval_set": true,
   "precision_by_type": {
     "diagnosis": 1.0,
     "medication": 1.0,
@@ -10,18 +11,51 @@
   },
   "recall_by_type": {
     "diagnosis": 1.0,
-    "medication": 1.0,
-    "symptom": 1.0,
+    "medication": 0.75,
+    "symptom": 0.7778,
     "procedure": 1.0,
     "lab": 1.0
   },
   "f1_by_type": {
     "diagnosis": 1.0,
-    "medication": 1.0,
-    "symptom": 1.0,
+    "medication": 0.8571,
+    "symptom": 0.875,
     "procedure": 1.0,
     "lab": 1.0
   },
+  "precision_by_category": {
+    "unspecified": 1.0
+  },
+  "recall_by_category": {
+    "unspecified": 0.9143
+  },
+  "f1_by_category": {
+    "unspecified": 0.9552
+  },
   "assertion_accuracy": 1.0,
-  "assertion_entities_evaluated": 35
+  "assertion_entities_evaluated": 32,
+  "mean_cer": null,
+  "mean_wer": null,
+  "ocr_documents_evaluated": 0,
+  "mean_bbox_iou": null,
+  "top_missed_terms": [
+    {
+      "entity_type": "symptom",
+      "term": "Fever",
+      "count": 1
+    },
+    {
+      "entity_type": "symptom",
+      "term": "Cough",
+      "count": 1
+    },
+    {
+      "entity_type": "medication",
+      "term": "Albuterol",
+      "count": 1
+    }
+  ],
+  "data_provenance": "synthetic regression/sample data; OCR text differences are synthetic",
+  "synthetic_ocr_noise_document_ids": [],
+  "synthetic_ocr_noise_description": null
 }

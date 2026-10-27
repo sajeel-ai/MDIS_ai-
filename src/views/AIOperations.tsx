@@ -105,9 +105,10 @@ export function AIOperations() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Extraction Quality */}
+          {/* Labelled-set accuracy / reviewer acceptance */}
           <div className="rounded-lg p-5 bg-white border border-[#DCE7F3]">
             <h2 className="font-sans text-sm font-semibold text-[#071A3D] mb-1">Synthetic extraction evaluation</h2>
+            <p className="text-[11px] text-[#52627A] mb-1">{metrics?.extraction_accuracy_label ?? 'Not measured'}: {metrics?.extraction_accuracy == null ? 'Not measured' : `${(metrics.extraction_accuracy * 100).toFixed(1)}%`}</p>
             {evaluation ? (
               <>
                 <p className="text-[11px] text-[#52627A] mb-4">Measured on {evaluation.fixtures_evaluated} synthetic fixtures</p>

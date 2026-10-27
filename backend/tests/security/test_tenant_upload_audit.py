@@ -13,7 +13,7 @@ from app.config import settings
 from app.db import AsyncSessionLocal, engine, get_db
 from app.main import app
 from app.models import (
-    AuditEvent, ClinicalEntity, Document, DocumentVersion, EvidenceSpan, Extraction,
+    AuditEvent, ClinicalEntity, Document, DocumentValidationFlag, DocumentVersion, EvidenceSpan, Extraction,
     Organization, Patient, ProcessingJob, ReviewTask, User, UserRole,
 )
 from app.security.auth import create_access_token
@@ -338,6 +338,7 @@ async def test_successful_upload_stores_content_hash_and_audit_ids_only(tenant_d
     assert stored_document is not None
     assert stored_document.file_name == "synthetic_note.pdf"
     assert stored_document.storage_key == f"documents/{__import__('hashlib').sha256(content).hexdigest()}"
+    assert not list(__import__("pathlib").Path(settings.storage_local_path).glob("upload-*"))
     audit = await tenant_data["db"].scalar(
         select(AuditEvent).where(
             AuditEvent.action == "upload_document",
@@ -350,6 +351,73 @@ async def test_successful_upload_stores_content_hash_and_audit_ids_only(tenant_d
         "resource_id": str(document_id),
         "organization_id": str(tenant_data["org_a"].id),
     }
+
+
+@pytest.mark.asyncio
+async def test_phi_read_endpoints_persist_actor_resource_action_time_and_ip(tenant_data, tenant_client):
+    db = tenant_data["db"]
+    document = tenant_data["document_a"]
+    document.file_name = "phi-audit-search-target.txt"
+    document.mime_type = "text/plain"
+    extraction = Extraction(document_id=document.id, status="completed")
+    db.add(extraction)
+    await db.flush()
+    entity = ClinicalEntity(
+        extraction_id=extraction.id,
+        entity_type="symptom",
+        raw_text="synthetic symptom",
+        normalized_value="synthetic symptom",
+        confidence=0.95,
+        status="unreviewed",
+    )
+    db.add(entity)
+    await db.flush()
+    flag = DocumentValidationFlag(
+        document_id=document.id,
+        extraction_id=extraction.id,
+        rule_code="SYNTHETIC_TEST_FLAG",
+        severity="info",
+        status="pass",
+        message="synthetic flag",
+    )
+    task = ReviewTask(document_id=document.id, entity_id=entity.id, status="pending", priority="normal")
+    db.add_all([flag, task])
+    await db.flush()
+    storage_key = f"documents/{document.id}/audit-fixture.txt"
+    from app.providers.storage.local import LocalStorageProvider
+    await LocalStorageProvider().save_file(storage_key, b"synthetic file bytes")
+    document.storage_key = storage_key
+    await db.commit()
+
+    endpoints = [
+        ("GET", f"/api/v1/documents?search=search-target", "view_document_in_list", document.id),
+        ("GET", f"/api/v1/documents/{document.id}", "view_document", document.id),
+        ("GET", f"/api/v1/documents/{document.id}/file", "read_file", document.id),
+        ("GET", f"/api/v1/documents/{document.id}/entities", "view_entities", document.id),
+        ("GET", f"/api/v1/documents/{document.id}/validation-flags", "view_validation_flags", document.id),
+        ("GET", f"/api/v1/review/{task.id}", "view_review_task", task.id),
+        ("GET", f"/api/v1/review/queue?document_id={document.id}", "view_review_task", task.id),
+        ("POST", "/api/v1/search", "global_search_result", document.id),
+        ("GET", f"/api/v1/documents/{document.id}/export/json", "export_document", document.id),
+        ("GET", f"/api/v1/documents/{document.id}/fhir", "export_fhir", document.id),
+    ]
+    for method, url, _action, _resource_id in endpoints:
+        response = await tenant_client.request(method, url, json={"q": "search-target"} if method == "POST" else None)
+        assert response.status_code < 400, f"{method} {url} returned {response.status_code}: {response.text}"
+
+    expected = {(action, resource_id) for _, _, action, resource_id in endpoints}
+    expected.add(("view_review_queue", None))
+    events = (await db.execute(select(AuditEvent).where(AuditEvent.user_id == tenant_data["user_id"]))).scalars().all()
+    seen = {(event.action, event.resource_id) for event in events}
+    assert expected <= seen
+    for event in events:
+        if (event.action, event.resource_id) not in expected:
+            continue
+        assert event.user_id == tenant_data["user_id"]
+        assert event.created_at is not None
+        assert event.ip_address
+        assert "raw_text" not in (event.metadata_ or {})
+        assert "synthetic symptom" not in str(event.metadata_)
 
 
 @pytest.mark.asyncio

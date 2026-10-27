@@ -96,6 +96,21 @@ function parseRoute(pathname: string, search: string = ""): RouteState {
       reviewTaskId: reviewMatch[1] ? decodeURIComponent(reviewMatch[1]) : null,
       fromStatus,
     }
+
+  // Proper redirect for legacy /ai-extraction and /extraction
+  if (cleanPath === "/ai-extraction" || cleanPath === "/extraction") {
+    if (typeof window !== "undefined" && window.history?.replaceState) {
+      window.history.replaceState(null, "", "/documents")
+    }
+    return {
+      view: "documents",
+      path: "/documents",
+      documentId: null,
+      reviewTaskId: null,
+      fromStatus: null,
+    }
+  }
+
   const pathViews: Record<string, View> = {
     "/": "dashboard",
     "/dashboard": "dashboard",
@@ -108,8 +123,6 @@ function parseRoute(pathname: string, search: string = ""): RouteState {
     "/ai-operations": "aiops",
     "/aiops": "aiops",
     "/settings": "settings",
-    "/ai-extraction": "documents",
-    "/extraction": "documents",
     "/analytics": "analytics",
     "/audit": "audit",
     "/pipeline": "pipeline",

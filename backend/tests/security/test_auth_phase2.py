@@ -105,11 +105,12 @@ async def test_rate_limit_counts_per_account_across_ips(monkeypatch):
 async def test_rate_limit_cannot_be_bypassed_by_spoofing_forwarded_ip(monkeypatch):
     monkeypatch.setattr(settings, "auth_rate_limit_per_ip", 2)
     socket_ip = f"198.51.100.{uuid.uuid4().int % 200 + 1}"
+    action = f"phase5-forwarded-ip-{uuid.uuid4()}"
     async with AsyncSessionLocal() as db:
-        await enforce_auth_rate_limit(request_from_ip(socket_ip, {"x-forwarded-for": "203.0.113.1"}), db, "phase5-forwarded-ip")
-        await enforce_auth_rate_limit(request_from_ip(socket_ip, {"x-forwarded-for": "203.0.113.2"}), db, "phase5-forwarded-ip")
+        await enforce_auth_rate_limit(request_from_ip(socket_ip, {"x-forwarded-for": "203.0.113.1"}), db, action)
+        await enforce_auth_rate_limit(request_from_ip(socket_ip, {"x-forwarded-for": "203.0.113.2"}), db, action)
         with pytest.raises(HTTPException) as raised:
-            await enforce_auth_rate_limit(request_from_ip(socket_ip, {"x-forwarded-for": "203.0.113.3"}), db, "phase5-forwarded-ip")
+            await enforce_auth_rate_limit(request_from_ip(socket_ip, {"x-forwarded-for": "203.0.113.3"}), db, action)
     assert raised.value.status_code == 429
 
 

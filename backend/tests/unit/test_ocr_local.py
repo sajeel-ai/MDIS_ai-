@@ -28,6 +28,50 @@ async def test_ocr_text_file(local_ocr):
 
 
 @pytest.mark.asyncio
+async def test_image_ocr_plaintext_temp_file_is_removed_after_processing(monkeypatch, tmp_path):
+    import app.providers.ocr.local as local_ocr_module
+
+    monkeypatch.setattr(local_ocr_module.tempfile, "tempdir", str(tmp_path))
+    seen_paths = []
+
+    def fake_tesseract(path):
+        seen_paths.append(Path(path))
+        assert seen_paths[-1].read_bytes() == b"\x89PNG\r\n\x1a\nsynthetic"
+        return "synthetic", 0.9, []
+
+    monkeypatch.setattr(LocalOCRProvider, "_tesseract_image_data", staticmethod(fake_tesseract))
+    result = await LocalOCRProvider()._process_image(b"\x89PNG\r\n\x1a\nsynthetic")
+    assert result["text"] == "synthetic"
+    assert len(seen_paths) == 1
+    assert not seen_paths[0].exists()
+
+
+@pytest.mark.asyncio
+async def test_pdf_input_and_rendered_page_image_temp_files_are_removed(monkeypatch, tmp_path):
+    import tempfile
+    import pymupdf
+
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    monkeypatch.setattr(LocalOCRProvider, "_extract_embedded_pdf_text", staticmethod(lambda _bytes: None))
+    rendered_paths = []
+
+    def fake_tesseract(path):
+        rendered_paths.append(Path(path))
+        return "synthetic OCR text", 0.9, []
+
+    monkeypatch.setattr(LocalOCRProvider, "_tesseract_image_data", staticmethod(fake_tesseract))
+    pdf = pymupdf.open()
+    pdf.new_page()
+    pdf_bytes = pdf.tobytes()
+    pdf.close()
+    result = await LocalOCRProvider()._process_pdf(pdf_bytes)
+    assert result["text"] == "synthetic OCR text"
+    assert len(rendered_paths) == 1
+    assert not rendered_paths[0].exists()
+    assert not rendered_paths[0].parent.exists()
+
+
+@pytest.mark.asyncio
 async def test_ocr_medical_image(local_ocr, tmp_path):
     # Create synthetic medical note PNG image using PIL
     im = Image.new("RGB", (600, 150), color=(255, 255, 255))
@@ -57,11 +101,16 @@ def test_image_ocr_confidence_averages_word_confidence_and_ignores_minus_one(mon
     monkeypatch.setattr(
         pytesseract,
         "image_to_data",
-        lambda *_args, **_kwargs: {"text": ["word", "", "word"], "conf": ["80", "-1", "60"]},
+        lambda *_args, **_kwargs: {
+            "text": ["word", "", "word"], "conf": ["80", "-1", "60"],
+            "left": [1, 0, 3], "top": [1, 0, 3],
+            "width": [2, 0, 2], "height": [2, 0, 2],
+        },
     )
-    text, confidence = local_ocr_module.LocalOCRProvider._tesseract_image_data(str(image_path))
+    text, confidence, boxes = local_ocr_module.LocalOCRProvider._tesseract_image_data(str(image_path))
     assert text == "word word"
     assert confidence == pytest.approx(0.7)
+    assert len(boxes) == 2
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,469 @@
+﻿........EEEEEEEEEs...................................................... [ 28%]
+........................................................................ [ 56%]
+........................................................................ [ 84%]
+.FF....................................                                  [100%]
+=================================== ERRORS ====================================
+___________ ERROR at setup of test_pg_zero_entity_note_stores_flag ____________
+
+    @pytest_asyncio.fixture
+    async def pg_test_env():
+        await engine.dispose(close=False)
+        async with AsyncSessionLocal() as db:
+            org_a = Organization(name=f"Test Org A {uuid.uuid4().hex[:6]}")
+            org_b = Organization(name=f"Test Org B {uuid.uuid4().hex[:6]}")
+            db.add_all([org_a, org_b])
+            await db.flush()
+    
+            reviewer = User(
+                email=f"reviewer-{uuid.uuid4()}@example.test",
+>               role=UserRole.CLINICAL_REVIEWER,
+                organization_id=org_a.id,
+                is_active=True,
+            )
+E           AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+
+tests\integration\test_document_validation_flags_postgres.py:50: AttributeError
+_________ ERROR at setup of test_pg_two_missing_vitals_give_two_rows __________
+
+    @pytest_asyncio.fixture
+    async def pg_test_env():
+        await engine.dispose(close=False)
+        async with AsyncSessionLocal() as db:
+            org_a = Organization(name=f"Test Org A {uuid.uuid4().hex[:6]}")
+            org_b = Organization(name=f"Test Org B {uuid.uuid4().hex[:6]}")
+            db.add_all([org_a, org_b])
+            await db.flush()
+    
+            reviewer = User(
+                email=f"reviewer-{uuid.uuid4()}@example.test",
+>               role=UserRole.CLINICAL_REVIEWER,
+                organization_id=org_a.id,
+                is_active=True,
+            )
+E           AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+
+tests\integration\test_document_validation_flags_postgres.py:50: AttributeError
+_________ ERROR at setup of test_pg_active_flag_blocks_approve_clean __________
+
+    @pytest_asyncio.fixture
+    async def pg_test_env():
+        await engine.dispose(close=False)
+        async with AsyncSessionLocal() as db:
+            org_a = Organization(name=f"Test Org A {uuid.uuid4().hex[:6]}")
+            org_b = Organization(name=f"Test Org B {uuid.uuid4().hex[:6]}")
+            db.add_all([org_a, org_b])
+            await db.flush()
+    
+            reviewer = User(
+                email=f"reviewer-{uuid.uuid4()}@example.test",
+>               role=UserRole.CLINICAL_REVIEWER,
+                organization_id=org_a.id,
+                is_active=True,
+            )
+E           AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+
+tests\integration\test_document_validation_flags_postgres.py:50: AttributeError
+___ ERROR at setup of test_pg_superseded_flag_does_not_block_approve_clean ____
+
+    @pytest_asyncio.fixture
+    async def pg_test_env():
+        await engine.dispose(close=False)
+        async with AsyncSessionLocal() as db:
+            org_a = Organization(name=f"Test Org A {uuid.uuid4().hex[:6]}")
+            org_b = Organization(name=f"Test Org B {uuid.uuid4().hex[:6]}")
+            db.add_all([org_a, org_b])
+            await db.flush()
+    
+            reviewer = User(
+                email=f"reviewer-{uuid.uuid4()}@example.test",
+>               role=UserRole.CLINICAL_REVIEWER,
+                organization_id=org_a.id,
+                is_active=True,
+            )
+E           AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+
+tests\integration\test_document_validation_flags_postgres.py:50: AttributeError
+____________ ERROR at setup of test_pg_manual_approval_still_works ____________
+
+    @pytest_asyncio.fixture
+    async def pg_test_env():
+        await engine.dispose(close=False)
+        async with AsyncSessionLocal() as db:
+            org_a = Organization(name=f"Test Org A {uuid.uuid4().hex[:6]}")
+            org_b = Organization(name=f"Test Org B {uuid.uuid4().hex[:6]}")
+            db.add_all([org_a, org_b])
+            await db.flush()
+    
+            reviewer = User(
+                email=f"reviewer-{uuid.uuid4()}@example.test",
+>               role=UserRole.CLINICAL_REVIEWER,
+                organization_id=org_a.id,
+                is_active=True,
+            )
+E           AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+
+tests\integration\test_document_validation_flags_postgres.py:50: AttributeError
+______ ERROR at setup of test_pg_reprocess_supersedes_and_keeps_old_rows ______
+
+    @pytest_asyncio.fixture
+    async def pg_test_env():
+        await engine.dispose(close=False)
+        async with AsyncSessionLocal() as db:
+            org_a = Organization(name=f"Test Org A {uuid.uuid4().hex[:6]}")
+            org_b = Organization(name=f"Test Org B {uuid.uuid4().hex[:6]}")
+            db.add_all([org_a, org_b])
+            await db.flush()
+    
+            reviewer = User(
+                email=f"reviewer-{uuid.uuid4()}@example.test",
+>               role=UserRole.CLINICAL_REVIEWER,
+                organization_id=org_a.id,
+                is_active=True,
+            )
+E           AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+
+tests\integration\test_document_validation_flags_postgres.py:50: AttributeError
+________________ ERROR at setup of test_pg_cross_org_isolation ________________
+
+    @pytest_asyncio.fixture
+    async def pg_test_env():
+        await engine.dispose(close=False)
+        async with AsyncSessionLocal() as db:
+            org_a = Organization(name=f"Test Org A {uuid.uuid4().hex[:6]}")
+            org_b = Organization(name=f"Test Org B {uuid.uuid4().hex[:6]}")
+            db.add_all([org_a, org_b])
+            await db.flush()
+    
+            reviewer = User(
+                email=f"reviewer-{uuid.uuid4()}@example.test",
+>               role=UserRole.CLINICAL_REVIEWER,
+                organization_id=org_a.id,
+                is_active=True,
+            )
+E           AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+
+tests\integration\test_document_validation_flags_postgres.py:50: AttributeError
+___ ERROR at setup of test_pg_workflow_zero_entity_note_stores_active_flag ____
+
+    @pytest_asyncio.fixture
+    async def pg_test_env():
+        await engine.dispose(close=False)
+        async with AsyncSessionLocal() as db:
+            org_a = Organization(name=f"Test Org A {uuid.uuid4().hex[:6]}")
+            org_b = Organization(name=f"Test Org B {uuid.uuid4().hex[:6]}")
+            db.add_all([org_a, org_b])
+            await db.flush()
+    
+            reviewer = User(
+                email=f"reviewer-{uuid.uuid4()}@example.test",
+>               role=UserRole.CLINICAL_REVIEWER,
+                organization_id=org_a.id,
+                is_active=True,
+            )
+E           AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+
+tests\integration\test_document_validation_flags_postgres.py:50: AttributeError
+_ ERROR at setup of test_pg_workflow_reprocess_supersedes_and_keeps_old_rows __
+
+    @pytest_asyncio.fixture
+    async def pg_test_env():
+        await engine.dispose(close=False)
+        async with AsyncSessionLocal() as db:
+            org_a = Organization(name=f"Test Org A {uuid.uuid4().hex[:6]}")
+            org_b = Organization(name=f"Test Org B {uuid.uuid4().hex[:6]}")
+            db.add_all([org_a, org_b])
+            await db.flush()
+    
+            reviewer = User(
+                email=f"reviewer-{uuid.uuid4()}@example.test",
+>               role=UserRole.CLINICAL_REVIEWER,
+                organization_id=org_a.id,
+                is_active=True,
+            )
+E           AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+
+tests\integration\test_document_validation_flags_postgres.py:50: AttributeError
+================================== FAILURES ===================================
+____ test_vital_warning_flag_blocks_approve_clean_routing_to_manual_review ____
+
+self = <AsyncMock name='mock.execute' id='2315160004192'>
+args = (<sqlalchemy.sql.selectable.Select object at 0x0000021B0A3AD400>,)
+kwargs = {}
+_call = call(<sqlalchemy.sql.selectable.Select object at 0x0000021B0A3AD400>)
+effect = <list_iterator object at 0x0000021B0A26D690>
+
+    async def _execute_mock_call(self, /, *args, **kwargs):
+        # This is nearly just like super(), except for special handling
+        # of coroutines
+    
+        _call = _Call((args, kwargs), two=True)
+        self.await_count += 1
+        self.await_args = _call
+        self.await_args_list.append(_call)
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                try:
+>                   result = next(effect)
+E                   StopIteration
+
+C:\Python313\Lib\unittest\mock.py:2324: StopIteration
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.mark.asyncio
+    async def test_vital_warning_flag_blocks_approve_clean_routing_to_manual_review():
+        """Item 1a routing: a ValidationResult with rule_code='vital_mentioned_not_extracted'
+        and severity='warning' IS caught by approve_clean_for_document's filter
+        (v.severity in {"warning","error"}), so the task stays pending and the document
+        routes to manual review instead of being auto-approved.
+        """
+        document_id = uuid.uuid4()
+        document = Document(
+            id=document_id, patient_id=uuid.uuid4(), document_type="progress_note",
+            source="test", status="completed", review_status="pending",
+        )
+        entity_with_vital_flag = ClinicalEntity(
+            id=uuid.uuid4(), extraction_id=uuid.uuid4(), entity_type="diagnosis",
+            raw_text="alert", normalized_value="Alert", confidence=0.9, status="unreviewed",
+        )
+        # severity="warning" \u2192 caught by approve_clean filter \u2192 task NOT auto-approved
+        entity_with_vital_flag.validation_results = [ValidationResult(
+            entity_id=entity_with_vital_flag.id,
+            validation_rule="vital_mentioned_not_extracted",
+            rule_code="vital_mentioned_not_extracted",
+            status="warning",
+            severity="warning",   # routes to manual review
+        )]
+        task = ReviewTask(
+            id=uuid.uuid4(), document_id=document_id,
+            entity_id=entity_with_vital_flag.id,
+            priority="normal", status="pending",
+        )
+        task.document = document
+        task.entity = entity_with_vital_flag
+        added: list = []
+        session = AsyncMock()
+        session.add = Mock(side_effect=added.append)
+        session.execute.side_effect = [
+            _result(all_items=[task]),
+            _result(all_items=["pending"]),
+        ]
+    
+>       count = await ReviewService(session).approve_clean_for_document(document_id)
+
+tests\unit\test_processing_state_machine.py:348: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app\services\review\review_service.py:402: in approve_clean_for_document
+    statuses = await self.session.execute(select(ReviewTask.status).where(ReviewTask.document_id == document_id))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <AsyncMock name='mock.execute' id='2315160004192'>
+args = (<sqlalchemy.sql.selectable.Select object at 0x0000021B0A3AD400>,)
+kwargs = {}
+_call = call(<sqlalchemy.sql.selectable.Select object at 0x0000021B0A3AD400>)
+effect = <list_iterator object at 0x0000021B0A26D690>
+
+    async def _execute_mock_call(self, /, *args, **kwargs):
+        # This is nearly just like super(), except for special handling
+        # of coroutines
+    
+        _call = _Call((args, kwargs), two=True)
+        self.await_count += 1
+        self.await_args = _call
+        self.await_args_list.append(_call)
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                try:
+                    result = next(effect)
+                except StopIteration:
+                    # It is impossible to propagate a StopIteration
+                    # through coroutines because of PEP 479
+>                   raise StopAsyncIteration
+E                   StopAsyncIteration
+
+C:\Python313\Lib\unittest\mock.py:2328: StopAsyncIteration
+___________ test_vital_warning_flag_does_not_block_manual_approval ____________
+
+    @pytest.mark.asyncio
+    async def test_vital_warning_flag_does_not_block_manual_approval():
+        """Item 1a non-blocking: record_review_decision('approved') has no severity filter,
+        so a reviewer can still approve the task that carries only the vital flag.
+        """
+        document_id = uuid.uuid4()
+        document = Document(
+            id=document_id, patient_id=uuid.uuid4(), document_type="progress_note",
+            source="test", status="completed", review_status="pending",
+        )
+        entity_with_vital_flag = ClinicalEntity(
+            id=uuid.uuid4(), extraction_id=uuid.uuid4(), entity_type="diagnosis",
+            raw_text="alert", normalized_value="Alert", confidence=0.9, status="unreviewed",
+        )
+        entity_with_vital_flag.evidence_spans = []
+        entity_with_vital_flag.validation_results = [ValidationResult(
+            entity_id=entity_with_vital_flag.id,
+            validation_rule="vital_mentioned_not_extracted",
+            rule_code="vital_mentioned_not_extracted",
+            status="warning",
+            severity="warning",
+        )]
+        task = ReviewTask(
+            id=uuid.uuid4(), document_id=document_id,
+            entity_id=entity_with_vital_flag.id,
+            priority="normal", status="pending",
+        )
+        task.document = document
+        task.entity = entity_with_vital_flag
+        status_result = _result(all_items=["approved"])
+        session = AsyncMock()
+        session.add = Mock()
+        session.execute.side_effect = [
+            _result(first=task),          # fetch task
+            _result(first=document),      # fetch document
+            status_result,                # aggregate statuses
+            _result(first=task),          # audit fetch
+        ]
+    
+        # Must not raise; reviewer can always approve manually
+>       await ReviewService(session).record_review_decision(task.id, "approved")
+
+tests\unit\test_processing_state_machine.py:398: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app\services\review\review_service.py:348: in record_review_decision
+    return await self.get_review_task_detail(task.id)
+app\services\review\review_service.py:207: in get_review_task_detail
+    return await self._build_task_dict(task, include_source_text=True)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <app.services.review.review_service.ReviewService object at 0x0000021B0A468380>
+task = <app.models.review.ReviewTask object at 0x0000021B0A3F85F0>
+include_source_text = True
+
+    async def _build_task_dict(
+        self, task: ReviewTask, include_source_text: bool = False
+    ) -> Dict[str, Any]:
+        """Format a ReviewTask ORM object into a detailed API response dictionary."""
+        doc = task.document
+        patient = doc.patient if doc else None
+    
+        patient_dict = None
+        if patient:
+            name_parts = [p for p in [patient.first_name, patient.last_name] if p]
+            display_name = " ".join(name_parts) if name_parts else f"Patient {patient.mrn}"
+            patient_dict = {
+                "id": str(patient.id),
+                "display_name": display_name,
+                "mrn": patient.mrn or "UNKNOWN",
+            }
+    
+        doc_dict = None
+        if doc:
+            doc_dict = {
+                "id": str(doc.id),
+                "file_name": doc.file_name,
+                "document_type": doc.document_type,
+                "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            }
+    
+        # Target entity & evidence
+        entity = task.entity
+        entity_dict = None
+        evidence_dict = None
+        validation_dict = None
+        validation_results = []
+    
+        if entity:
+            entity_dict = {
+                "id": str(entity.id),
+                "type": entity.entity_type,
+                "raw_text": entity.raw_text,
+                "normalized_value": entity.normalized_value,
+                "confidence": float(entity.confidence),
+                "assertion": entity.assertion,
+                "section": entity.section,
+                "status": entity.status,
+                "details": entity.details,
+                "original_ai_value": entity.original_ai_value,
+            }
+    
+            if entity.evidence_spans:
+                span = entity.evidence_spans[0]
+                evidence_dict = {
+                    "id": str(span.id),
+                    "text": span.text,
+                    "start_offset": span.start_offset,
+                    "end_offset": span.end_offset,
+                    "page_number": span.page_number or 1,
+                }
+    
+            validation_results = [{
+                "rule_code": val.rule_code or val.validation_rule.upper(),
+                "severity": val.severity,
+                "status": val.status,
+                "message": val.message,
+            } for val in entity.validation_results]
+            if validation_results:
+                validation_dict = validation_results[0]
+    
+        # Source text from latest version
+        source_text = None
+        if doc and doc.versions:
+            latest_version = max(doc.versions, key=lambda v: v.version_number)
+            if include_source_text:
+                source_text = latest_version.raw_text
+            elif evidence_dict and latest_version.raw_text:
+                # Provide snippet around evidence if source text not fully requested
+                start = max(0, evidence_dict["start_offset"] - 100)
+                end = min(len(latest_version.raw_text), evidence_dict["end_offset"] + 100)
+                source_text = latest_version.raw_text[start:end]
+    
+        if not validation_dict:
+            validation_dict = {
+                "status": "warning" if task.priority == "high" else "info",
+                "message": task.reason or "Automatic validation flag",
+            }
+    
+        return {
+            "id": str(task.id),
+            "document_id": str(task.document_id),
+            "entity_id": str(task.entity_id) if task.entity_id else None,
+            "priority": task.priority,
+            "reason": task.reason or "Needs clinical review",
+            "status": task.status,
+            "assigned_to": str(task.assigned_to) if task.assigned_to else None,
+>           "created_at": task.created_at.isoformat(),
+            "started_at": task.started_at.isoformat() if task.started_at else None,
+            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+            "decision": task.decision,
+            "comment": task.comment,
+            "document": doc_dict,
+            "patient": patient_dict,
+            "entity": entity_dict,
+            "validation_results": validation_results,
+            "evidence": evidence_dict,
+            "validation": validation_dict,
+            "source_text": source_text,
+        }
+E       AttributeError: 'NoneType' object has no attribute 'isoformat'
+
+app\services\review\review_service.py:120: AttributeError
+=========================== short test summary info ===========================
+FAILED tests/unit/test_processing_state_machine.py::test_vital_warning_flag_blocks_approve_clean_routing_to_manual_review
+FAILED tests/unit/test_processing_state_machine.py::test_vital_warning_flag_does_not_block_manual_approval
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_zero_entity_note_stores_flag
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_two_missing_vitals_give_two_rows
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_active_flag_blocks_approve_clean
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_superseded_flag_does_not_block_approve_clean
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_manual_approval_still_works
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_reprocess_supersedes_and_keeps_old_rows
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_cross_org_isolation
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_workflow_zero_entity_note_stores_active_flag
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_workflow_reprocess_supersedes_and_keeps_old_rows
+2 failed, 243 passed, 1 skipped, 9 errors in 38.33s

@@ -35,10 +35,10 @@ class Document(Base):
         UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False,
         index=True, default=DEFAULT_ORGANIZATION_ID,
     )
-    patient_id: Mapped[uuid.UUID] = mapped_column(
+    patient_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("patients.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("patients.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
     encounter_id: Mapped[uuid.UUID | None] = mapped_column(

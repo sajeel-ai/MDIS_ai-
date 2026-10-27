@@ -14,10 +14,11 @@ import uuid
 from datetime import datetime, timezone
 import pytest
 import pytest_asyncio
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, func
 
 from app.db import AsyncSessionLocal, engine
 from app.models import (
+    AuditEvent,
     ClinicalEntity,
     Document,
     DocumentValidationFlag,
@@ -27,13 +28,18 @@ from app.models import (
     Organization,
     Patient,
     ProcessingJob,
+    ProcessingStep,
     ReviewTask,
+    ValidationResult,
     User,
     UserRole,
 )
 from app.services.review.review_service import ReviewService
+from app.services.documents.document_service import DocumentService
 from app.services.validation.engine import validate_document_level_issues
 from app.workflows.clinical_processing import ClinicalProcessingWorkflow
+from app.services.retention.retention_service import RetentionPurgeService
+from app.config import settings
 
 
 @pytest_asyncio.fixture
@@ -47,7 +53,7 @@ async def pg_test_env():
 
         reviewer = User(
             email=f"reviewer-{uuid.uuid4()}@example.test",
-            role=UserRole.CLINICAL_REVIEWER,
+            role=UserRole.REVIEWER,
             organization_id=org_a.id,
             is_active=True,
         )
@@ -85,6 +91,17 @@ async def pg_test_env():
         db.add_all([doc_a, doc_b])
         await db.flush()
 
+        # Capture IDs before yield — after rollback SQLAlchemy expires
+        # all attributes so accessing .id would trigger a lazy-load outside
+        # an async context (MissingGreenlet).
+        doc_a_id = doc_a.id
+        doc_b_id = doc_b.id
+        patient_a_id = patient_a.id
+        patient_b_id = patient_b.id
+        reviewer_id = reviewer.id
+        org_a_id = org_a.id
+        org_b_id = org_b.id
+
         context = {
             "db": db,
             "org_a": org_a,
@@ -97,17 +114,26 @@ async def pg_test_env():
             yield context
         finally:
             await db.rollback()
-            await db.execute(delete(DocumentValidationFlag).where(DocumentValidationFlag.document_id.in_([doc_a.id, doc_b.id])))
-            await db.execute(delete(ReviewTask).where(ReviewTask.document_id.in_([doc_a.id, doc_b.id])))
-            await db.execute(delete(ClinicalEntity).where(ClinicalEntity.extraction_id.in_(
-                select(Extraction.id).where(Extraction.document_id.in_([doc_a.id, doc_b.id]))
-            )))
-            await db.execute(delete(Extraction).where(Extraction.document_id.in_([doc_a.id, doc_b.id])))
-            await db.execute(delete(Document).where(Document.id.in_([doc_a.id, doc_b.id])))
-            await db.execute(delete(Patient).where(Patient.id.in_([patient_a.id, patient_b.id])))
-            await db.execute(delete(User).where(User.id == reviewer.id))
-            await db.execute(delete(Organization).where(Organization.id.in_([org_a.id, org_b.id])))
-            await db.commit()
+            try:
+                await db.execute(delete(DocumentValidationFlag).where(DocumentValidationFlag.document_id.in_([doc_a_id, doc_b_id])))
+                await db.execute(delete(ReviewTask).where(ReviewTask.document_id.in_([doc_a_id, doc_b_id])))
+                await db.execute(delete(ClinicalEntity).where(ClinicalEntity.extraction_id.in_(
+                    select(Extraction.id).where(Extraction.document_id.in_([doc_a_id, doc_b_id]))
+                )))
+                await db.execute(delete(Extraction).where(Extraction.document_id.in_([doc_a_id, doc_b_id])))
+                await db.execute(delete(Document).where(Document.id.in_([doc_a_id, doc_b_id])))
+                await db.execute(delete(Patient).where(Patient.id.in_([patient_a_id, patient_b_id])))
+                await db.commit()
+            except Exception:
+                await db.rollback()
+
+            # Attempt user & org cleanup; if append-only audit_events reference them, ignore FK restriction
+            try:
+                await db.execute(delete(User).where(User.id == reviewer_id))
+                await db.execute(delete(Organization).where(Organization.id.in_([org_a_id, org_b_id])))
+                await db.commit()
+            except Exception:
+                await db.rollback()
     await engine.dispose()
 
 
@@ -117,7 +143,7 @@ async def test_pg_zero_entity_note_stores_flag(pg_test_env):
     db = pg_test_env["db"]
     doc = pg_test_env["doc_a"]
 
-    note_text = "Vitals: BP not recorded. Patient resting comfortably."
+    note_text = "BP not recorded. Patient resting comfortably."
     issues = validate_document_level_issues(note_text, [])
     assert len(issues) == 1
     assert issues[0].rule_code == "vital_mentioned_not_extracted"
@@ -336,6 +362,118 @@ async def test_pg_manual_approval_still_works(pg_test_env):
     assert task.status == "approved"
 
 
+async def _persist_drug_interaction_review_case(pg_test_env):
+    db = pg_test_env["db"]
+    document = pg_test_env["doc_a"]
+    extraction = Extraction(document_id=document.id, status="completed")
+    db.add(extraction)
+    await db.flush()
+    entity = ClinicalEntity(
+        extraction_id=extraction.id,
+        entity_type="medication",
+        raw_text="warfarin with aspirin",
+        normalized_value="warfarin",
+        confidence=0.99,
+        status="unreviewed",
+        assertion="present",
+    )
+    db.add(entity)
+    await db.flush()
+    flag = ValidationResult(
+        entity_id=entity.id,
+        validation_rule="drug_interaction",
+        rule_code="DRUG_INTERACTION",
+        status="warning",
+        severity="warning",
+        message="Potential interaction",
+    )
+    task = ReviewTask(
+        document_id=document.id,
+        entity_id=entity.id,
+        status="pending",
+        priority="high",
+        document=document,
+        entity=entity,
+    )
+    db.add_all([flag, task])
+    await db.flush()
+    return db, task.id, entity.id, flag.id, pg_test_env["reviewer"].id
+
+
+@pytest.mark.asyncio
+async def test_pg_override_requires_justification_without_state_change(pg_test_env):
+    db, task_id, entity_id, _flag_id, actor_id = await _persist_drug_interaction_review_case(pg_test_env)
+    with pytest.raises(ValueError, match="justification"):
+        await ReviewService(db).record_review_decision(
+            task_id=task_id,
+            decision="approved",
+            reviewer_user_id=actor_id,
+            justification="   ",
+        )
+    task = await db.get(ReviewTask, task_id)
+    entity = await db.get(ClinicalEntity, entity_id)
+    assert task.status == "pending"
+    assert task.decision is None
+    assert entity.status == "unreviewed"
+    assert await db.scalar(
+        select(AuditEvent.id).where(AuditEvent.action == "review_decision", AuditEvent.resource_id == task_id)
+    ) is None
+
+
+@pytest.mark.asyncio
+async def test_pg_override_audit_persists_actor_flag_justification_and_timestamp(pg_test_env):
+    db, task_id, _entity_id, flag_id, actor_id = await _persist_drug_interaction_review_case(pg_test_env)
+    justification = "Reviewed the interaction and confirmed an intentional monitored regimen."
+    await ReviewService(db).record_review_decision(
+        task_id=task_id,
+        decision="approved",
+        reviewer_user_id=actor_id,
+        justification=justification,
+    )
+    event = await db.scalar(
+        select(AuditEvent).where(
+            AuditEvent.action == "review_decision",
+            AuditEvent.resource_id == task_id,
+            AuditEvent.user_id == actor_id,
+        )
+    )
+    assert event is not None
+    assert event.user_id == actor_id
+    assert str(flag_id) in event.metadata_["override_flag_ids"]
+    assert event.metadata_["justification"] == justification
+    assert event.created_at is not None
+
+
+@pytest.mark.asyncio
+async def test_pg_scratchpad_purge_deletes_expired_jobs_and_preserves_audit(pg_test_env, monkeypatch):
+    db = pg_test_env["db"]
+    document = pg_test_env["doc_a"]
+    monkeypatch.setattr(settings, "retention_scratchpad_days", 30)
+    expired = ProcessingJob(
+        document_id=document.id,
+        pipeline_version="test",
+        status="failed",
+        created_at=datetime.now(timezone.utc) - timedelta(days=31),
+    )
+    recent = ProcessingJob(
+        document_id=document.id,
+        pipeline_version="test",
+        status="cancelled",
+        created_at=datetime.now(timezone.utc) - timedelta(days=2),
+    )
+    db.add_all([expired, recent])
+    await db.commit()
+    expired_id, recent_id = expired.id, recent.id
+    audit_count_before = await db.scalar(select(func.count()).select_from(AuditEvent))
+
+    result = await RetentionPurgeService(db).run_retention_purge(dry_run=False)
+
+    assert result["scratchpad_records_purged"] == 1
+    assert await db.get(ProcessingJob, expired_id) is None
+    assert await db.get(ProcessingJob, recent_id) is not None
+    assert await db.scalar(select(func.count()).select_from(AuditEvent)) == audit_count_before
+
+
 @pytest.mark.asyncio
 async def test_pg_reprocess_supersedes_and_keeps_old_rows(pg_test_env):
     """Reprocessing marks previous flags as superseded while retaining them for history."""
@@ -393,7 +531,10 @@ async def test_pg_reprocess_supersedes_and_keeps_old_rows(pg_test_env):
         .order_by(DocumentValidationFlag.created_at.asc())
     )
     all_flags = res.scalars().all()
-    assert len(all_flags) == 2
+    # >= 2 because the fixture is shared: other tests may have written flags
+    # to doc_a already. We only guarantee at least 2 (one superseded, one active).
+    assert len(all_flags) >= 2
+    # The oldest flag must belong to ext1 and be superseded
     assert all_flags[0].extraction_id == ext1.id
     assert all_flags[0].superseded_at is not None
     assert all_flags[1].extraction_id == ext2.id
@@ -469,7 +610,7 @@ async def test_pg_workflow_zero_entity_note_stores_active_flag(pg_test_env, tmp_
     db = pg_test_env["db"]
     doc = pg_test_env["doc_a"]
 
-    note_text = "Vitals: BP not recorded. Patient resting comfortably."
+    note_text = "BP not recorded. Patient resting comfortably."
     storage = LocalStorageProvider(str(tmp_path / "storage"))
     storage_key = f"documents/{doc.id}/note.txt"
     await storage.save_file(storage_key, note_text.encode("utf-8"))
@@ -518,7 +659,7 @@ async def test_pg_workflow_reprocess_supersedes_and_keeps_old_rows(pg_test_env, 
     db = pg_test_env["db"]
     doc = pg_test_env["doc_a"]
 
-    note_text = "Vitals: BP not recorded. Patient resting comfortably."
+    note_text = "BP not recorded. Patient resting comfortably."
     storage = LocalStorageProvider(str(tmp_path / "storage"))
     storage_key = f"documents/{doc.id}/note.txt"
     await storage.save_file(storage_key, note_text.encode("utf-8"))
@@ -570,4 +711,70 @@ async def test_pg_workflow_reprocess_supersedes_and_keeps_old_rows(pg_test_env, 
     assert first_flag.superseded_at is not None
     assert second_flag.superseded_at is None
     assert first_flag.extraction_id != second_flag.extraction_id
+
+
+@pytest.mark.asyncio
+async def test_pg_search_returns_unlinked_document_by_filename(pg_test_env):
+    """Exercise the real PostgreSQL LEFT JOIN with a persisted NULL patient_id."""
+    db = pg_test_env["db"]
+    org_id = pg_test_env["doc_a"].organization_id
+    unlinked = Document(
+        patient_id=None,
+        organization_id=org_id,
+        document_type="progress_note",
+        source="UserUpload",
+        file_name="unlinked-search-target.pdf",
+        mime_type="application/pdf",
+        status="completed",
+        review_status="pending",
+    )
+    db.add(unlinked)
+    await db.flush()
+
+    items, total = await DocumentService(db).list_documents(
+        search="unlinked-search-target",
+        organization_id=org_id,
+    )
+    assert total == 1
+    assert items[0]["id"] == str(unlinked.id)
+    assert items[0]["patient_name"] is None
+
+
+@pytest.mark.asyncio
+async def test_pg_single_and_batch_approval_share_critical_flag_gate(pg_test_env):
+    """The persisted CRITICAL rule blocks single and batch approval the same way."""
+    db = pg_test_env["db"]
+    document = pg_test_env["doc_a"]
+    extraction = Extraction(document_id=document.id, status="completed")
+    task = ReviewTask(document_id=document.id, status="pending", priority="normal")
+    db.add_all([extraction, task])
+    await db.flush()
+    flag = DocumentValidationFlag(
+        document_id=document.id,
+        extraction_id=extraction.id,
+        rule_code="CRITICAL",
+        severity="critical",
+        status="fail",
+        message="Synthetic critical finding",
+    )
+    db.add(flag)
+    await db.flush()
+
+    service = ReviewService(db)
+    with pytest.raises(ValueError, match="CONFLICT|CRITICAL"):
+        await service.record_review_decision(
+            task_id=task.id,
+            decision="approved",
+            reviewer_user_id=pg_test_env["reviewer"].id,
+            acknowledged=False,
+        )
+
+    approved_count = await service.approve_clean_for_document(
+        document.id,
+        reviewer_user_id=pg_test_env["reviewer"].id,
+        organization_id=document.organization_id,
+    )
+    await db.refresh(task)
+    assert approved_count == 0
+    assert task.status == "pending"
 

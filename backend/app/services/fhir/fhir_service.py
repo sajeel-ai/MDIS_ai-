@@ -1,4 +1,21 @@
-"""FHIR document projection and base-resource model validation."""
+"""FHIR document projection and base-resource model validation.
+
+Produces an R4 / R4B document Bundle containing:
+  Composition, Patient, Device, DocumentReference,
+  Condition, AllergyIntolerance, MedicationStatement, MedicationRequest,
+  Observation (vitals + labs), Procedure, Provenance, Practitioner
+
+Compliance notes
+----------------
+* Only entities with assertion=="present" are exported (gate at line ~118).
+* Only approved or (if include_unreviewed=True) unreviewed entities appear.
+* Entities whose code has not been verified by the terminology service carry
+  the extension ``urn:cognate:needs-coding-review`` to flag human review.
+* US Core profile URLs are added to meta.profile when
+  settings.fhir_us_core_profiles_enabled is True.
+* The FHIR version (R4 4.0.1 vs R4B 4.3.0) is controlled by
+  settings.fhir_version.
+"""
 
 import uuid
 from datetime import datetime
@@ -8,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.models import ClinicalEntity, Document, Extraction, ReviewTask
 
 FHIR_NAMESPACE = uuid.UUID("136e5e39-b26c-5d88-9c63-986d33da8c35")
@@ -25,6 +43,22 @@ DOCUMENT_TYPE_CODES = {
     "progress_note": ("11506-3", "http://loinc.org"),
 }
 
+# US Core profile URLs (US Core 6.1.0 / FHIR R4).
+# These are real published profile URLs — do not invent new ones.
+US_CORE_PROFILES: dict[str, str] = {
+    "Patient": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "Condition": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+    "MedicationRequest": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationrequest",
+    "Observation_vital": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-vital-signs",
+    "Observation_lab": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab",
+    "Procedure": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-procedure",
+    "DocumentReference": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference",
+}
+
+# Extension URL for entities that have not been terminology-verified.
+_NEEDS_CODING_REVIEW_URL = "urn:cognate:needs-coding-review"
+_EXPORT_STATUS_URL = "urn:cognate:export-status"
+
 
 def _id(resource_key: str) -> str:
     return str(uuid.uuid5(FHIR_NAMESPACE, resource_key))
@@ -40,16 +74,47 @@ def _ref(resource_type: str, resource_id: str) -> str:
     return f"urn:uuid:{resource_id}"
 
 
+def _meta(profile_key: str) -> dict[str, Any] | None:
+    """Return a meta.profile dict when US Core profiles are enabled."""
+    if not settings.fhir_us_core_profiles_enabled:
+        return None
+    url = US_CORE_PROFILES.get(profile_key)
+    if url:
+        return {"profile": [url]}
+    return None
+
+
+def _apply_meta(resource: dict[str, Any], profile_key: str) -> None:
+    """Add meta.profile to a resource in-place when US Core is enabled."""
+    meta = _meta(profile_key)
+    if meta:
+        resource["meta"] = meta
+
+
 def _concept(value: str | None, details: dict[str, Any]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     code = details.get("code")
     raw_system = str(details.get("code_system") or "").strip().lower()
     system = FHIR_SYSTEMS.get(raw_system)
+    display = details.get("terminology_display") or value or str(code or "")
     if code and system and details.get("code_verified") is True:
-        result["coding"] = [{"system": system, "code": str(code), "display": value or str(code)}]
+        result["coding"] = [{"system": system, "code": str(code), "display": display}]
     if value and not result.get("coding"):
         result["text"] = value
     return result or {"text": value or "Uncoded"}
+
+
+def _needs_review_extension() -> dict[str, Any]:
+    """FHIR extension marking an entity as pending terminology verification."""
+    return {
+        "url": _NEEDS_CODING_REVIEW_URL,
+        "valueCode": "pending-terminology-review",
+    }
+
+
+def _entity_is_coded(details: dict[str, Any]) -> bool:
+    """Return True iff the entity has a verified terminology code."""
+    return details.get("code_verified") is True
 
 
 def normalize_gender(value: str | None) -> str:
@@ -83,6 +148,7 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
         "id": patient_id,
         "gender": normalize_gender(patient.gender),
     }
+    _apply_meta(patient_resource, "Patient")
     if patient.mrn:
         patient_resource["identifier"] = [{"system": "urn:cognate:mrn", "value": patient.mrn}]
     if patient.first_name or patient.last_name:
@@ -98,7 +164,7 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
     device_id = _id(f"{doc_id}:author-device")
     device = {"resourceType": "Device", "id": device_id, "status": "active", "deviceName": [{"name": "Cognate document exporter", "type": "model-name"}]}
     docref_id = _id(f"{doc_id}:document-reference")
-    document_reference = {
+    document_reference: dict[str, Any] = {
         "resourceType": "DocumentReference",
         "id": docref_id,
         "status": "current",
@@ -106,6 +172,7 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
         "date": timestamp,
         "content": [{"attachment": {"contentType": document.mime_type or "application/octet-stream", "title": document.file_name or document.document_type}}],
     }
+    _apply_meta(document_reference, "DocumentReference")
 
     included: list[dict[str, Any]] = []
     section_refs: list[dict[str, str]] = []
@@ -127,34 +194,59 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
         details = entity.details or {}
         value = entity.normalized_value or entity.raw_text
         allergy = entity.entity_type == "medication" and (entity.section or "").strip().lower() in {"allergies", "allergy"}
+        coded = _entity_is_coded(details)
+
+        resource: dict[str, Any]
         if entity.entity_type == "diagnosis":
-            resource: dict[str, Any] = {
-                "resourceType": "Condition", "subject": {"reference": _ref("Patient", patient_id)},
+            resource = {
+                "resourceType": "Condition",
+                "subject": {"reference": _ref("Patient", patient_id)},
                 "code": _concept(value, details),
                 "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
                 "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" if approved else "unconfirmed"}]},
             }
+            _apply_meta(resource, "Condition")
         elif allergy:
             resource = {
-                "resourceType": "AllergyIntolerance", "patient": {"reference": _ref("Patient", patient_id)},
-                "code": _concept(value, details), "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]},
+                "resourceType": "AllergyIntolerance",
+                "patient": {"reference": _ref("Patient", patient_id)},
+                "code": _concept(value, details),
+                "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]},
             }
         elif entity.entity_type == "medication":
             medication = _concept(value, details)
             if details.get("explicit_prescription") is True:
                 resource = {"resourceType": "MedicationRequest", "status": "active", "intent": "order", "subject": {"reference": _ref("Patient", patient_id)}, "medicationCodeableConcept": medication}
+                _apply_meta(resource, "MedicationRequest")
             else:
                 resource = {"resourceType": "MedicationStatement", "status": "active", "subject": {"reference": _ref("Patient", patient_id)}, "medicationCodeableConcept": medication}
         elif entity.entity_type == "vital":
-            resource = {"resourceType": "Observation", "status": "final", "subject": {"reference": _ref("Patient", patient_id)}, "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs", "display": "Vital Signs"}]}], "code": _concept(value, details)}
+            resource = {
+                "resourceType": "Observation",
+                "status": "final",
+                "subject": {"reference": _ref("Patient", patient_id)},
+                "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs", "display": "Vital Signs"}]}],
+                "code": _concept(value, details),
+            }
+            _apply_meta(resource, "Observation_vital")
             vital_value = details.get("value")
             unit = details.get("unit")
             if details.get("vital_sign") == "blood_pressure":
-                resource["component"] = [{"code": {"text": "Systolic blood pressure"}, "valueQuantity": {"value": details.get("systolic"), "unit": "mmHg"}}, {"code": {"text": "Diastolic blood pressure"}, "valueQuantity": {"value": details.get("diastolic"), "unit": "mmHg"}}]
+                resource["component"] = [
+                    {"code": {"text": "Systolic blood pressure"}, "valueQuantity": {"value": details.get("systolic"), "unit": "mmHg"}},
+                    {"code": {"text": "Diastolic blood pressure"}, "valueQuantity": {"value": details.get("diastolic"), "unit": "mmHg"}},
+                ]
             elif vital_value is not None:
                 resource["valueQuantity"] = {"value": vital_value, "unit": str(unit or "")}
         elif entity.entity_type in {"lab", "lab_result", "observation"}:
-            resource = {"resourceType": "Observation", "status": "final", "subject": {"reference": _ref("Patient", patient_id)}, "code": _concept(value, details)}
+            resource = {
+                "resourceType": "Observation",
+                "status": "final",
+                "subject": {"reference": _ref("Patient", patient_id)},
+                "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory", "display": "Laboratory"}]}],
+                "code": _concept(value, details),
+            }
+            _apply_meta(resource, "Observation_lab")
             lab_value = details.get("value")
             unit = details.get("unit")
             try:
@@ -167,14 +259,30 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
             if isinstance(reference_range, dict):
                 resource["referenceRange"] = [reference_range]
         elif entity.entity_type == "procedure":
-            resource = {"resourceType": "Procedure", "status": details.get("status") if details.get("status") in {"preparation", "in-progress", "not-done", "on-hold", "stopped", "completed", "entered-in-error", "unknown"} else "unknown", "subject": {"reference": _ref("Patient", patient_id)}, "code": _concept(value, details)}
+            resource = {
+                "resourceType": "Procedure",
+                "status": details.get("status") if details.get("status") in {"preparation", "in-progress", "not-done", "on-hold", "stopped", "completed", "entered-in-error", "unknown"} else "unknown",
+                "subject": {"reference": _ref("Patient", patient_id)},
+                "code": _concept(value, details),
+            }
+            _apply_meta(resource, "Procedure")
         else:
             continue
 
         resource_id = str(entity.id)
         resource["id"] = resource_id
+
+        # Build extension list: start with export-status for unreviewed,
+        # then add needs-coding-review for unverified entities.
+        extensions: list[dict[str, Any]] = []
         if not approved:
-            resource["extension"] = [{"url": "urn:cognate:export-status", "valueCode": "unconfirmed"}]
+            extensions.append({"url": _EXPORT_STATUS_URL, "valueCode": "unconfirmed"})
+        if not coded:
+            extensions.append(_needs_review_extension())
+        if extensions:
+            existing = resource.get("extension", [])
+            resource["extension"] = existing + extensions
+
         entity_entry = _entry(resource, f"{doc_id}:entity:{resource_id}")
         included.append(entity_entry)
         source_refs[resource_id] = _ref(resource["resourceType"], resource_id)
@@ -230,10 +338,27 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
     return bundle
 
 
-def validate_bundle_model(bundle: dict[str, Any]) -> dict[str, Any]:
-    """Validate with available FHIR resource models and document-bundle invariants."""
-    from fhir.resources.R4B.bundle import Bundle
+def _bundle_model_for_version(fhir_version: str):
+    """Resolve the generated Bundle/resource class family for the selected FHIR release."""
+    if fhir_version == "R4":
+        from fhir.resources.bundle import Bundle  # type: ignore[import]
+        return Bundle
+    if fhir_version == "R4B":
+        from fhir.resources.R4B.bundle import Bundle  # type: ignore[import]
+        return Bundle
+    raise ValueError(f"Unsupported FHIR version: {fhir_version}")
 
+
+def validate_bundle_model(bundle: dict[str, Any]) -> dict[str, Any]:
+    """Validate with available FHIR resource models and document-bundle invariants.
+
+    ``settings.fhir_version`` selects the generated resource model package.
+    fhir.resources 7.1.0 resolves Bundle (and its nested resource classes)
+    from ``fhir.resources.bundle`` for R4 4.0.1 or
+    ``fhir.resources.R4B.bundle`` for R4B 4.3.0.
+    """
+    fhir_version = getattr(settings, "fhir_version", "R4B")
+    Bundle = _bundle_model_for_version(fhir_version)
     parsed = Bundle.parse_obj(bundle).dict(exclude_none=True)
     bundle_types = {"document", "message", "transaction", "transaction-response", "batch", "batch-response", "history", "searchset", "collection"}
     if parsed.get("type") not in bundle_types:

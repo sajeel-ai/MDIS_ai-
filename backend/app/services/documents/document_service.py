@@ -128,7 +128,7 @@ class DocumentService:
 
         if search:
             search_pattern = f"%{search}%"
-            query = query.join(Document.patient).where(
+            query = query.outerjoin(Document.patient).where(
                 or_(
                     Patient.first_name.ilike(search_pattern),
                     Patient.last_name.ilike(search_pattern),
@@ -197,7 +197,7 @@ class DocumentService:
                 "review_status": d.review_status,
                 "lifecycle_status": derive_lifecycle_status(d.status, d.review_status),
                 "confidence": conf_str,
-                "last_updated": d.updated_at.isoformat(),
+                "last_updated": d.updated_at.isoformat() if getattr(d, "updated_at", None) else (d.created_at.isoformat() if getattr(d, "created_at", None) else datetime.now(timezone.utc).isoformat()),
             })
 
         return items, total

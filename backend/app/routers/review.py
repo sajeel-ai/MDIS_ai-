@@ -3,7 +3,7 @@
 import uuid
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -55,6 +55,7 @@ async def approve_clean_review_items(
 @router.get("", response_model=PaginatedResponse[ReviewTaskResponse])
 @router.get("/queue", response_model=PaginatedResponse[ReviewTaskResponse])
 async def get_review_queue(
+    request: Request,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     priority: Optional[str] = None,
@@ -67,6 +68,7 @@ async def get_review_queue(
     await record_audit_event(
         db, action="view_review_queue", user_id=current_user.id,
         organization_id=current_user.organization_id,
+        resource_type="review_task_collection", request=request,
     )
     service = ReviewService(db)
     items, total = await service.get_review_queue(
@@ -77,6 +79,13 @@ async def get_review_queue(
         search=search,
         document_id=document_id,
     )
+    for item in items:
+        await record_audit_event(
+            db, action="view_review_task", user_id=current_user.id,
+            organization_id=current_user.organization_id, resource_type="review_task",
+            resource_id=item.id, request=request,
+        )
+    await db.commit()
     return {
         "items": items,
         "total": total,
@@ -88,13 +97,16 @@ async def get_review_queue(
 
 @router.get("/stats")
 async def get_review_stats(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: UserContext = Depends(get_current_user),
 ):
     await record_audit_event(
         db, action="view_review_stats", user_id=current_user.id,
         organization_id=current_user.organization_id,
+        resource_type="review_task_collection", request=request,
     )
+    await db.commit()
     service = ReviewService(db)
     return await service.get_review_stats()
 
@@ -102,6 +114,7 @@ async def get_review_stats(
 @router.get("/{task_id}", response_model=ReviewTaskResponse)
 async def get_review_task_detail(
     task_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: UserContext = Depends(get_current_user),
 ):
@@ -109,7 +122,9 @@ async def get_review_task_detail(
         db, action="view_review_task", user_id=current_user.id,
         organization_id=current_user.organization_id,
         resource_type="review_task", resource_id=task_id,
+        request=request,
     )
+    await db.commit()
     service = ReviewService(db)
     try:
         return await service.get_review_task_detail(task_id)
@@ -153,6 +168,8 @@ async def submit_review_decision(
             comment=payload.comment,
             corrected_value=payload.corrected_value,
             reviewer_user_id=reviewer_id,
+            acknowledged=bool(payload.acknowledged),
+            justification=payload.justification,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -174,12 +191,19 @@ async def submit_review_decision(
 async def approve_review_task(
     task_id: uuid.UUID,
     comment: Optional[str] = Query(None),
+    acknowledged: Optional[bool] = Query(False),
+    justification: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: UserContext = Depends(get_current_user),
 ):
     return await submit_review_decision(
         task_id=task_id,
-        payload=ReviewDecisionRequest(decision="approved", comment=comment),
+        payload=ReviewDecisionRequest(
+            decision="approved",
+            comment=comment,
+            acknowledged=acknowledged,
+            justification=justification,
+        ),
         db=db,
         current_user=current_user,
     )

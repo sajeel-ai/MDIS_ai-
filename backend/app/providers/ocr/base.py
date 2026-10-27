@@ -9,6 +9,7 @@ class OCRPage(TypedDict, total=False):
     text: str
     confidence: float | None
     method: str
+    word_boxes: list[dict[str, object]]
 
 
 class OCRResult(TypedDict, total=False):

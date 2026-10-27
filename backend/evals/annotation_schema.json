@@ -1,0 +1,188 @@
+{
+  "$defs": {
+    "AnnotatedEntity": {
+      "properties": {
+        "type": {
+          "description": "Entity type (e.g. diagnosis, medication, symptom, procedure, lab)",
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact raw text span in the document",
+          "title": "Text"
+        },
+        "normalized_value": {
+          "description": "Normalized clinical concept name or terminology mapping",
+          "title": "Normalized Value",
+          "type": "string"
+        },
+        "span": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Span"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Character offsets [start_offset, end_offset]"
+        },
+        "negated": {
+          "default": false,
+          "description": "True if the entity is clinically negated/absent",
+          "title": "Negated",
+          "type": "boolean"
+        },
+        "temporality": {
+          "default": "current",
+          "description": "Temporality / assertion state: current | historical | hypothetical | possible | family",
+          "title": "Temporality",
+          "type": "string"
+        },
+        "assertion": {
+          "default": "present",
+          "description": "Assertion value matching MDIS schema: present | absent | possible | historical | hypothetical | family",
+          "title": "Assertion",
+          "type": "string"
+        },
+        "bounding_box": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Normalized or pixel bounding box [x_min, y_min, x_max, y_max]",
+          "title": "Bounding Box"
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Clinical code (ICD-10, RxNorm, SNOMED, LOINC)",
+          "title": "Code"
+        },
+        "code_system": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Coding system name",
+          "title": "Code System"
+        }
+      },
+      "required": [
+        "type",
+        "normalized_value"
+      ],
+      "title": "AnnotatedEntity",
+      "type": "object"
+    },
+    "Span": {
+      "properties": {
+        "start_offset": {
+          "description": "Start character offset in text",
+          "minimum": 0,
+          "title": "Start Offset",
+          "type": "integer"
+        },
+        "end_offset": {
+          "description": "End character offset in text",
+          "minimum": 0,
+          "title": "End Offset",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_offset",
+        "end_offset"
+      ],
+      "title": "Span",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique document fixture identifier (e.g. DOC-001)",
+      "title": "Id",
+      "type": "string"
+    },
+    "category": {
+      "default": "unspecified",
+      "description": "Document category: discharge_summary | progress_note | emergency_note | radiology_report | lab_report",
+      "title": "Category",
+      "type": "string"
+    },
+    "ground_truth_text": {
+      "description": "Gold-standard verified text transcribed from clinical record",
+      "title": "Ground Truth Text",
+      "type": "string"
+    },
+    "ocr_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "OCR-extracted text (used to calculate CER and WER)",
+      "title": "Ocr Text"
+    },
+    "entities": {
+      "description": "List of annotated clinical entities",
+      "items": {
+        "$ref": "#/$defs/AnnotatedEntity"
+      },
+      "title": "Entities",
+      "type": "array"
+    },
+    "metadata": {
+      "anyOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Metadata such as patient MRN, source format, etc.",
+      "title": "Metadata"
+    }
+  },
+  "required": [
+    "id",
+    "ground_truth_text"
+  ],
+  "title": "AnnotatedDocument",
+  "type": "object"
+}

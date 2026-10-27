@@ -1,0 +1,17 @@
+
+> figma-make-app@1.0.0 test
+> vitest run
+
+
+ RUN  v5.0.3 C:/Users/Meta/project z/Cognate-AI main/Cognate-AI
+
+
+ Test Files  15 passed (15)
+      Tests  142 passed (142)
+   Start at  13:55:51
+   Duration  38.71s (environment 45%, tests 30%, setup 13%, import 6%, transform 5%, worker 1%)
+
+Environment  jsdom was created 15 times · 107.66s total, 45% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

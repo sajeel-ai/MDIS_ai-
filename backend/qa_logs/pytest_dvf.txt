@@ -1,0 +1,69 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.5, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Scripts\python.exe
+rootdir: C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend
+configfile: pytest.ini
+plugins: anyio-4.15.1, platformdirs-4.12.4, asyncio-0.24.0, timeout-2.4.0
+asyncio: mode=Mode.STRICT, default_loop_scope=function
+timeout: 120.0s
+timeout method: thread
+timeout func_only: False
+collecting ... collected 9 items
+
+tests/integration/test_document_validation_flags_postgres.py::test_pg_zero_entity_note_stores_flag ERROR [ 11%]
+tests/integration/test_document_validation_flags_postgres.py::test_pg_two_missing_vitals_give_two_rows ERROR [ 22%]
+tests/integration/test_document_validation_flags_postgres.py::test_pg_active_flag_blocks_approve_clean ERROR [ 33%]
+tests/integration/test_document_validation_flags_postgres.py::test_pg_superseded_flag_does_not_block_approve_clean ERROR [ 44%]
+tests/integration/test_document_validation_flags_postgres.py::test_pg_manual_approval_still_works ERROR [ 55%]
+tests/integration/test_document_validation_flags_postgres.py::test_pg_reprocess_supersedes_and_keeps_old_rows ERROR [ 66%]
+tests/integration/test_document_validation_flags_postgres.py::test_pg_cross_org_isolation ERROR [ 77%]
+tests/integration/test_document_validation_flags_postgres.py::test_pg_workflow_zero_entity_note_stores_active_flag ERROR [ 88%]
+tests/integration/test_document_validation_flags_postgres.py::test_pg_workflow_reprocess_supersedes_and_keeps_old_rows ERROR [100%]
+
+=================================== ERRORS ====================================
+___________ ERROR at setup of test_pg_zero_entity_note_stores_flag ____________
+tests\integration\test_document_validation_flags_postgres.py:50: in pg_test_env
+    role=UserRole.CLINICAL_REVIEWER,
+E   AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+_________ ERROR at setup of test_pg_two_missing_vitals_give_two_rows __________
+tests\integration\test_document_validation_flags_postgres.py:50: in pg_test_env
+    role=UserRole.CLINICAL_REVIEWER,
+E   AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+_________ ERROR at setup of test_pg_active_flag_blocks_approve_clean __________
+tests\integration\test_document_validation_flags_postgres.py:50: in pg_test_env
+    role=UserRole.CLINICAL_REVIEWER,
+E   AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+___ ERROR at setup of test_pg_superseded_flag_does_not_block_approve_clean ____
+tests\integration\test_document_validation_flags_postgres.py:50: in pg_test_env
+    role=UserRole.CLINICAL_REVIEWER,
+E   AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+____________ ERROR at setup of test_pg_manual_approval_still_works ____________
+tests\integration\test_document_validation_flags_postgres.py:50: in pg_test_env
+    role=UserRole.CLINICAL_REVIEWER,
+E   AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+______ ERROR at setup of test_pg_reprocess_supersedes_and_keeps_old_rows ______
+tests\integration\test_document_validation_flags_postgres.py:50: in pg_test_env
+    role=UserRole.CLINICAL_REVIEWER,
+E   AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+________________ ERROR at setup of test_pg_cross_org_isolation ________________
+tests\integration\test_document_validation_flags_postgres.py:50: in pg_test_env
+    role=UserRole.CLINICAL_REVIEWER,
+E   AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+___ ERROR at setup of test_pg_workflow_zero_entity_note_stores_active_flag ____
+tests\integration\test_document_validation_flags_postgres.py:50: in pg_test_env
+    role=UserRole.CLINICAL_REVIEWER,
+E   AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+_ ERROR at setup of test_pg_workflow_reprocess_supersedes_and_keeps_old_rows __
+tests\integration\test_document_validation_flags_postgres.py:50: in pg_test_env
+    role=UserRole.CLINICAL_REVIEWER,
+E   AttributeError: type object 'UserRole' has no attribute 'CLINICAL_REVIEWER'
+=========================== short test summary info ===========================
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_zero_entity_note_stores_flag
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_two_missing_vitals_give_two_rows
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_active_flag_blocks_approve_clean
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_superseded_flag_does_not_block_approve_clean
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_manual_approval_still_works
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_reprocess_supersedes_and_keeps_old_rows
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_cross_org_isolation
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_workflow_zero_entity_note_stores_active_flag
+ERROR tests/integration/test_document_validation_flags_postgres.py::test_pg_workflow_reprocess_supersedes_and_keeps_old_rows
+============================== 9 errors in 4.65s ==============================

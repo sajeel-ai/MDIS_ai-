@@ -1,0 +1,703 @@
+..................FF..sss............................................... [ 16%]
+...........FFFFF......................F................................. [ 32%]
+........................................................................ [ 48%]
+........................................................................ [ 64%]
+...F...........................................F..F..................... [ 81%]
+..............................................F......................... [ 97%]
+............                                                             [100%]
+================================== FAILURES ===================================
+____________ test_pg_workflow_zero_entity_note_stores_active_flag _____________
+
+pg_test_env = {'db': <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x0000023A5CAEFA50>, 'doc_a': <app.models.document.Docum...ument object at 0x0000023A5CBD9B70>, 'org_a': <app.models.organization.Organization object at 0x0000023A5CBA8A10>, ...}
+tmp_path = WindowsPath('C:/Users/Meta/AppData/Local/Temp/pytest-of-Meta/pytest-119/test_pg_workflow_zero_entity_n0')
+
+    @pytest.mark.asyncio
+    async def test_pg_workflow_zero_entity_note_stores_active_flag(pg_test_env, tmp_path):
+        """Real ClinicalProcessingWorkflow execution on a zero-entity note with 'BP not recorded'.
+    
+        Proves that running the workflow through execute_job (the real pipeline path)
+        unconditionally records exactly one active DocumentValidationFlag without anchor entities.
+        """
+        from app.providers.ocr.mock import MockOCRProvider
+        from app.providers.extraction.local import LocalExtractionProvider
+        from app.providers.storage.local import LocalStorageProvider
+    
+        db = pg_test_env["db"]
+        doc = pg_test_env["doc_a"]
+    
+        note_text = "BP not recorded. Patient resting comfortably."
+        storage = LocalStorageProvider(str(tmp_path / "storage"))
+        storage_key = f"documents/{doc.id}/note.txt"
+>       await storage.save_file(storage_key, note_text.encode("utf-8"))
+
+tests\integration\test_document_validation_flags_postgres.py:500: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app\providers\storage\local.py:22: in save_file
+    encrypted_bytes = encrypt_bytes(file_bytes)
+app\security\storage_crypto.py:108: in encrypt_bytes
+    active_key = get_storage_encryption_key(key)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+key = None
+
+    def get_storage_encryption_key(key: bytes | str | None = None) -> bytes:
+        """Resolve active 256-bit encryption key from parameter, settings, or environment."""
+        if key is not None:
+            return _parse_key_bytes(key)
+    
+        configured = settings.storage_encryption_key or os.getenv("STORAGE_ENCRYPTION_KEY", "")
+        if configured.strip():
+            return _parse_key_bytes(configured)
+    
+>       raise RuntimeError("STORAGE_ENCRYPTION_KEY must be configured in every environment")
+E       RuntimeError: STORAGE_ENCRYPTION_KEY must be configured in every environment
+
+app\security\storage_crypto.py:65: RuntimeError
+__________ test_pg_workflow_reprocess_supersedes_and_keeps_old_rows ___________
+
+pg_test_env = {'db': <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x0000023A5C82A150>, 'doc_a': <app.models.document.Docum...ument object at 0x0000023A5CBB0750>, 'org_a': <app.models.organization.Organization object at 0x0000023A5CAC7290>, ...}
+tmp_path = WindowsPath('C:/Users/Meta/AppData/Local/Temp/pytest-of-Meta/pytest-119/test_pg_workflow_reprocess_sup0')
+
+    @pytest.mark.asyncio
+    async def test_pg_workflow_reprocess_supersedes_and_keeps_old_rows(pg_test_env, tmp_path):
+        """Running ClinicalProcessingWorkflow twice for the same document supersedes the first flag and keeps both."""
+        from app.providers.ocr.mock import MockOCRProvider
+        from app.providers.extraction.local import LocalExtractionProvider
+        from app.providers.storage.local import LocalStorageProvider
+    
+        db = pg_test_env["db"]
+        doc = pg_test_env["doc_a"]
+    
+        note_text = "BP not recorded. Patient resting comfortably."
+        storage = LocalStorageProvider(str(tmp_path / "storage"))
+        storage_key = f"documents/{doc.id}/note.txt"
+>       await storage.save_file(storage_key, note_text.encode("utf-8"))
+
+tests\integration\test_document_validation_flags_postgres.py:549: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app\providers\storage\local.py:22: in save_file
+    encrypted_bytes = encrypt_bytes(file_bytes)
+app\security\storage_crypto.py:108: in encrypt_bytes
+    active_key = get_storage_encryption_key(key)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+key = None
+
+    def get_storage_encryption_key(key: bytes | str | None = None) -> bytes:
+        """Resolve active 256-bit encryption key from parameter, settings, or environment."""
+        if key is not None:
+            return _parse_key_bytes(key)
+    
+        configured = settings.storage_encryption_key or os.getenv("STORAGE_ENCRYPTION_KEY", "")
+        if configured.strip():
+            return _parse_key_bytes(configured)
+    
+>       raise RuntimeError("STORAGE_ENCRYPTION_KEY must be configured in every environment")
+E       RuntimeError: STORAGE_ENCRYPTION_KEY must be configured in every environment
+
+app\security\storage_crypto.py:65: RuntimeError
+______ test_every_registered_route_enforces_its_role_dependencies[admin] ______
+
+role = <UserRole.ADMIN: 'admin'>
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("role", list(UserRole))
+    async def test_every_registered_route_enforces_its_role_dependencies(role):
+        user = User(
+            id=__import__("uuid").uuid4(),
+            email="role-matrix@example.test",
+            role=role,
+            organization_id=DEFAULT_ORGANIZATION_ID,
+        )
+        db = AsyncMock()
+        db.add = Mock()
+        request = Mock(headers={}, client=None, state=SimpleNamespace(request_id="synthetic-request-id"))
+    
+        for route in PROTECTED_ROUTES:
+            checks = role_checks(route)
+            assert checks, f"Missing require_roles dependency on {route.path}"
+            declared_roles = next(
+                cell.cell_contents
+                for cell in checks[-1].__closure__ or ()
+                if isinstance(cell.cell_contents, tuple)
+                and all(isinstance(item, UserRole) for item in cell.cell_contents)
+            )
+>           assert set(declared_roles) == expected_roles(route), f"Incorrect role policy on {route.path}"
+E           AssertionError: Incorrect role policy on /api/v1/settings/retention/purge
+E           assert {<UserRole.ADMIN: 'admin'>} == {<UserRole.AD...: 'operator'>}
+E             
+E             Extra items in the right set:
+E             <UserRole.OPERATOR: 'operator'>
+E             Use -v to get more diff
+
+tests\security\test_role_matrix.py:93: AssertionError
+____ test_every_registered_route_enforces_its_role_dependencies[clinician] ____
+
+role = <UserRole.CLINICIAN: 'clinician'>
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("role", list(UserRole))
+    async def test_every_registered_route_enforces_its_role_dependencies(role):
+        user = User(
+            id=__import__("uuid").uuid4(),
+            email="role-matrix@example.test",
+            role=role,
+            organization_id=DEFAULT_ORGANIZATION_ID,
+        )
+        db = AsyncMock()
+        db.add = Mock()
+        request = Mock(headers={}, client=None, state=SimpleNamespace(request_id="synthetic-request-id"))
+    
+        for route in PROTECTED_ROUTES:
+            checks = role_checks(route)
+            assert checks, f"Missing require_roles dependency on {route.path}"
+            declared_roles = next(
+                cell.cell_contents
+                for cell in checks[-1].__closure__ or ()
+                if isinstance(cell.cell_contents, tuple)
+                and all(isinstance(item, UserRole) for item in cell.cell_contents)
+            )
+>           assert set(declared_roles) == expected_roles(route), f"Incorrect role policy on {route.path}"
+E           AssertionError: Incorrect role policy on /api/v1/settings/retention/purge
+E           assert {<UserRole.ADMIN: 'admin'>} == {<UserRole.AD...: 'operator'>}
+E             
+E             Extra items in the right set:
+E             <UserRole.OPERATOR: 'operator'>
+E             Use -v to get more diff
+
+tests\security\test_role_matrix.py:93: AssertionError
+____ test_every_registered_route_enforces_its_role_dependencies[reviewer] _____
+
+role = <UserRole.REVIEWER: 'reviewer'>
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("role", list(UserRole))
+    async def test_every_registered_route_enforces_its_role_dependencies(role):
+        user = User(
+            id=__import__("uuid").uuid4(),
+            email="role-matrix@example.test",
+            role=role,
+            organization_id=DEFAULT_ORGANIZATION_ID,
+        )
+        db = AsyncMock()
+        db.add = Mock()
+        request = Mock(headers={}, client=None, state=SimpleNamespace(request_id="synthetic-request-id"))
+    
+        for route in PROTECTED_ROUTES:
+            checks = role_checks(route)
+            assert checks, f"Missing require_roles dependency on {route.path}"
+            declared_roles = next(
+                cell.cell_contents
+                for cell in checks[-1].__closure__ or ()
+                if isinstance(cell.cell_contents, tuple)
+                and all(isinstance(item, UserRole) for item in cell.cell_contents)
+            )
+>           assert set(declared_roles) == expected_roles(route), f"Incorrect role policy on {route.path}"
+E           AssertionError: Incorrect role policy on /api/v1/settings/retention/purge
+E           assert {<UserRole.ADMIN: 'admin'>} == {<UserRole.AD...: 'operator'>}
+E             
+E             Extra items in the right set:
+E             <UserRole.OPERATOR: 'operator'>
+E             Use -v to get more diff
+
+tests\security\test_role_matrix.py:93: AssertionError
+_____ test_every_registered_route_enforces_its_role_dependencies[viewer] ______
+
+role = <UserRole.VIEWER: 'viewer'>
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("role", list(UserRole))
+    async def test_every_registered_route_enforces_its_role_dependencies(role):
+        user = User(
+            id=__import__("uuid").uuid4(),
+            email="role-matrix@example.test",
+            role=role,
+            organization_id=DEFAULT_ORGANIZATION_ID,
+        )
+        db = AsyncMock()
+        db.add = Mock()
+        request = Mock(headers={}, client=None, state=SimpleNamespace(request_id="synthetic-request-id"))
+    
+        for route in PROTECTED_ROUTES:
+            checks = role_checks(route)
+            assert checks, f"Missing require_roles dependency on {route.path}"
+            declared_roles = next(
+                cell.cell_contents
+                for cell in checks[-1].__closure__ or ()
+                if isinstance(cell.cell_contents, tuple)
+                and all(isinstance(item, UserRole) for item in cell.cell_contents)
+            )
+>           assert set(declared_roles) == expected_roles(route), f"Incorrect role policy on {route.path}"
+E           AssertionError: Incorrect role policy on /api/v1/settings/retention/purge
+E           assert {<UserRole.ADMIN: 'admin'>} == {<UserRole.AD...: 'operator'>}
+E             
+E             Extra items in the right set:
+E             <UserRole.OPERATOR: 'operator'>
+E             Use -v to get more diff
+
+tests\security\test_role_matrix.py:93: AssertionError
+____ test_every_registered_route_enforces_its_role_dependencies[operator] _____
+
+role = <UserRole.OPERATOR: 'operator'>
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("role", list(UserRole))
+    async def test_every_registered_route_enforces_its_role_dependencies(role):
+        user = User(
+            id=__import__("uuid").uuid4(),
+            email="role-matrix@example.test",
+            role=role,
+            organization_id=DEFAULT_ORGANIZATION_ID,
+        )
+        db = AsyncMock()
+        db.add = Mock()
+        request = Mock(headers={}, client=None, state=SimpleNamespace(request_id="synthetic-request-id"))
+    
+        for route in PROTECTED_ROUTES:
+            checks = role_checks(route)
+            assert checks, f"Missing require_roles dependency on {route.path}"
+            declared_roles = next(
+                cell.cell_contents
+                for cell in checks[-1].__closure__ or ()
+                if isinstance(cell.cell_contents, tuple)
+                and all(isinstance(item, UserRole) for item in cell.cell_contents)
+            )
+>           assert set(declared_roles) == expected_roles(route), f"Incorrect role policy on {route.path}"
+E           AssertionError: Incorrect role policy on /api/v1/settings/retention/purge
+E           assert {<UserRole.ADMIN: 'admin'>} == {<UserRole.AD...: 'operator'>}
+E             
+E             Extra items in the right set:
+E             <UserRole.OPERATOR: 'operator'>
+E             Use -v to get more diff
+
+tests\security\test_role_matrix.py:93: AssertionError
+________ test_successful_upload_stores_content_hash_and_audit_ids_only ________
+
+tenant_data = {'admin': <app.models.user.User object at 0x0000023A5E43C290>, 'db': <sqlalchemy.ext.asyncio.session.AsyncSession obje...ls.document.Document object at 0x0000023A5E5897F0>, 'document_a_id': UUID('c9379d11-e4df-4196-94fb-3299576cae95'), ...}
+tenant_client = <httpx.AsyncClient object at 0x0000023A5E2ABA10>
+
+    @pytest.mark.asyncio
+    async def test_successful_upload_stores_content_hash_and_audit_ids_only(tenant_data, tenant_client):
+        content = make_pdf(1)
+        response = await upload(
+            tenant_client,
+            tenant_data["patient_a"].id,
+            "../synthetic note.pdf",
+            content,
+            "text/plain",
+        )
+>       assert response.status_code == 201
+E       assert 500 == 201
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\security\test_tenant_upload_audit.py:335: AssertionError
+------------------------------ Captured log call ------------------------------
+ERROR    app.security:main.py:67 Unhandled request failure request_id=decc7ea2-825e-4573-98e2-fe51635b3b64
+Traceback (most recent call last):
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 157, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 133, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\main.py", line 65, in security_headers_and_request_id
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    raise app_exc
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\routers\documents.py", line 140, in upload_document
+    doc_resp = await service.upload_document(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\services\documents\document_service.py", line 42, in upload_document
+    await storage_provider.save_file_from_path(storage_key, file_path)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\providers\storage\local.py", line 42, in save_file_from_path
+    await asyncio.to_thread(_read_and_encrypt_write)
+  File "C:\Python313\Lib\asyncio\threads.py", line 25, in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\concurrent\futures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\providers\storage\local.py", line 38, in _read_and_encrypt_write
+    encrypted = encrypt_bytes(plain)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\security\storage_crypto.py", line 108, in encrypt_bytes
+    active_key = get_storage_encryption_key(key)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\security\storage_crypto.py", line 65, in get_storage_encryption_key
+    raise RuntimeError("STORAGE_ENCRYPTION_KEY must be configured in every environment")
+RuntimeError: STORAGE_ENCRYPTION_KEY must be configured in every environment
+________________ test_ingest_mimic_notes_idempotency_and_hash _________________
+
+tmp_path = WindowsPath('C:/Users/Meta/AppData/Local/Temp/pytest-of-Meta/pytest-119/test_ingest_mimic_notes_idempo0')
+
+    @pytest.mark.asyncio
+    async def test_ingest_mimic_notes_idempotency_and_hash(tmp_path):
+        import uuid
+        from app.db import engine
+        await engine.dispose()
+        async with AsyncSessionLocal() as session:
+            test_id = f"NOTE-TEST-{uuid.uuid4().hex[:8]}"
+            storage_key = f"mimic-notes/{test_id}.txt"
+            csv_file = tmp_path / "discharge.csv"
+            note_text = "Admission Date: 2026-09-24 Discharge Summary text content."
+            csv_file.write_text(
+                f"note_id,subject_id,hadm_id,note_type,text\n{test_id},999001,888001,DS,\"{note_text}\"\n"
+            )
+    
+            # 1st Ingestion
+>           stats1 = await ingest_mimic_notes_from_file(
+                file_path=csv_file,
+                session=session,
+                run_pipeline=False,
+            )
+
+tests\unit\test_mimic_notes.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app\services\documents\mimic_note_service.py:190: in ingest_mimic_notes_from_file
+    await storage_provider.save_file(storage_key, encoded_bytes)
+app\providers\storage\local.py:22: in save_file
+    encrypted_bytes = encrypt_bytes(file_bytes)
+app\security\storage_crypto.py:108: in encrypt_bytes
+    active_key = get_storage_encryption_key(key)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+key = None
+
+    def get_storage_encryption_key(key: bytes | str | None = None) -> bytes:
+        """Resolve active 256-bit encryption key from parameter, settings, or environment."""
+        if key is not None:
+            return _parse_key_bytes(key)
+    
+        configured = settings.storage_encryption_key or os.getenv("STORAGE_ENCRYPTION_KEY", "")
+        if configured.strip():
+            return _parse_key_bytes(configured)
+    
+>       raise RuntimeError("STORAGE_ENCRYPTION_KEY must be configured in every environment")
+E       RuntimeError: STORAGE_ENCRYPTION_KEY must be configured in every environment
+
+app\security\storage_crypto.py:65: RuntimeError
+__ test_image_ocr_confidence_averages_word_confidence_and_ignores_minus_one ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000023A5EB272A0>
+tmp_path = WindowsPath('C:/Users/Meta/AppData/Local/Temp/pytest-of-Meta/pytest-119/test_image_ocr_confidence_aver0')
+
+    def test_image_ocr_confidence_averages_word_confidence_and_ignores_minus_one(monkeypatch, tmp_path):
+        import pytesseract
+        import app.providers.ocr.local as local_ocr_module
+    
+        image_path = tmp_path / "confidence.png"
+        Image.new("RGB", (8, 8), color=(255, 255, 255)).save(image_path)
+        monkeypatch.setattr(local_ocr_module, "_tesseract_executable", lambda: "tesseract")
+        monkeypatch.setattr(
+            pytesseract,
+            "image_to_data",
+            lambda *_args, **_kwargs: {"text": ["word", "", "word"], "conf": ["80", "-1", "60"]},
+        )
+>       text, confidence = local_ocr_module.LocalOCRProvider._tesseract_image_data(str(image_path))
+
+tests\unit\test_ocr_local.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+image_path = 'C:\\Users\\Meta\\AppData\\Local\\Temp\\pytest-of-Meta\\pytest-119\\test_image_ocr_confidence_aver0\\confidence.png'
+
+    @staticmethod
+    def _tesseract_image_data(image_path: str) -> tuple[str, float | None, list[dict[str, object]]]:
+        import math
+    
+        import numpy as np
+        import pytesseract
+        from PIL import Image
+    
+        from app.config import settings as _settings
+        from app.providers.ocr.preprocessing import preprocess_image_with_transform
+    
+        pytesseract.pytesseract.tesseract_cmd = _tesseract_executable()
+        with Image.open(image_path) as _raw_image:
+            original_size = _raw_image.size
+            # Item 3: normalise non-standard TIFF modes before any other step
+            image = _raw_image
+            if image.mode in ("I;16", "I;16B", "I", "F"):
+                arr = np.array(image, dtype=np.float32)
+                arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-9) * 255
+                image = Image.fromarray(arr.astype(np.uint8), mode="L")
+            elif image.mode == "CMYK":
+                image = image.convert("RGB")
+            elif image.mode == "P":
+                image = image.convert("RGBA").convert("RGB")
+    
+            # Item 1: preprocessing pipeline (deskew / denoise / contrast / binarize)
+            image, deskew_angle = preprocess_image_with_transform(image, _settings)
+    
+            # Item 2: memory cap � downscale oversized images
+            w, h = image.size
+            pre_resize_size = (w, h)
+            pixels = w * h
+            if pixels > _settings.ocr_max_image_pixels:
+                scale = math.sqrt(_settings.ocr_max_image_pixels / pixels)
+                new_w = max(1, int(w * scale))
+                new_h = max(1, int(h * scale))
+                image = image.resize((new_w, new_h), Image.LANCZOS)
+    
+            data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
+        words = []
+        confidences = []
+        word_boxes = []
+        final_w, final_h = image.size
+        for index, (word, raw_confidence) in enumerate(zip(data.get("text", []), data.get("conf", []))):
+            if not word or not word.strip():
+                continue
+            words.append(word)
+>           left, top = float(data["left"][index]), float(data["top"][index])
+E           KeyError: 'left'
+
+app\providers\ocr\local.py:348: KeyError
+____________ test_clinical_processing_pipeline_with_real_local_ocr ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000023A5ECF2190>
+
+    @pytest.mark.asyncio
+    async def test_clinical_processing_pipeline_with_real_local_ocr(monkeypatch):
+        monkeypatch.setattr(settings, "extraction_provider", "mock")
+        await engine.dispose()
+        async with AsyncSessionLocal() as session:
+            storage = get_storage_provider()
+            note_text = (
+                "CLINICAL NOTE\n"
+                "Patient presented with dyspnea and fever.\n"
+                "Diagnosis: Acute exacerbation of COPD.\n"
+                "Medication: Prednisone 40 mg PO daily for 5 days."
+            )
+            storage_key = "documents/test_real_ocr.txt"
+>           await storage.save_file(storage_key, note_text.encode("utf-8"))
+
+tests\unit\test_ocr_local.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app\providers\storage\local.py:22: in save_file
+    encrypted_bytes = encrypt_bytes(file_bytes)
+app\security\storage_crypto.py:108: in encrypt_bytes
+    active_key = get_storage_encryption_key(key)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+key = None
+
+    def get_storage_encryption_key(key: bytes | str | None = None) -> bytes:
+        """Resolve active 256-bit encryption key from parameter, settings, or environment."""
+        if key is not None:
+            return _parse_key_bytes(key)
+    
+        configured = settings.storage_encryption_key or os.getenv("STORAGE_ENCRYPTION_KEY", "")
+        if configured.strip():
+            return _parse_key_bytes(configured)
+    
+>       raise RuntimeError("STORAGE_ENCRYPTION_KEY must be configured in every environment")
+E       RuntimeError: STORAGE_ENCRYPTION_KEY must be configured in every environment
+
+app\security\storage_crypto.py:65: RuntimeError
+------------------------------ Captured log call ------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:378 Exception closing connection <AdaptedConnection <asyncpg.connection.Connection object at 0x0000023A5EDFBD40>>
+Traceback (most recent call last):
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\sqlalchemy\pool\base.py", line 376, in _close_connection
+    self._dialect.do_close(connection)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 708, in do_close
+    dbapi_connection.close()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 886, in close
+    self.await_(self._connection.close())
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\asyncpg\connection.py", line 1504, in close
+    await self._protocol.close(timeout)
+  File "asyncpg\\protocol\\protocol.pyx", line 640, in close
+  File "asyncpg\\protocol\\coreproto.pyx", line 1205, in asyncpg.protocol.protocol.CoreProtocol._terminate
+  File "asyncpg\\protocol\\protocol.pyx", line 967, in asyncpg.protocol.protocol.BaseProtocol._write
+  File "C:\Python313\Lib\asyncio\proactor_events.py", line 366, in write
+    self._loop_writing(data=bytes(data))
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\asyncio\proactor_events.py", line 402, in _loop_writing
+    self._write_fut = self._loop._proactor.send(self._sock, data)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'send'
+_ test_live_retention_purge_returns_conflict_until_database_purge_role_exists _
+
+    @pytest.mark.asyncio
+    async def test_live_retention_purge_returns_conflict_until_database_purge_role_exists():
+        user = UserContext(id=uuid.uuid4(), organization_id=uuid.uuid4(), role=UserRole.ADMIN, email="admin@cognate.test")
+        app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_db] = lambda: AsyncMock()
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                res = await ac.post("/api/v1/settings/retention/purge?dry_run=false")
+>               assert res.status_code == 409
+E               assert 500 == 409
+E                +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\unit\test_settings_retention_api.py:109: AssertionError
+------------------------------ Captured log call ------------------------------
+ERROR    app.security:main.py:67 Unhandled request failure request_id=a7d4c8da-61fc-4ca3-9323-b21623efee50
+Traceback (most recent call last):
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 157, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 133, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\main.py", line 65, in security_headers_and_request_id
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    raise app_exc
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\fastapi\routing.py", line 327, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\fastapi\routing.py", line 181, in serialize_response
+    return field.serialize(
+           ~~~~~~~~~~~~~~~^
+        value,
+        ^^^^^^
+    ...<5 lines>...
+        exclude_none=exclude_none,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\fastapi\_compat.py", line 151, in serialize
+    return self._type_adapter.dump_python(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        value,
+        ^^^^^^
+    ...<6 lines>...
+        exclude_none=exclude_none,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\pydantic\type_adapter.py", line 527, in dump_python
+    return self.serializer.to_python(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        instance,
+        ^^^^^^^^^
+    ...<10 lines>...
+        context=context,
+        ^^^^^^^^^^^^^^^^
+    )
+    ^
+pydantic_core._pydantic_core.PydanticSerializationError: Unable to serialize unknown type: <class 'coroutine'>
+============================== warnings summary ===============================
+tests\integration\test_fhir_validator_ci.py:98
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\tests\integration\test_fhir_validator_ci.py:98: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_fhir_validator_ci.py:112
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\tests\integration\test_fhir_validator_ci.py:112: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests/unit/test_review_batch_safety.py::test_batch_approve_rejects_document_without_linked_patient
+tests/unit/test_settings_retention_api.py::test_trigger_retention_purge_endpoint_admin_success
+tests/unit/test_settings_retention_api.py::test_live_retention_purge_returns_conflict_until_database_purge_role_exists
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\services\audit_service.py:56: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    session.add(event)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_settings_retention_api.py::test_live_retention_purge_returns_conflict_until_database_purge_role_exists
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\routers\settings.py:53: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    await RetentionPurgeService(db).run_retention_purge(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+venv\Lib\site-packages\_pytest\cacheprovider.py:475
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\_pytest\cacheprovider.py:475: PytestCacheWarning: cache could not write path C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\.pytest_cache\v\cache\nodeids: [Errno 13] Permission denied: 'C:\\Users\\Meta\\project z\\Cognate-AI main\\Cognate-AI\\backend\\.pytest_cache\\v\\cache\\nodeids'
+    config.cache.set("cache/nodeids", sorted(self.cached_nodeids))
+
+venv\Lib\site-packages\_pytest\stepwise.py:51
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\_pytest\stepwise.py:51: PytestCacheWarning: cache could not write path C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\.pytest_cache\v\cache\stepwise: [Errno 13] Permission denied: 'C:\\Users\\Meta\\project z\\Cognate-AI main\\Cognate-AI\\backend\\.pytest_cache\\v\\cache\\stepwise'
+    session.config.cache.set(STEPWISE_CACHE_DIR, [])
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/integration/test_document_validation_flags_postgres.py::test_pg_workflow_zero_entity_note_stores_active_flag
+FAILED tests/integration/test_document_validation_flags_postgres.py::test_pg_workflow_reprocess_supersedes_and_keeps_old_rows
+FAILED tests/security/test_role_matrix.py::test_every_registered_route_enforces_its_role_dependencies[admin]
+FAILED tests/security/test_role_matrix.py::test_every_registered_route_enforces_its_role_dependencies[clinician]
+FAILED tests/security/test_role_matrix.py::test_every_registered_route_enforces_its_role_dependencies[reviewer]
+FAILED tests/security/test_role_matrix.py::test_every_registered_route_enforces_its_role_dependencies[viewer]
+FAILED tests/security/test_role_matrix.py::test_every_registered_route_enforces_its_role_dependencies[operator]
+FAILED tests/security/test_tenant_upload_audit.py::test_successful_upload_stores_content_hash_and_audit_ids_only
+FAILED tests/unit/test_mimic_notes.py::test_ingest_mimic_notes_idempotency_and_hash
+FAILED tests/unit/test_ocr_local.py::test_image_ocr_confidence_averages_word_confidence_and_ignores_minus_one
+FAILED tests/unit/test_ocr_local.py::test_clinical_processing_pipeline_with_real_local_ocr
+FAILED tests/unit/test_settings_retention_api.py::test_live_retention_purge_returns_conflict_until_database_purge_role_exists
+12 failed, 429 passed, 3 skipped, 8 warnings in 52.70s
+<sys>:0: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback

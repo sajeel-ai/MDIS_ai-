@@ -81,6 +81,15 @@ class LocalExtractionProvider(BaseExtractionProvider):
     }
 
     MEDICATIONS = {
+        # Combination drugs first — the term-matching loop already sorts by
+        # length (longest first), so these always beat their components.
+        "amoxicillin-clavulanate": ("Amoxicillin-clavulanate", "723372", "RxNorm"),
+        "co-amoxiclav": ("Amoxicillin-clavulanate", "723372", "RxNorm"),
+        "trimethoprim-sulfamethoxazole": ("Trimethoprim-sulfamethoxazole", "358263", "RxNorm"),
+        "tmp-smx": ("Trimethoprim-sulfamethoxazole", "358263", "RxNorm"),
+        "fluticasone-salmeterol": ("Fluticasone-salmeterol", "896790", "RxNorm"),
+        "amlodipine-atorvastatin": ("Amlodipine-atorvastatin", "1001468", "RxNorm"),
+        # Single-ingredient medications
         "amoxicillin": ("Amoxicillin", "308182", "RxNorm"),
         "amlodipine": ("Amlodipine", "308135", "RxNorm"),
         "prednisone": ("Prednisone", "8640", "RxNorm"),
@@ -109,16 +118,23 @@ class LocalExtractionProvider(BaseExtractionProvider):
         re.IGNORECASE,
     )
     _FREQUENCY_PATTERN = re.compile(
-        r"\b((?:once|twice|thrice|two|three|four)\s+(?:a|per)\s+day|"
+        r"\b((?:prn|as\s+needed|as\s+required|when\s+needed)|"
+        r"(?:taper(?:ing)?(?:\s+off)?|dose\s+pack)|"
+        r"(?:once|twice|thrice|two|three|four)\s+(?:a|per)\s+day|"
         r"(?:\d+)\s+(?:a|per)\s+day|"
         r"(?:once|twice|three|four)\s+daily|"
         r"(?:\d+)\s+times?\s+(?:a|per)\s+day|"
         r"(?:every\s+\d+\s+(?:hours?|days?))|"
         r"(?:at\s+bedtime|every\s+night|nightly|q\.?\s*h\.?s\.?)|"
-        r"(?:daily|q\.?\s*(?:d|day)|bid|tid|qid)\b)",
+        r"(?:daily|q\.?\s*(?:d|day)|bid|tid|qid))\b",
         re.IGNORECASE,
     )
 
+
+    _TAPERING_RE = re.compile(
+        r"\b(taper(?:ing)?(?:\s+off)?|dose\s+pack(?:[^.;\n]{0,60})?)",
+        re.IGNORECASE,
+    )
     @classmethod
     def _medication_details(cls, text: str, start: int, end: int) -> dict[str, str]:
         """Capture dose and administration frequency near a medication mention."""
@@ -133,6 +149,10 @@ class LocalExtractionProvider(BaseExtractionProvider):
         frequency = cls._FREQUENCY_PATTERN.search(after_window)
         if frequency:
             details["frequency"] = " ".join(frequency.group(1).split())
+        taper = cls._TAPERING_RE.search(after_window)
+        if taper:
+            details["schedule"] = "tapering"
+            details["schedule_text"] = taper.group(1).strip()
         return details
 
     PROCEDURES = {
@@ -521,6 +541,80 @@ class LocalExtractionProvider(BaseExtractionProvider):
                 details["validation_warnings"] = warnings
             entities.append({"type": "vital", "raw_text": raw_line, "normalized_value": name, "code": code, "code_system": "LOINC", "confidence": 0.9, "assertion": "present", "section": detect_section(text, start), "evidence_text": raw_line, "start_offset": start, "end_offset": start + len(raw_line), "page_number": 1, "details": details})
 
+    # ---------------------------------------------------------------------------
+    # Implicit findings: phrases that imply a clinical finding without naming it
+    # directly.  The dict maps a regex pattern string to
+    #   (normalized_value, entity_type, ICD10_code_or_None, code_system_or_None).
+    # To add a new finding, append a row here — no other change is required.
+    # ---------------------------------------------------------------------------
+    IMPLICIT_FINDINGS: dict[str, tuple[str, str, str | None, str | None]] = {
+        r"poorly\s+controlled\s+(?:blood\s+)?sugars?": (
+            "Poorly controlled blood glucose", "diagnosis", "R73.09", "ICD10"
+        ),
+        r"uncontrolled\s+(?:blood\s+)?sugars?": (
+            "Poorly controlled blood glucose", "diagnosis", "R73.09", "ICD10"
+        ),
+        r"blood\s+sugars?\s+(?:are|is|were|was)?\s*(?:running\s+)?(?:high|elevated)": (
+            "Elevated blood glucose", "diagnosis", "R73.09", "ICD10"
+        ),
+        r"fluid\s+overload(?:ed)?": (
+            "Fluid overload", "diagnosis", "E87.70", "ICD10"
+        ),
+        r"volume\s+overload(?:ed)?": (
+            "Fluid overload", "diagnosis", "E87.70", "ICD10"
+        ),
+        r"oxygen\s+(?:requirement|requirements|dependent|therapy)": (
+            "Oxygen-dependent", "diagnosis", "Z99.81", "ICD10"
+        ),
+        r"on\s+(?:supplemental\s+)?(?:home\s+)?oxygen": (
+            "Oxygen-dependent", "diagnosis", "Z99.81", "ICD10"
+        ),
+        r"agonal\s+(?:breathing|respirations?)": (
+            "Agonal respirations", "symptom", None, None
+        ),
+    }
+
+    def _add_implicit_findings(
+        self,
+        text: str,
+        entities: list[ExtractedEntityData],
+    ) -> None:
+        """Match implicit clinical findings that have no explicit medical term."""
+        for pattern_str, (normalized, entity_type, code, code_system) in self.IMPLICIT_FINDINGS.items():
+            pattern = re.compile(pattern_str, re.IGNORECASE)
+            for match in pattern.finditer(text):
+                # Avoid overlapping entities of the same type
+                overlap = any(
+                    existing["start_offset"] < match.end()
+                    and existing["end_offset"] > match.start()
+                    and existing["type"] == entity_type
+                    and existing["normalized_value"] == normalized
+                    for existing in entities
+                )
+                if overlap:
+                    continue
+                raw = text[match.start():match.end()]
+                assertion = detect_assertion(
+                    text, match.start(), match.end(), detect_section(text, match.start())
+                ).value
+                entities.append(
+                    {
+                        "type": entity_type,
+                        "raw_text": raw,
+                        "normalized_value": normalized,
+                        "code": code or None,
+                        "code_system": code_system or None,
+                        "confidence": 0.80,
+                        "assertion": assertion,
+                        "section": detect_section(text, match.start()),
+                        "evidence_text": raw,
+                        "start_offset": match.start(),
+                        "end_offset": match.end(),
+                        "page_number": 1,
+                        "details": {"source": "implicit_findings_table"},
+                    }
+                )
+
     async def extract_clinical_entities(
         self,
         text: str,
@@ -569,7 +663,14 @@ class LocalExtractionProvider(BaseExtractionProvider):
 
         self._add_vital_entities(text, entities)
         self._add_lab_entities(text, entities)
+        self._add_implicit_findings(text, entities)
         self._merge_entities(entities)
+
+        # Advice and conditional mentions are precautions, not confirmed findings.
+        entities = [
+            entity for entity in entities
+            if entity.get("assertion") not in {"conditional", "hypothetical"}
+        ]
 
         # Stable ordering by source position.
         entities.sort(

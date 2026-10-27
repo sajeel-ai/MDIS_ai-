@@ -1,10 +1,10 @@
-"""Local File System Storage Provider."""
+"""Local File System Storage Provider with AES-256-GCM encryption at rest."""
 
 import asyncio
 import os
-import shutil
 from app.config import settings
 from app.providers.storage.base import BaseStorageProvider
+from app.security.storage_crypto import decrypt_bytes, encrypt_bytes
 
 
 class LocalStorageProvider(BaseStorageProvider):
@@ -19,10 +19,11 @@ class LocalStorageProvider(BaseStorageProvider):
     async def save_file(self, storage_key: str, file_bytes: bytes) -> str:
         target_path = self._resolve_path(storage_key)
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
-        
+        encrypted_bytes = encrypt_bytes(file_bytes)
+
         def _write():
             with open(target_path, "wb") as f:
-                f.write(file_bytes)
+                f.write(encrypted_bytes)
 
         await asyncio.to_thread(_write)
         return f"local:{storage_key}"
@@ -30,7 +31,15 @@ class LocalStorageProvider(BaseStorageProvider):
     async def save_file_from_path(self, storage_key: str, source_path: str) -> str:
         target_path = self._resolve_path(storage_key)
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
-        await asyncio.to_thread(shutil.copyfile, source_path, target_path)
+
+        def _read_and_encrypt_write():
+            with open(source_path, "rb") as sf:
+                plain = sf.read()
+            encrypted = encrypt_bytes(plain)
+            with open(target_path, "wb") as df:
+                df.write(encrypted)
+
+        await asyncio.to_thread(_read_and_encrypt_write)
         return f"local:{storage_key}"
 
     async def read_file(self, storage_key: str) -> bytes:
@@ -42,7 +51,9 @@ class LocalStorageProvider(BaseStorageProvider):
             with open(target_path, "rb") as f:
                 return f.read()
 
-        return await asyncio.to_thread(_read)
+        raw_bytes = await asyncio.to_thread(_read)
+        # Transparently decrypt if encrypted; returns plain bytes if unencrypted
+        return decrypt_bytes(raw_bytes)
 
     async def delete_file(self, storage_key: str) -> bool:
         target_path = self._resolve_path(storage_key)

@@ -1,0 +1,258 @@
+[
+  {
+    "id": "SAMPLE-REF-001",
+    "category": "discharge_summary",
+    "ground_truth_text": "DISCHARGE SUMMARY\nPatient is a 64-year-old female with Type 2 Diabetes Mellitus and hypertension. Denies chest pain or shortness of breath. Prescribed Metformin 500 mg PO BID.",
+    "ocr_text": "DISCHARGE SUMMARY\nPatient is a 64-year-old female with Type 2 Diabetes Mellitus and hypertension. Denies chest pain or shortness of breath. Prescribed Metformin 500 mg PO BID.",
+    "entities": [
+      {
+        "type": "diagnosis",
+        "text": "Type 2 Diabetes Mellitus",
+        "normalized_value": "Diabetes mellitus",
+        "span": {"start_offset": 54, "end_offset": 78},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.12, 0.15, 0.45, 0.18],
+        "code": "E11.9",
+        "code_system": "ICD10"
+      },
+      {
+        "type": "diagnosis",
+        "text": "hypertension",
+        "normalized_value": "Hypertension",
+        "span": {"start_offset": 83, "end_offset": 95},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.48, 0.15, 0.65, 0.18],
+        "code": "I10",
+        "code_system": "ICD10"
+      },
+      {
+        "type": "symptom",
+        "text": "chest pain",
+        "normalized_value": "Chest pain",
+        "span": {"start_offset": 104, "end_offset": 114},
+        "negated": true,
+        "temporality": "current",
+        "assertion": "absent",
+        "bounding_box": [0.12, 0.19, 0.28, 0.22]
+      },
+      {
+        "type": "symptom",
+        "text": "shortness of breath",
+        "normalized_value": "Shortness of breath",
+        "span": {"start_offset": 118, "end_offset": 137},
+        "negated": true,
+        "temporality": "current",
+        "assertion": "absent",
+        "bounding_box": [0.32, 0.19, 0.58, 0.22]
+      },
+      {
+        "type": "medication",
+        "text": "Metformin 500 mg",
+        "normalized_value": "Metformin",
+        "span": {"start_offset": 150, "end_offset": 166},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.12, 0.23, 0.42, 0.26],
+        "code": "6809",
+        "code_system": "RxNorm"
+      }
+    ],
+    "metadata": {
+      "patient_mrn": "MRN-SAMPLE-01",
+      "encounter_type": "inpatient_discharge",
+      "source_modality": "digital_text"
+    }
+  },
+  {
+    "id": "SAMPLE-REF-002",
+    "category": "progress_note",
+    "ground_truth_text": "CLINICAL PROGRESS NOTE\nSubjective: Patient reports productive cough and fever for 3 days. Denies wheezing. Objective: SpO2 97% on room air. Plan: Rule out pneumonia.",
+    "ocr_text": "CLINICAL PROGRESS NOTE\nSubjective: Patient reports productive cough and fever for 3 days. Denies wheezing. Objective: SpO2 97% on room air. Plan: Rule out pneumonla.",
+    "entities": [
+      {
+        "type": "symptom",
+        "text": "cough",
+        "normalized_value": "Cough",
+        "span": {"start_offset": 60, "end_offset": 65},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.25, 0.12, 0.35, 0.15]
+      },
+      {
+        "type": "symptom",
+        "text": "fever",
+        "normalized_value": "Fever",
+        "span": {"start_offset": 70, "end_offset": 75},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.40, 0.12, 0.50, 0.15]
+      },
+      {
+        "type": "symptom",
+        "text": "wheezing",
+        "normalized_value": "Wheezing",
+        "span": {"start_offset": 96, "end_offset": 104},
+        "negated": true,
+        "temporality": "current",
+        "assertion": "absent",
+        "bounding_box": [0.60, 0.12, 0.75, 0.15]
+      },
+      {
+        "type": "diagnosis",
+        "text": "pneumonia",
+        "normalized_value": "Pneumonia",
+        "span": {"start_offset": 156, "end_offset": 165},
+        "negated": false,
+        "temporality": "possible",
+        "assertion": "possible",
+        "bounding_box": [0.35, 0.20, 0.52, 0.23],
+        "code": "J18.9",
+        "code_system": "ICD10"
+      }
+    ],
+    "metadata": {
+      "patient_mrn": "MRN-SAMPLE-02",
+      "encounter_type": "outpatient_clinic",
+      "source_modality": "raster_scan_300dpi"
+    }
+  },
+  {
+    "id": "SAMPLE-REF-003",
+    "category": "lab_report",
+    "ground_truth_text": "LABORATORY REPORT\nTest: Hemoglobin A1c Result: 7.2 % Reference: < 5.7 %\nTest: Serum Creatinine Result: 1.4 mg/dL Reference: 0.6 - 1.2 mg/dL",
+    "ocr_text": "LABORATORY REPORT\nTest: Hemoglobin A1c Result: 7.2 % Reference: < 5.7 %\nTest: Serum Creatinine Result: 1.4 mg/dL Reference: 0.6 - 1.2 mg/dL",
+    "entities": [
+      {
+        "type": "lab",
+        "text": "Hemoglobin A1c Result: 7.2 %",
+        "normalized_value": "Hemoglobin A1c: 7.2",
+        "span": {"start_offset": 24, "end_offset": 52},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.10, 0.10, 0.60, 0.14],
+        "code": "4548-4",
+        "code_system": "LOINC"
+      },
+      {
+        "type": "lab",
+        "text": "Serum Creatinine Result: 1.4 mg/dL",
+        "normalized_value": "Creatinine: 1.4",
+        "span": {"start_offset": 78, "end_offset": 112},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.10, 0.15, 0.65, 0.19],
+        "code": "2160-0",
+        "code_system": "LOINC"
+      }
+    ],
+    "metadata": {
+      "patient_mrn": "MRN-SAMPLE-03",
+      "encounter_type": "diagnostic_lab",
+      "source_modality": "digital_text"
+    }
+  },
+  {
+    "id": "SAMPLE-REF-004",
+    "category": "emergency_note",
+    "ground_truth_text": "EMERGENCY MEDICINE NOTE\nPatient presented with acute shortness of breath. History of COPD and asthma. Given nebulized Albuterol in triage.",
+    "ocr_text": "EMERGENCY MEDICINE NOTE\nPatient presented with acute shortness of breath. History of COPD and asthma. Given nebulized Albuterol in triage.",
+    "entities": [
+      {
+        "type": "symptom",
+        "text": "shortness of breath",
+        "normalized_value": "Shortness of breath",
+        "span": {"start_offset": 53, "end_offset": 72},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.20, 0.10, 0.55, 0.13]
+      },
+      {
+        "type": "diagnosis",
+        "text": "COPD",
+        "normalized_value": "Chronic obstructive pulmonary disease",
+        "span": {"start_offset": 85, "end_offset": 89},
+        "negated": false,
+        "temporality": "historical",
+        "assertion": "historical",
+        "bounding_box": [0.60, 0.10, 0.70, 0.13],
+        "code": "J44.9",
+        "code_system": "ICD10"
+      },
+      {
+        "type": "diagnosis",
+        "text": "asthma",
+        "normalized_value": "Asthma",
+        "span": {"start_offset": 94, "end_offset": 100},
+        "negated": false,
+        "temporality": "historical",
+        "assertion": "historical",
+        "bounding_box": [0.73, 0.10, 0.85, 0.13],
+        "code": "J45.909",
+        "code_system": "ICD10"
+      },
+      {
+        "type": "medication",
+        "text": "Albuterol",
+        "normalized_value": "Albuterol",
+        "span": {"start_offset": 118, "end_offset": 127},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.35, 0.15, 0.50, 0.18],
+        "code": "435",
+        "code_system": "RxNorm"
+      }
+    ],
+    "metadata": {
+      "patient_mrn": "MRN-SAMPLE-04",
+      "encounter_type": "emergency_department",
+      "source_modality": "digital_text"
+    }
+  },
+  {
+    "id": "SAMPLE-REF-005",
+    "category": "radiology_report",
+    "ground_truth_text": "CHEST RADIOGRAPHY REPORT\nIndication: Dyspnea. Findings: Clear lung fields bilaterally. No pneumonia or pneumothorax identified. Cardiac silhouette is normal.",
+    "ocr_text": "CHEST RADIOGRAPHY REPORT\nIndication: Dyspnea. Findings: Clear lung fields bilaterally. No pneumonia or pneumothorax identified. Cardiac silhouette is normal.",
+    "entities": [
+      {
+        "type": "symptom",
+        "text": "Dyspnea",
+        "normalized_value": "Shortness of breath",
+        "span": {"start_offset": 37, "end_offset": 44},
+        "negated": false,
+        "temporality": "current",
+        "assertion": "present",
+        "bounding_box": [0.25, 0.08, 0.40, 0.11]
+      },
+      {
+        "type": "diagnosis",
+        "text": "pneumonia",
+        "normalized_value": "Pneumonia",
+        "span": {"start_offset": 91, "end_offset": 100},
+        "negated": true,
+        "temporality": "current",
+        "assertion": "absent",
+        "bounding_box": [0.20, 0.16, 0.35, 0.19],
+        "code": "J18.9",
+        "code_system": "ICD10"
+      }
+    ],
+    "metadata": {
+      "patient_mrn": "MRN-SAMPLE-05",
+      "encounter_type": "radiology_imaging",
+      "source_modality": "digital_text"
+    }
+  }
+]
+

@@ -49,7 +49,10 @@ PROTECTED_ROUTES = [
 
 def expected_roles(route: APIRoute) -> set[UserRole]:
     method = next(iter(route.methods))
-    if route.path.startswith("/api/v1/admin/") and route.path != "/api/v1/admin/invitations/accept":
+    if (
+        route.path.startswith("/api/v1/admin/")
+        or route.path.startswith(("/api/v1/settings/retention/", "/api/v1/settings/audit-events/"))
+    ) and route.path != "/api/v1/admin/invitations/accept":
         return {UserRole.ADMIN}
     if route.path.startswith(("/api/v1/aiops", "/api/v1/audit")):
         return {UserRole.ADMIN, UserRole.OPERATOR}

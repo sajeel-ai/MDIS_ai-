@@ -42,6 +42,19 @@ _ABSENT_RE = re.compile(
 _DISCONTINUED_RE = re.compile(r"\b(?:discontinued|stopped|held|no longer taking|ceased)\b", re.IGNORECASE)
 _RECOMMENDED_RE = re.compile(r"\b(?:recommended|recommend|advised|advised to|start|consider)\b", re.IGNORECASE)
 
+# Conditional: "if fever persists", "return if", "return precautions", etc.
+# More specific than hypothetical — checked first.
+_CONDITIONAL_RE = re.compile(
+    r"\b(?:if\s+\w+\s+(?:persists?|returns?|worsens?|develops?)|return\s+(?:if|precautions?)|precautions?\s+if)\b",
+    re.IGNORECASE,
+)
+
+# Post-entity negation: "chest pain: negative" — colon followed by negation word
+_POST_NEGATION_RE = re.compile(
+    r"^\s*:\s*(?:negative|absent|not\s+present|not\s+found|none|neg\.?)\b",
+    re.IGNORECASE,
+)
+
 
 def detect_section(text: str, offset: int) -> str | None:
     current = None
@@ -91,18 +104,33 @@ def detect_assertion(text: str, start: int, end: int, section: str | None = None
     before = clause[:relative_start]
     after = clause[relative_start + (end - start):]
 
-    if _HYPOTHETICAL_RE.search(before) or _HYPOTHETICAL_RE.search(after) or _RECOMMENDED_RE.search(before):
+    # Check conditional first (more specific than hypothetical).
+    # Also search the full clause because the entity itself (e.g. "fever")
+    # may sit between "if" (before) and "persists" (after), so neither
+    # half alone matches the multi-word pattern.
+    if _CONDITIONAL_RE.search(before) or _CONDITIONAL_RE.search(after) or _CONDITIONAL_RE.search(clause):
+        return Assertion.CONDITIONAL
+
+    if _RECOMMENDED_RE.search(before):
         return Assertion.HYPOTHETICAL
     if section == "FAMILY HISTORY" or _FAMILY_RE.search(before) or _FAMILY_RE.search(after):
         return Assertion.FAMILY
+    # Medication discontinuation is more specific than the "no" cue in
+    # "no longer taking" and must be recognized before generic absence.
+    if _DISCONTINUED_RE.search(before) or _DISCONTINUED_RE.search(after):
+        return Assertion.DISCONTINUED
     # Negation takes precedence over historical context so phrases such as
     # "no history of asthma" cannot be mislabeled historical.
     if _ABSENT_RE.search(before) or _ABSENT_RE.search(after):
         return Assertion.ABSENT
-    if _DISCONTINUED_RE.search(before) or _DISCONTINUED_RE.search(after):
-        return Assertion.DISCONTINUED
+    # Post-entity colon-negation: "chest pain: negative"
+    if _POST_NEGATION_RE.match(after):
+        return Assertion.ABSENT
     if _POSSIBLE_RE.search(before) or _POSSIBLE_RE.search(after) or text[end:end + 1] == "?" or text[start - 1:start] == "?":
         return Assertion.POSSIBLE
     if section == "PAST MEDICAL HISTORY" or _HISTORICAL_RE.search(before) or _HISTORICAL_RE.search(after):
         return Assertion.HISTORICAL
+    # Hypothetical: bare "if/should" that didn't match conditional pattern
+    if _HYPOTHETICAL_RE.search(before) or _HYPOTHETICAL_RE.search(after):
+        return Assertion.HYPOTHETICAL
     return Assertion.PRESENT

@@ -1,9 +1,16 @@
 {
+  "generated_at": "2026-10-27T08:28:12.853846+00:00",
   "f1_by_type": {
     "diagnosis": 1.0,
-    "medication": 1.0,
-    "symptom": 1.0,
+    "medication": 0.8571,
+    "symptom": 0.875,
     "procedure": 1.0,
     "lab": 1.0
-  }
+  },
+  "f1_by_category": {
+    "unspecified": 0.9552
+  },
+  "assertion_accuracy": 1.0,
+  "mean_cer": null,
+  "mean_wer": null
 }

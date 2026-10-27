@@ -665,10 +665,16 @@ export async function submitReviewDecision(
 export async function approveReviewTask(
   taskId: string,
   comment?: string,
+  acknowledged?: boolean,
+  justification?: string,
 ): Promise<ReviewTask> {
-  const params = comment ? `?comment=${encodeURIComponent(comment)}` : ""
+  const params = new URLSearchParams()
+  if (comment) params.set("comment", comment)
+  if (acknowledged) params.set("acknowledged", "true")
+  if (justification) params.set("justification", justification)
+  const qs = params.toString() ? `?${params.toString()}` : ""
 
-  return apiFetch(`/review/${taskId}/approve${params}`, { method: "POST" })
+  return apiFetch(`/review/${taskId}/approve${qs}`, { method: "POST" })
 }
 
 export async function rejectReviewTask(
@@ -712,6 +718,30 @@ export async function fetchReviewPolicy(): Promise<ReviewPolicy> {
   return apiFetch("/review/policy")
 }
 
+export interface RetentionPolicy {
+  audit_log_retention_days: number
+  scratchpad_retention_days: number
+  policy_enforced: boolean
+}
+
+export interface RetentionPurgeResult {
+  status: string
+  audit_logs_purged: number
+  scratchpad_records_purged: number
+  audit_cutoff: string
+  scratchpad_cutoff: string
+}
+
+export async function fetchRetentionPolicy(): Promise<RetentionPolicy> {
+  return apiFetch("/settings/retention-policy")
+}
+
+export async function triggerRetentionPurge(): Promise<RetentionPurgeResult> {
+  return apiFetch("/settings/retention/purge", {
+    method: "POST",
+  })
+}
+
 // ---------------------------------------------------------------------------
 
 // AI Operations
@@ -736,6 +766,7 @@ export interface AIOpsMetrics {
   ocr_success_rate: number | null
 
   extraction_accuracy: number | null
+  extraction_accuracy_label?: string
   latest_eval: {
     fixtures_evaluated: number
     f1_by_type: Record<string, number>
@@ -796,6 +827,7 @@ export interface FHIRMetadataCheck {
   reason?: string
   server_name?: string
   fhir_version?: string
+  local_terminology?: { source: string; code_counts: Record<string, number> }
   resource: { fhirVersion?: string; [key: string]: unknown } | null
 }
 
@@ -810,6 +842,9 @@ export async function fetchDocumentFHIR(documentId: string): Promise<Record<stri
 export async function pushSyntheticFHIR(documentId: string): Promise<{
   document_id: string
   status: string
+  simulation: boolean
+  mode: "simulation" | "production"
+  smart_on_fhir_configured: boolean
   attempts?: number
   http_status?: number
 }> {

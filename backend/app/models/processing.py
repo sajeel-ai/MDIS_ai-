@@ -71,6 +71,7 @@ class ProcessingJob(Base):
 class ProcessingStep(Base):
     __tablename__ = "processing_steps"
     __table_args__ = (
+        Index("ix_processing_steps_job_id", "processing_job_id"),
         CheckConstraint(
             "status IN ('pending', 'running', 'completed', 'failed', 'skipped')",
             name="ck_processing_steps_status",
@@ -84,7 +85,6 @@ class ProcessingStep(Base):
         UUID(as_uuid=True),
         ForeignKey("processing_jobs.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     step_name: Mapped[str] = mapped_column(String(64), nullable=False)
     # 'ocr' | 'text_extraction' | 'clinical_extraction'

@@ -81,8 +81,10 @@ export function ApprovedFilesPage({ onNavigate }: ApprovedFilesPageProps) {
     setBusyId(file.id)
     setFeedback(null)
     try {
-      await pushSyntheticFHIR(file.id)
-      setFeedback("Synthetic document pushed to the configured FHIR test server.")
+      const result = await pushSyntheticFHIR(file.id)
+      setFeedback(result.simulation
+        ? "Simulation: synthetic document was not sent to a production EHR."
+        : "Synthetic document pushed to the configured FHIR server.")
     } catch (err) {
       setFeedback(safeApiErrorMessage(err, "FHIR test push was not completed."))
     } finally {
@@ -131,7 +133,7 @@ export function ApprovedFilesPage({ onNavigate }: ApprovedFilesPageProps) {
                   <button type="button" onClick={() => onNavigate("review", undefined, reviewTaskByDocument[item.id])} className="rounded-md border border-[#DCE7F3] px-3 py-2 text-xs font-semibold text-[#146EF5] transition hover:bg-[#EAF5FF]">Review Center</button>
                   <button type="button" onClick={() => onNavigate("audit", item.id)} className="rounded-md border border-[#DCE7F3] px-3 py-2 text-xs font-semibold text-[#52627A] transition hover:bg-[#EAF5FF]">Audit trail</button>
                   <button type="button" disabled={busy} onClick={() => void download(item)} className="inline-flex items-center gap-1.5 rounded-md bg-[#146EF5] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0E2A5C] disabled:opacity-50"><Download size={13} aria-hidden="true" /> FHIR JSON</button>
-                  <button type="button" disabled={busy || !fhir?.reachable} title={!fhir?.reachable ? "Connect a FHIR R4 test server first" : undefined} onClick={() => void push(item)} className="inline-flex items-center gap-1.5 rounded-md bg-[#0E2A5C] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#071A3D] disabled:cursor-not-allowed disabled:opacity-50"><Send size={13} aria-hidden="true" /> Test push</button>
+                  <button type="button" disabled={busy || !fhir?.reachable} title={!fhir?.reachable ? "Connect a FHIR R4 test server first" : undefined} onClick={() => void push(item)} className="inline-flex items-center gap-1.5 rounded-md bg-[#0E2A5C] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#071A3D] disabled:cursor-not-allowed disabled:opacity-50"><Send size={13} aria-hidden="true" /> Test push (Simulation)</button>
                 </div>
               </article>
             })}

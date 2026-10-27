@@ -19,6 +19,12 @@ def require_roles(*allowed_roles: UserRole) -> Callable:
         current_user: UserContext = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> UserContext:
+        if getattr(current_user, "email", "").casefold() == "anon@dev.local":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="A valid JWT is required for this endpoint",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         current_role = getattr(current_user.role, "value", current_user.role)
         if not any(role.value.lower() == str(current_role).lower() for role in allowed_roles):
             await record_audit_event(

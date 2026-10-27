@@ -31,7 +31,7 @@ class Assertion(str, Enum):
     FAMILY = "family"
     HYPOTHETICAL = "hypothetical"
     DISCONTINUED = "discontinued"
-
+    CONDITIONAL = "conditional"
 
 class ExtractedEntity(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)

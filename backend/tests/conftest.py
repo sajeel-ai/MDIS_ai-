@@ -14,6 +14,7 @@ def isolate_test_environment(monkeypatch: pytest.MonkeyPatch, tmp_path):
     monkeypatch.setenv("APP_ENV", "development")
     monkeypatch.setenv("AUTH_DISABLED", "false")
     monkeypatch.setenv("STORAGE_LOCAL_PATH", str(storage_path))
+    monkeypatch.setenv("STORAGE_ENCRYPTION_KEY", "73796e7468657469632d73746f726167652d746573742d6b65792d3030303031")
     monkeypatch.setattr(settings, "app_env", "development")
     monkeypatch.setattr(settings, "auth_disabled", False)
     monkeypatch.setattr(settings, "jwt_secret_key", "synthetic-test-jwt-secret-that-is-long-enough-123456")
@@ -21,4 +22,5 @@ def isolate_test_environment(monkeypatch: pytest.MonkeyPatch, tmp_path):
     monkeypatch.setattr(settings, "auth_rate_limit_per_ip", 10000)
     monkeypatch.setattr(settings, "auth_rate_limit_per_account", 10000)
     monkeypatch.setattr(settings, "storage_local_path", str(storage_path))
+    monkeypatch.setattr(settings, "storage_encryption_key", "73796e7468657469632d73746f726167652d746573742d6b65792d3030303031")
     monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))

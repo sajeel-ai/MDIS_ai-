@@ -72,3 +72,5 @@ class ReviewDecisionRequest(BaseModel):
     decision: str = Field(..., description="approved | rejected | corrected")
     comment: Optional[str] = None
     corrected_value: Optional[str] = None
+    acknowledged: Optional[bool] = False
+    justification: Optional[str] = None

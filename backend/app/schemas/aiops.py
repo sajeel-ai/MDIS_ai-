@@ -14,6 +14,9 @@ class AIOpsMetricsResponse(BaseModel):
     avg_processing_sec: Optional[float] = None
     ocr_success_rate: Optional[float] = None
     extraction_accuracy: Optional[float] = None
+    extraction_accuracy_label: str = "Not measured"
+    confidence_drift: Optional[float] = None
+    drift_status: Optional[str] = "not_measured"
     latest_eval: Optional[dict] = None
 
 

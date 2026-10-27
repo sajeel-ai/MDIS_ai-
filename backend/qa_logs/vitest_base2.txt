@@ -1,0 +1,1484 @@
+﻿
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90mC:/Users/Meta/project z/Cognate-AI main/Cognate-AI[39m
+
+ [32mΓ£ô[39m src/test/authCookies.test.ts[2m > [22mcookie-based authentication client[2m > [22mbootstraps CSRF, sends login credentials with cookies, and stores no auth token in Web Storage[33m 863[2mms[22m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 1 ΓÇö HTML Metadata[2m > [22mdocument.documentElement.lang is "en"[32m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authClient.test.ts[2m > [22mcentral API client session handling[2m > [22muses one refresh request for concurrent 401 responses before retrying both requests[33m 932[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authClient.test.ts[2m > [22mcentral API client session handling[2m > [22mannounces session expiry when refresh also returns 401[32m 40[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authClient.test.ts[2m > [22mcentral API client session handling[2m > [22msignals forbidden access without treating a 403 as an expired session[32m 87[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authClient.test.ts[2m > [22mcentral API client session handling[2m > [22mmarks API requests as non-cacheable[32m 53[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authClient.test.ts[2m > [22mcentral API client session handling[2m > [22mcompletes MFA through the pending login challenge endpoint[32m 83[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authClient.test.ts[2m > [22mcentral API client session handling[2m > [22msurfaces the backend MFA-pending response so the login UI can request the challenge code[32m 8[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m1. Dashboard page[2m > [22mrenders without crashing[33m 4320[2mms[22m[39m
+ [32mΓ£ô[39m src/test/integrations.test.tsx[2m > [22mIntegrations page health status[2m > [22mshows connected status when health returns 200[33m 2448[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m1. Dashboard page[2m > [22mshows page heading[33m 940[2mms[22m[39m
+ [32mΓ£ô[39m src/test/integrations.test.tsx[2m > [22mIntegrations page health status[2m > [22mshows access restricted when health returns 403[33m 659[2mms[22m[39m
+ [31m├ù[39m src/test/audit.test.tsx[2m > [22mPhase 2 ΓÇö Settings: no false HIPAA/AES-256/TLS claims[2m > [22mSettings page does not contain "HIPAA Complian" text[33m 7413[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [31m├ù[39m src/test/audit.test.tsx[2m > [22mPhase 2 ΓÇö Settings: no false HIPAA/AES-256/TLS claims[2m > [22mSettings page does not render "AES-256.*Active"[32m 120[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mdoes not render protected children while the startup session check is loading[33m 1053[2mms[22m[39m
+ [32mΓ£ô[39m src/test/integrations.test.tsx[2m > [22mIntegrations page health status[2m > [22mshows unavailable when health returns a server failure[33m 2160[2mms[22m[39m
+ [31m├ù[39m src/test/audit.test.tsx[2m > [22mPhase 2 ΓÇö Settings: no false HIPAA/AES-256/TLS claims[2m > [22mSettings page does not render "TLS 1.3 Transmission Security" as Active[32m 114[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [31m├ù[39m src/test/audit.test.tsx[2m > [22mPhase 2 ΓÇö Settings: no false HIPAA/AES-256/TLS claims[2m > [22mSettings page renders "Deployment-Managed" or "Env-Configured" instead[32m 39[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [31m├ù[39m src/test/audit.test.tsx[2m > [22mPhase 2 ΓÇö Settings: no false HIPAA/AES-256/TLS claims[2m > [22mSettings page renders "Security Controls" as the section title[32m 31[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [32mΓ£ô[39m src/test/integrations.test.tsx[2m > [22mIntegrations page health status[2m > [22mshows unavailable when the health request has a network failure[32m 245[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m1. Dashboard page[2m > [22mdisplays live metric total after API resolves[33m 3100[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mclears auth state only after the server logout succeeds[33m 1758[2mms[22m[39m
+ [32mΓ£ô[39m src/test/integrations.test.tsx[2m > [22mIntegrations page health status[2m > [22mloads FHIR metadata and displays its reachable server status[32m 272[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mkeeps the authenticated state if the server cannot revoke a logout session[32m 277[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mshows the session-expired message after a later 401 refresh failure[32m 183[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mturns an API 403 event into the access-restricted page state[32m 202[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m1. Dashboard page[2m > [22mExport button shows info banner on click[33m 1505[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m1. Dashboard page[2m > [22mNew Extraction button shows info banner on click[33m 599[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m1. Dashboard page[2m > [22mshows recent cases from API[33m 517[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22minvokes the login callback on success and maps a 401 to the generic credential message[33m 2052[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m2. Clinical Workspace view[2m > [22mrenders without crashing[33m 1807[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m2. Clinical Workspace view[2m > [22mshows loading spinner initially[32m 103[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mrenders recovery, expired, forbidden, and MFA verification screens accessibly[33m 2567[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22muses the backend remember-me option and displays forbidden login as an access-restricted state[33m 1041[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m2. Clinical Workspace view[2m > [22mdisplays patient name after data loads[32m 263[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m2. Clinical Workspace view[2m > [22mshows error panel with Retry button when API fails[32m 122[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m2. Clinical Workspace view[2m > [22mshows extracted diagnoses[32m 132[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mrequires a valid email and a password before enabling a sign-in request[33m 390[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mredirects protected routes after loading and shows a role-restricted state[32m 146[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mrejects external and protocol-relative return destinations[32m 31[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mrenders the server 403 state as a page, not an error banner[32m 103[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mwarns before the configured inactivity timeout and can refresh the session[33m 327[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22msubmits generic reset requests without account enumeration[33m 1441[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m3. Review Center view[2m > [22mrenders without crashing[33m 670[2mms[22m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 5 ΓÇö Workflow controls show honest feedback[2m > [22mTest Pipeline button shows info banner on click[33m 6828[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m3. Review Center view[2m > [22mshows Review Center heading[33m 438[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mshows the account status page for pending_email_verification[33m 795[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m3. Review Center view[2m > [22mdisplays queue items from API[33m 760[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mexplains when reset email delivery is not configured[33m 1533[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mshows the account status page for pending_approval[33m 1289[2mms[22m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 5 ΓÇö Workflow controls show honest feedback[2m > [22mNew Workflow button shows info banner on click[33m 849[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m3. Review Center view[2m > [22mdoes NOT call window.alert[33m 393[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mverifies MFA using the existing cookie-auth login provider[33m 1155[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authCore.test.tsx[2m > [22mfrontend authentication core[2m > [22mshows the account status page for rejected[33m 1135[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m3. Review Center view[2m > [22mshows inline success feedback after approve[33m 1615[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m3. Review Center view[2m > [22mdoes not show hardcoded badge 60[33m 306[2mms[22m[39m
+ [31m├ù[39m src/test/pages.test.tsx[2m > [22m4. Settings page[2m > [22mrenders without crashing[33m 628[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [31m├ù[39m src/test/pages.test.tsx[2m > [22m4. Settings page[2m > [22mshows "Security Controls" section[32m 12[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [31m├ù[39m src/test/pages.test.tsx[2m > [22m4. Settings page[2m > [22mdoes NOT contain "HIPAA Compliant"[32m 8[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [31m├ù[39m src/test/pages.test.tsx[2m > [22m4. Settings page[2m > [22mdoes NOT contain "AES-256 Bit Encryption enabled"[32m 12[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [31m├ù[39m src/test/pages.test.tsx[2m > [22m4. Settings page[2m > [22mdoes NOT contain "TLS 1.3 Transmission Security"[32m 11[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [31m├ù[39m src/test/pages.test.tsx[2m > [22m4. Settings page[2m > [22mshows "Deployment-Managed" badge[32m 15[2mms[22m[39m
+[31m   ΓåÆ useAuth must be used inside AuthProvider[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 5 ΓÇö Workflow controls show honest feedback[2m > [22mworkflow canvas nodes are keyboard-accessible buttons[33m 1708[2mms[22m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 14 ΓÇö Dashboard non-functional action buttons[2m > [22mExport button shows an aria-live status region[33m 2242[2mms[22m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 14 ΓÇö Dashboard non-functional action buttons[2m > [22mNew Extraction button shows an aria-live status region[33m 686[2mms[22m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 7 ΓÇö ReviewCenter: no browser alert()[2m > [22mwindow.alert is never called during ReviewCenter render[33m 1066[2mms[22m[39m
+ [31m├ù[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mverifies a reset code, validates matching passwords, then submits the grant flow[33m 4152[2mms[22m[39m
+[31m   ΓåÆ Unable to find an accessible element with the role "button" and name "Reset password"
+
+Here are the accessible roles:
+
+  main:
+
+  Name "":
+  [36m<main[31m
+    [33mclass[31m=[32m"flex min-h-screen items-center justify-center bg-[#F5FAFF] px-4 py-8 sm:px-6"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  link:
+
+  Name "MDIS sign in":
+  [36m<a[31m
+    [33maria-label[31m=[32m"MDIS sign in"[31m
+    [33mclass[31m=[32m"mb-6 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#146EF5]"[31m
+    [33mhref[31m=[32m"/login"[31m
+    [33mtitle[31m=[32m"Back to sign in"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  img:
+
+  Name "MDIS":
+  [36m<img[31m
+    [33malt[31m=[32m"MDIS"[31m
+    [33mclass[31m=[32m"h-9 w-auto object-contain"[31m
+    [33msrc[31m=[32m"/src/public/Glossy%203D%20MDIS%20Ribbon%20Logo.png"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Create new password":
+  [36m<h1[31m
+    [33mclass[31m=[32m"text-2xl font-semibold text-[#071A3D]"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[31m
+    [33mclass[31m=[32m"mt-2 text-sm leading-6 text-[#52627A]"[31m
+  [36m/>[31m
+
+  Name "":
+  [36m<p[31m
+    [33maria-live[31m=[32m"polite"[31m
+    [33mclass[31m=[32m"mt-1 text-xs text-[#52627A]"[31m
+  [36m/>[31m
+
+  Name "":
+  [36m<p[31m
+    [33mclass[31m=[32m"mt-2 text-xs leading-5 text-[#52627A]"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  alert:
+
+  Name "":
+  [36m<p[31m
+    [33mclass[31m=[32m"mt-2 text-sm text-[#B91C1C]"[31m
+    [33mrole[31m=[32m"alert"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  button:
+
+  Name "Confirm":
+  [36m<button[31m
+    [33mclass[31m=[32m"mt-6 min-h-11 w-full rounded-lg bg-[#146EF5] font-semibold text-white disabled:opacity-50"[31m
+    [33mdisabled[31m=[32m""[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<main[31m
+      [33mclass[31m=[32m"flex min-h-screen items-center justify-center bg-[#F5FAFF] px-4 py-8 sm:px-6"[31m
+    [36m>[31m
+      [36m<section[31m
+        [33mclass[31m=[32m"w-full max-w-lg rounded-2xl border border-[#DCE7F3] bg-white p-5 shadow-sm sm:p-8"[31m
+      [36m>[31m
+        [36m<a[31m
+          [33maria-label[31m=[32m"MDIS sign in"[31m
+          [33mclass[31m=[32m"mb-6 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#146EF5]"[31m
+          [33mhref[31m=[32m"/login"[31m
+          [33mtitle[31m=[32m"Back to sign in"[31m
+        [36m>[31m
+          [36m<img[31m
+            [33malt[31m=[32m"MDIS"[31m
+            [33mclass[31m=[32m"h-9 w-auto object-contain"[31m
+            [33msrc[31m=[32m"/src/public/Glossy%203D%20MDIS%20Ribbon%20Logo.png"[31m
+          [36m/>[31m
+        [36m</a>[31m
+        [36m<h1[31m
+          [33mclass[31m=[32m"text-2xl font-semibold text-[#071A3D]"[31m
+        [36m>[31m
+          [0mCreate new password[0m
+        [36m</h1>[31m
+        [36m<p[31m
+          [33mclass[31m=[32m"mt-2 text-sm leading-6 text-[#52627A]"[31m
+        [36m>[31m
+          [0mCreate a new password to secure your account. Make sure it is strong and easy to remember.[0m
+        [36m</p>[31m
+        [36m<form>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"mx-auto mt-5 grid h-12 w-12 place-items-center rounded-xl border border-[#DCE7F3] bg-[#EAF5FF] text-[#146EF5]"[31m
+          [36m>[31m
+            [36m<svg[31m
+              [33maria-hidden[31m=[32m"true"[31m
+              [33mclass[31m=[32m"lucide lucide-key-round"[31m
+              [33mfill[31m=[32m"none"[31m
+              [33mheight[31m=[32m"22"[31m
+              [33mstroke[31m=[32m"currentColor"[31m
+              [33mstroke-linecap[31m=[32m"round"[31m
+              [33mstroke-linejoin[31m=[32m"round"[31m
+              [33mstroke-width[31m=[32m"2"[31m
+              [33mviewBox[31m=[32m"0 0 24 24"[31m
+              [33mwidth[31m=[32m"22"[31m
+              [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+            [36m>[31m
+              [36m<path[31m
+                [33md[31m=[32m"M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"[31m
+              [36m/>[31m
+              [36m<circle[31m
+                [33mcx[31m=[32m"16.5"[31m
+                [33mcy[31m=[32m"7.5"[31m
+                [33mfill[31m=[32m"currentColor"[31m
+                [33mr[31m=[32m".5"[31m
+              [36m/>[31m
+            [36m</svg>[31m
+          [36m</div>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"mt-5 block text-sm font-medium text-[#071A3D]"[31m
+          [36m>[31m
+            [0mNew password[0m
+            [36m<input[31m
+              [33mautocomplete[31m=[32m"new-password"[31m
+              [33mclass[31m=[32m"mt-2 h-11 w-full rounded-lg border border-[#DCE7F3] px-3 focus-visible:outline-2 focus-visible:outline-[#146EF5]"[31m
+              [33mmaxlength[31m=[32m"1024"[31m
+              [33mminlength[31m=[32m"12"[31m
+              [33mrequired[31m=[32m""[31m
+              [33mtype[31m=[32m"password"[31m
+              [33mvalue[31m=[32m"synthetic new password 1"[31m
+            [36m/>[31m
+          [36m</label>[31m
+          [36m<p[31m
+            [33maria-live[31m=[32m"polite"[31m
+            [33mclass[31m=[32m"mt-1 text-xs text-[#52627A]"[31m
+          [36m>[31m
+            [0mPassphrase length: strong[0m
+          [36m</p>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"mt-2 text-xs leading-5 text-[#52627A]"[31m
+          [36m>[31m
+            [0mUse at least 12 characters. Common or compromised passwords and passwords containing your email or name are rejected. No character-composition rules are required.[0m
+          [36m</p>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"mt-4 block text-sm font-medium text-[#071A3D]"[31m
+          [36m>[31m
+            [0mConfirm new password[0m
+            [36m<input[31m
+              [33mautocomplete[31m=[32m"new-password"[31m
+              [33mclass[31m=[32m"mt-2 h-11 w-full rounded-lg border border-[#DCE7F3] px-3 focus-visible:outline-2 focus-visible:outline-[#146EF5]"[31m
+              [33mmaxlength[31m=[32m"1024"[31m
+              [33mminlength[31m=[32m"12"[31m
+              [33mrequired[31m=[32m""[31m
+              [33mtype[31m=[32m"password"[31m
+              [33mvalue[31m=[32m"different password"[31m
+            [36m/>[31m
+          [36m</label>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"mt-2 text-sm text-[#B91C1C]"[31m
+            [33mrole[31m=[32m"alert"[31m
+          [36m>[31m
+            [0mPasswords do not match.[0m
+          [36m</p>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"mt-6 min-h-11 w-full rounded-lg bg-[#146EF5] font-semibold text-white disabled:opacity-50"[31m
+            [33mdisabled[31m=[32m""[31m
+          [36m>[31m
+            [0mConfirm[0m
+          [36m</button>[31m
+        [36m</form>[31m
+      [36m</section>[31m
+    [36m</main>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 6 ΓÇö ClinicalWorkspace: visible error and retry[2m > [22mshows a user-facing retry state when document loading fails[32m 259[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m5. Workflows page[2m > [22mrenders without crashing[33m 2672[2mms[22m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mMobile navigation: accessible drawer controls[2m > [22mprovides an accessible close control and closes the drawer[33m 599[2mms[22m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 4 ΓÇö System status indicator is dynamic[2m > [22mHeader renders a status label that reflects the API result[32m 84[2mms[22m[39m
+ [32mΓ£ô[39m src/test/audit.test.tsx[2m > [22mPhase 4 ΓÇö System status indicator is dynamic[2m > [22mdoes not render the hardcoded "All systems nominal" text[32m 50[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m5. Workflows page[2m > [22mshows the Workflows heading[33m 441[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m5. Workflows page[2m > [22mrenders Document Input node[33m 333[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m5. Workflows page[2m > [22mrenders OCR Processing node[32m 284[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authBypass.test.ts[2m > [22mauthentication bypass[2m > [22mremains disabled in development and production builds[32m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22maccepts invitations through the single-use invite token[33m 1648[2mms[22m[39m
+ [32mΓ£ô[39m src/test/encoding.test.ts[2m > [22msource encoding[2m > [22mcontains no UTF-8 mojibake sequences[33m 404[2mms[22m[39m
+ [32mΓ£ô[39m src/test/documentLifecycle.test.ts[2m > [22mderiveDocumentLifecycleStatus[2m > [22mapplies processing precedence over every review state[32m 31[2mms[22m[39m
+ [32mΓ£ô[39m src/test/documentLifecycle.test.ts[2m > [22mderiveDocumentLifecycleStatus[2m > [22mmaps completed review states and keeps no-review extracted distinct from approved[32m 8[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m5. Workflows page[2m > [22mworkflow nodes are accessible buttons with aria-pressed[33m 816[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m5. Workflows page[2m > [22mTest Pipeline shows info banner on click[33m 977[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mchanges password and ends the local session only after server success[33m 1769[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m5. Workflows page[2m > [22mNew Workflow shows info banner on click[33m 634[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m5. Workflows page[2m > [22mclicking a node toggles aria-pressed to true[33m 815[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mruns MFA enrollment and exposes one-time recovery codes to the completion handler[33m 740[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m6. Documents page[2m > [22mrenders without crashing[33m 754[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m6. Documents page[2m > [22mshows document list from API[33m 566[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m6. Documents page[2m > [22mshows patient list from API[33m 799[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m6. Documents page[2m > [22mdoes NOT crash when last_updated is undefined[32m 163[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m6. Documents page[2m > [22mdoes NOT crash when doc_type is undefined[32m 153[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m7. Integrations page[2m > [22mrenders without crashing[32m 272[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m7. Integrations page[2m > [22mshows System Connections heading[32m 230[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m7. Integrations page[2m > [22mshows connection cards[32m 269[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m7. Integrations page[2m > [22mshows FHIR version from API[33m 433[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m8. Header component[2m > [22mrenders without crashing[32m 49[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m8. Header component[2m > [22mdoes NOT show hardcoded "All systems nominal"[32m 35[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m8. Header component[2m > [22mshows dynamic system status after health check[32m 82[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m8. Header component[2m > [22mNotifications button has aria-label[32m 115[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m8. Header component[2m > [22mHelp button has aria-label[32m 135[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m9. Sidebar navigation[2m > [22mrenders without crashing[32m 117[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m9. Sidebar navigation[2m > [22mshows all main nav items[33m 315[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m9. Sidebar navigation[2m > [22mdoes NOT show hardcoded "Dr. Sarah Chen"[32m 79[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m9. Sidebar navigation[2m > [22mdoes NOT show hardcoded badge 60[32m 145[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m9. Sidebar navigation[2m > [22mshows live badge count from API (8)[32m 149[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m9. Sidebar navigation[2m > [22mactive view gets aria-current="page"[33m 310[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m9. Sidebar navigation[2m > [22mnav button calls onNavigate correctly[33m 316[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m10. AI Operations view[2m > [22mrenders without crashing[32m 188[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m10. AI Operations view[2m > [22mshows AI Operations heading[32m 64[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mkeeps public registration hidden unless backend configuration enables it[33m 5551[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m10. AI Operations view[2m > [22mshows pipeline health status from API[32m 111[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m11. Patient Timeline view[2m > [22mrenders without crashing[32m 150[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m11. Patient Timeline view[2m > [22mshows Clinical Timeline heading[32m 46[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m11. Patient Timeline view[2m > [22mloads patients from API and shows patient name[32m 122[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m11. Patient Timeline view[2m > [22mloads and shows timeline events[32m 61[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m12. AI Extraction placeholder view[2m > [22mrenders without crashing[33m 351[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m12. AI Extraction placeholder view[2m > [22mshows AI Extraction heading[32m 61[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m12. AI Extraction placeholder view[2m > [22mshows navigation cards[32m 36[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m12. AI Extraction placeholder view[2m > [22maction card calls onNavigate with correct view[32m 34[2mms[22m[39m
+ [31m├ù[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mprovides organization user actions and denies the screen to a clinician[33m 1238[2mms[22m[39m
+[31m   ΓåÆ Found multiple elements with the text: person@example.test
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<p[31m
+  [33mclass[31m=[32m"mt-0.5 break-all text-xs text-[#52627A]"[31m
+[36m>[31m
+  [0mperson@example.test[0m
+[36m</p>[31m
+
+Ignored nodes: comments, script, style
+[36m<span[31m
+  [33mclass[31m=[32m"block break-all text-xs text-[#52627A]"[31m
+[36m>[31m
+  [0mperson@example.test[0m
+[36m</span>[31m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"admin-users-title"[31m
+        [33mclass[31m=[32m"mx-auto w-full max-w-360 min-w-0 space-y-5 pb-8"[31m
+      [36m>[31m
+        [36m<div>[31m
+          [36m<h1[31m
+            [33mclass[31m=[32m"text-xl font-bold text-[#071A3D]"[31m
+            [33mid[31m=[32m"admin-users-title"[31m
+          [36m>[31m
+            [0mUser Management[0m
+          [36m</h1>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"mt-1 text-sm text-[#52627A]"[31m
+          [36m>[31m
+            [0mOrganization users and active sessions[0m
+          [36m</p>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]"[31m
+        [36m>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"sr-only"[31m
+            [33mfor[31m=[32m"user-search"[31m
+          [36m>[31m
+            [0mSearch users[0m
+          [36m</label>[31m
+          [36m<input[31m
+            [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+            [33mid[31m=[32m"user-search"[31m
+            [33mplaceholder[31m=[32m"Search name or email"[31m
+            [33mvalue[31m=[32m""[31m
+          [36m/>[31m
+          [36m<select[31m
+            [33maria-label[31m=[32m"Filter by role"[31m
+            [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+          [36m>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m""[31m
+            [36m>[31m
+              [0mAll roles[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0madmin[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0mclinician[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0moperator[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0mreviewer[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0mviewer[0m
+            [36m</option>[31m
+          [36m</select>[31m
+          [36m<select[31m
+            [33maria-label[31m=[32m"Filter by status"[31m
+            [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+          [36m>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m""[31m
+            [36m>[31m
+              [0mAll statuses[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"active"[31m
+            [36m>[31m
+              [0mActive[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"inactive"[31m
+            [36m>[31m
+              [0mInactive[0m
+            [36m</option>[31m
+          [36m</select>[31m
+          [36m<select[31m
+            [33maria-label[31m=[32m"Filter by MFA"[31m
+            [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+          [36m>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m""[31m
+            [36m>[31m
+              [0mAll MFA[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"enabled"[31m
+            [36m>[31m
+              [0mMFA enabled[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"disabled"[31m
+            [36m>[31m
+              [0mMFA disabled[0m
+            [36m</option>[31m
+          [36m</select>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33maria-label[31m=[32m"User management summary"[31m
+          [33mclass[31m=[32m"grid grid-cols-2 gap-3 lg:grid-cols-4"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+          [36m>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+            [36m>[31m
+              [0mTotal users[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#071A3D]"[31m
+            [36m>[31m
+              [0m1[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+          [36m>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+            [36m>[31m
+              [0mLoaded active[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#071A3D]"[31m
+            [36m>[31m
+              [0m1[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+          [36m>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+            [36m>[31m
+              [0mPending requests[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#071A3D]"[31m
+            [36m>[31m
+              [0m0[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+          [36m>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+            [36m>[31m
+              [0mAdmins without MFA[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#B45309]"[31m
+            [36m>[31m
+              [0m0[0m
+            [36m</p>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+        [36m<section[31m
+          [33maria-labelledby[31m=[32m"account-requests-title"[31m
+          [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-4"[31m
+        [36m>[31m
+          [36m<h2[31m
+            [33mclass[31m=[32m"font-semibold text-[#071A3D]"[31m
+            [33mid[31m=[32m"account-requests-title"[31m
+          [36m>[31m
+            [0mAccount requests[0m
+          [36m</h2>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"mt-2 text-sm text-[#52627A]"[31m
+          [36m>[31m
+            [0mNo verified account requests. Only email-verified registration requests appear here.[0m
+          [36m</p>[31m
+        [36m</section>[31m
+        [36m<form[31m
+          [33mclass[31m=[32m"grid gap-3 rounded-xl border border-[#DCE7F3] bg-white p-4 sm:grid-cols-2 lg:grid-cols-4"[31m
+        [36m>[31m
+          [36m<h2[31m
+            [33mclass[31m=[32m"sm:col-span-2 lg:col-span-4 text-base font-semibold text-[#071A3D]"[31m
+          [36m>[31m
+            [0mInvite user[0m
+          [36m</h2>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"text-sm"[31m
+          [36m>[31m
+            [0mFull name[0m
+            [36m<input[31m
+              [33mclass[31m=[32m"mt-1 h-11 w-full rounded-lg border border-[#DCE7F3] px-3"[31m
+              [33mmaxlength[31m=[32m"128"[31m
+              [33mrequired[31m=[32m""[31m
+              [33mvalue[31m=[32m""[31m
+            [36m/>[31m
+          [36m</label>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"text-sm"[31m
+          [36m>[31m
+            [0mEmail[0m
+            [36m<input[31m
+              [33mautocomplete[31m=[32m"email"[31m
+              [33mclass[31m=[32m"mt-1 h-11 w-full rounded-lg border border-[#DCE7F3] px-3"[31m
+              [33mmaxlength[31m=[32m"256"[31m
+              [33mrequired[31m=[32m""[31m
+              [33mtype[31m=[32m"email"[31m
+              [33mvalue[31m=[32m""[31m
+            [36m/>[31m
+          [36m</label>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"text-sm"[31m
+          [36m>[31m
+            [0mRole[0m
+            [36m<select[31m
+              [33mclass[31m=[32m"mt-1 h-11 w-full rounded-lg border border-[#DCE7F3] px-3"[31m
+            [36m>[31m
+              [36m<option>[31m
+                [0mclinician[0m
+              [36m</option>[31m
+              [36m<option>[31m
+                [0mreviewer[0m
+              [36m</option>[31m
+              [36m<option>[31m
+                [0mviewer[0m
+              [36m</option>[31m
+            [36m</select>[31m
+          [36m</label>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"min-h-11 self-end rounded-lg bg-[#146EF5] px-4 font-semibold text-white disabled:opacity-50"[31m
+          [36m>[31m
+            [0mSend invitation[0m
+          [36m</button>[31m
+        [36m</form>[31m
+        [36m<section[31m
+          [33maria-labelledby[31m=[32m"managed-users-title"[31m
+          [33mclass[31m=[32m"overflow-hidden rounded-xl border border-[#DCE7F3] bg-white"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"flex items-center justify-between gap-3 border-b border-[#DCE7F3] px-4 py-3"[31m
+          [36m>[31m
+            [36m<div>[31m
+              [36m<h2[31m
+                [33mclass[31m=[32m"font-semibold text-[#071A3D]"[31m
+                [33mid[31m=[32m"managed-users-title"[31m
+              [36m>[31m
+                [0mOrganization users[0m
+              [36m</h2>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-0.5 text-xs text-[#52627A]"[31m
+              [36m>[31m
+                [0mActive accounts and session management[0m
+              [36m</p>[31m
+            [36m</div>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"shrink-0 rounded-full bg-[#EAF5FF] px-2.5 py-1 text-xs font-medium text-[#52627A]"[31m
+            [36m>[31m
+              [0m1[0m
+              [0m [0m
+              [0muser[0m
+            [36m</span>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"grid gap-3 p-3 md:grid-cols-2 xl:hidden"[31m
+          [36m>[31m
+            [36m<article[31m
+              [33mclass[31m=[32m"rounded-lg border border-[#DCE7F3] p-3"[31m
+            [36m>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"font-medium text-[#071A3D]"[31m
+              [36m>[31m
+                [0mSynthetic Person[0m
+              [36m</p>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-0.5 break-all text-xs text-[#52627A]"[31m
+              [36m>[31m
+                [0mperson@example.test[0m
+              [36m</p>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"mt-3 grid gap-2"[31m
+              [36m>[31m
+                [36m<label[31m
+                  [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+                [36m>[31m
+                  [0mRole[0m
+                  [36m<select[31m
+                    [33maria-label[31m=[32m"Role for person@example.test"[31m
+                    [33mclass[31m=[32m"mt-1 h-10 w-full rounded-lg border border-[#DCE7F3] px-2"[31m
+                  [36m>[31m
+                    [36m<option>[31m
+                      [0madmin[0m
+                    [36m</option>[31m
+                    [36m<option>[31m
+                      [0mclinician[0m
+                    [36m</option>[31m
+                    [36m<option>[31m
+                      [0moperator[0m
+                    [36m</option>[31m
+                    [36m<option>[31m
+                      [0mreviewer[0m
+                    [36m</option>[31m
+                    [36m<option>[31m
+                      [0mviewer[0m
+                    [36m</option>[31m
+                  [36m</select>[31m
+                [36m</label>[31m
+                [36m<p[31m
+                  [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+                [36m>[31m
+                  [0mStatus: [0m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"font-medium text-[#071A3D]"[31m
+                  [36m>[31m
+                    [0mActive[0m
+                  [36m</span>[31m
+                  [0m ┬╖ MFA: [0m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"font-medium text-[#071A3D]"[31m
+                  [36m>[31m
+                    [0mNot enabled[0m
+                  [36m</span>[31m
+                [36m</p>[31m
+                [36m<div[31m
+                  [33mclass[31m=[32m"flex flex-wrap gap-2"[31m
+                [36m>[31m
+                  [36m<button[31m
+                    [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#146EF5]"[31m
+                    [33mtype[31m=[32m"button"[31m
+                  [36m>[31m
+                    [0mSessions[0m
+                  [36m</button>[31m
+                  [36m<button[31m
+                    [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] px-3"[31m
+                    [33mtype[31m=[32m"button"[31m
+                  [36m>[31m
+                    [0mDeactivate[0m
+                  [36m</button>[31m
+                [36m</div>[31m
+              [36m</div>[31m
+            [36m</article>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"hidden max-h-[65vh] overflow-auto xl:block"[31m
+          [36m>[31m
+            [36m<table[31m
+              [33mclass[31m=[32m"w-full min-w-[880px] text-left text-sm"[31m
+            [36m>[31m
+              [36m<thead[31m
+                [33mclass[31m=[32m"sticky top-0 z-10 bg-[#EAF5FF] text-xs uppercase text-[#52627A] [&_th]:whitespace-nowrap"[31m
+              [36m>[31m
+                [36m<tr>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mUser[0m
+                  [36m</th>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mRole[0m
+                  [36m</th>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mStatus[0m
+                  [36m</th>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mMFA[0m
+                  [36m</th>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mActions[0m
+                  [36m</th>[31m
+                [36m</tr>[31m
+              [36m</thead>[31m
+              [36m<tbody>[31m
+                [36m<tr[31m
+                  [33mclass[31m=[32m"border-t border-[#DCE7F3]"[31m
+                [36m>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"min-w-[220px] p-3"[31m
+                  [36m>[31m
+                    [36m<span[31m
+                      [33mclass[31m=[32m"font-medium text-[#071A3D]"[31m
+                    [36m>[31m
+                      [0mSynthetic Person[0m
+                    [36m</span>[31m
+                    [36m<span[31m
+                      [33mclass[31m=[32m"block break-all text-xs text-[#52627A]"[31m
+                    [36m>[31m
+                      [0mperson@example.test[0m
+                    [36m</span>[31m
+                  [36m</td>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [36m<label[31m
+                      [33mclass[31m=[32m"sr-only"[31m
+                      [33mfor[31m=[32m"role-user-1"[31m
+                    [36m>[31m
+                      [0mRole for [0m
+                      [0mperson@example.test[0m
+                    [36m</label>[31m
+                    [36m<select[31m
+                      [33mclass[31m=[32m"h-10 rounded-lg border border-[#DCE7F3] px-2"[31m
+                      [33mid[31m=[32m"role-user-1"[31m
+                    [36m>[31m
+                      [36m<option>[31m
+                        [0madmin[0m
+                      [36m</option>[31m
+                      [36m<option>[31m
+                        [0mclinician[0m
+                      [36m</option>[31m
+                      [36m<option>[31m
+                        [0moperator[0m
+                      [36m</option>[31m
+                      [36m<option>[31m
+                        [0mreviewer[0m
+                      [36m</option>[31m
+                      [36m<option>[31m
+                        [0mviewer[0m
+                      [36m</option>[31m
+                    [36m</select>[31m
+                  [36m</td>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"whitespace-nowrap p-3"[31m
+                  [36m>[31m
+                    [0mActive[0m
+                  [36m</td>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"whitespace-nowrap p-3"[31m
+                  [36m>[31m
+                    [0mNot enabled[0m
+                  [36m</td>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"whitespace-nowrap p-3"[31m
+                  [36m>[31m
+                    [36m<div[31m
+                      [33mclass[31m=[32m"flex items-center gap-2"[31m
+                    [36m>[31m
+                      [36m<button[31m
+                        [33mclass[31m=[32m"min-h-10 whitespace-nowrap rounded-lg border border-[#DCE7F3] px-3 text-sm text-[#146EF5]"[31m
+                        [33mtype[31m=[32m"button"[31m
+                      [36m>[31m
+                        [0mSessions[0m
+                      [36m</button>[31m
+                      [36m<button[31m
+                        [33mclass[31m=[32m"min-h-10 whitespace-nowrap rounded-lg border border-[#DCE7F3] px-3 text-sm text-[#071A3D] disabled:opacity-50"[31m
+                        [33mtype[31m=[32m"button"[31m
+                      [36m>[31m
+                        [0mDeactivate[0m
+                      [36m</button>[31m
+                    [36m</div>[31m
+                  [36m</td>[31m
+                [36m</tr>[31m
+              [36m</tbody>[31m
+            [36m</table>[31m
+          [36m</div>[31m
+        [36m</section>[31m
+      [36m</section>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"admin-users-title"[31m
+        [33mclass[31m=[32m"mx-auto w-full max-w-360 min-w-0 space-y-5 pb-8"[31m
+      [36m>[31m
+        [36m<div>[31m
+          [36m<h1[31m
+            [33mclass[31m=[32m"text-xl font-bold text-[#071A3D]"[31m
+            [33mid[31m=[32m"admin-users-title"[31m
+          [36m>[31m
+            [0mUser Management[0m
+          [36m</h1>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"mt-1 text-sm text-[#52627A]"[31m
+          [36m>[31m
+            [0mOrganization users and active sessions[0m
+          [36m</p>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]"[31m
+        [36m>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"sr-only"[31m
+            [33mfor[31m=[32m"user-search"[31m
+          [36m>[31m
+            [0mSearch users[0m
+          [36m</label>[31m
+          [36m<input[31m
+            [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+            [33mid[31m=[32m"user-search"[31m
+            [33mplaceholder[31m=[32m"Search name or email"[31m
+            [33mvalue[31m=[32m""[31m
+          [36m/>[31m
+          [36m<select[31m
+            [33maria-label[31m=[32m"Filter by role"[31m
+            [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+          [36m>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m""[31m
+            [36m>[31m
+              [0mAll roles[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0madmin[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0mclinician[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0moperator[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0mreviewer[0m
+            [36m</option>[31m
+            [36m<option>[31m
+              [0mviewer[0m
+            [36m</option>[31m
+          [36m</select>[31m
+          [36m<select[31m
+            [33maria-label[31m=[32m"Filter by status"[31m
+            [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+          [36m>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m""[31m
+            [36m>[31m
+              [0mAll statuses[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"active"[31m
+            [36m>[31m
+              [0mActive[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"inactive"[31m
+            [36m>[31m
+              [0mInactive[0m
+            [36m</option>[31m
+          [36m</select>[31m
+          [36m<select[31m
+            [33maria-label[31m=[32m"Filter by MFA"[31m
+            [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+          [36m>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m""[31m
+            [36m>[31m
+              [0mAll MFA[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"enabled"[31m
+            [36m>[31m
+              [0mMFA enabled[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"disabled"[31m
+            [36m>[31m
+              [0mMFA disabled[0m
+            [36m</option>[31m
+          [36m</select>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33maria-label[31m=[32m"User management summary"[31m
+          [33mclass[31m=[32m"grid grid-cols-2 gap-3 lg:grid-cols-4"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+          [36m>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+            [36m>[31m
+              [0mTotal users[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#071A3D]"[31m
+            [36m>[31m
+              [0m1[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+          [36m>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+            [36m>[31m
+              [0mLoaded active[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#071A3D]"[31m
+            [36m>[31m
+              [0m1[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+          [36m>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+            [36m>[31m
+              [0mPending requests[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#071A3D]"[31m
+            [36m>[31m
+              [0m0[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+          [36m>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+            [36m>[31m
+              [0mAdmins without MFA[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#B45309]"[31m
+            [36m>[31m
+              [0m0[0m
+            [36m</p>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+        [36m<section[31m
+          [33maria-labelledby[31m=[32m"account-requests-title"[31m
+          [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-4"[31m
+        [36m>[31m
+          [36m<h2[31m
+            [33mclass[31m=[32m"font-semibold text-[#071A3D]"[31m
+            [33mid[31m=[32m"account-requests-title"[31m
+          [36m>[31m
+            [0mAccount requests[0m
+          [36m</h2>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"mt-2 text-sm text-[#52627A]"[31m
+          [36m>[31m
+            [0mNo verified account requests. Only email-verified registration requests appear here.[0m
+          [36m</p>[31m
+        [36m</section>[31m
+        [36m<form[31m
+          [33mclass[31m=[32m"grid gap-3 rounded-xl border border-[#DCE7F3] bg-white p-4 sm:grid-cols-2 lg:grid-cols-4"[31m
+        [36m>[31m
+          [36m<h2[31m
+            [33mclass[31m=[32m"sm:col-span-2 lg:col-span-4 text-base font-semibold text-[#071A3D]"[31m
+          [36m>[31m
+            [0mInvite user[0m
+          [36m</h2>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"text-sm"[31m
+          [36m>[31m
+            [0mFull name[0m
+            [36m<input[31m
+              [33mclass[31m=[32m"mt-1 h-11 w-full rounded-lg border border-[#DCE7F3] px-3"[31m
+              [33mmaxlength[31m=[32m"128"[31m
+              [33mrequired[31m=[32m""[31m
+              [33mvalue[31m=[32m""[31m
+            [36m/>[31m
+          [36m</label>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"text-sm"[31m
+          [36m>[31m
+            [0mEmail[0m
+            [36m<input[31m
+              [33mautocomplete[31m=[32m"email"[31m
+              [33mclass[31m=[32m"mt-1 h-11 w-full rounded-lg border border-[#DCE7F3] px-3"[31m
+              [33mmaxlength[31m=[32m"256"[31m
+              [33mrequired[31m=[32m""[31m
+              [33mtype[31m=[32m"email"[31m
+              [33mvalue[31m=[32m""[31m
+            [36m/>[31m
+          [36m</label>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"text-sm"[31m
+          [36m>[31m
+            [0mRole[0m
+            [36m<select[31m
+              [33mclass[31m=[32m"mt-1 h-11 w-full rounded-lg border border-[#DCE7F3] px-3"[31m
+            [36m>[31m
+              [36m<option>[31m
+                [0mclinician[0m
+              [36m</option>[31m
+              [36m<option>[31m
+                [0mreviewer[0m
+              [36m</option>[31m
+              [36m<option>[31m
+                [0mviewer[0m
+              [36m</option>[31m
+            [36m</select>[31m
+          [36m</label>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"min-h-11 self-end rounded-lg bg-[#146EF5] px-4 font-semibold text-white disabled:opacity-50"[31m
+          [36m>[31m
+            [0mSend invitation[0m
+          [36m</button>[31m
+        [36m</form>[31m
+        [36m<section[31m
+          [33maria-labelledby[31m=[32m"managed-users-title"[31m
+          [33mclass[31m=[32m"overflow-hidden rounded-xl border border-[#DCE7F3] bg-white"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"flex items-center justify-between gap-3 border-b border-[#DCE7F3] px-4 py-3"[31m
+          [36m>[31m
+            [36m<div>[31m
+              [36m<h2[31m
+                [33mclass[31m=[32m"font-semibold text-[#071A3D]"[31m
+                [33mid[31m=[32m"managed-users-title"[31m
+              [36m>[31m
+                [0mOrganization users[0m
+              [36m</h2>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-0.5 text-xs text-[#52627A]"[31m
+              [36m>[31m
+                [0mActive accounts and session management[0m
+              [36m</p>[31m
+            [36m</div>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"shrink-0 rounded-full bg-[#EAF5FF] px-2.5 py-1 text-xs font-medium text-[#52627A]"[31m
+            [36m>[31m
+              [0m1[0m
+              [0m [0m
+              [0muser[0m
+            [36m</span>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"grid gap-3 p-3 md:grid-cols-2 xl:hidden"[31m
+          [36m>[31m
+            [36m<article[31m
+              [33mclass[31m=[32m"rounded-lg border border-[#DCE7F3] p-3"[31m
+            [36m>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"font-medium text-[#071A3D]"[31m
+              [36m>[31m
+                [0mSynthetic Person[0m
+              [36m</p>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-0.5 break-all text-xs text-[#52627A]"[31m
+              [36m>[31m
+                [0mperson@example.test[0m
+              [36m</p>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"mt-3 grid gap-2"[31m
+              [36m>[31m
+                [36m<label[31m
+                  [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+                [36m>[31m
+                  [0mRole[0m
+                  [36m<select[31m
+                    [33maria-label[31m=[32m"Role for person@example.test"[31m
+                    [33mclass[31m=[32m"mt-1 h-10 w-full rounded-lg border border-[#DCE7F3] px-2"[31m
+                  [36m>[31m
+                    [36m<option>[31m
+                      [0madmin[0m
+                    [36m</option>[31m
+                    [36m<option>[31m
+                      [0mclinician[0m
+                    [36m</option>[31m
+                    [36m<option>[31m
+                      [0moperator[0m
+                    [36m</option>[31m
+                    [36m<option>[31m
+                      [0mreviewer[0m
+                    [36m</option>[31m
+                    [36m<option>[31m
+                      [0mviewer[0m
+                    [36m</option>[31m
+                  [36m</select>[31m
+                [36m</label>[31m
+                [36m<p[31m
+                  [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+                [36m>[31m
+                  [0mStatus: [0m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"font-medium text-[#071A3D]"[31m
+                  [36m>[31m
+                    [0mActive[0m
+                  [36m</span>[31m
+                  [0m ┬╖ MFA: [0m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"font-medium text-[#071A3D]"[31m
+                  [36m>[31m
+                    [0mNot enabled[0m
+                  [36m</span>[31m
+                [36m</p>[31m
+                [36m<div[31m
+                  [33mclass[31m=[32m"flex flex-wrap gap-2"[31m
+                [36m>[31m
+                  [36m<button[31m
+                    [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#146EF5]"[31m
+                    [33mtype[31m=[32m"button"[31m
+                  [36m>[31m
+                    [0mSessions[0m
+                  [36m</button>[31m
+                  [36m<button[31m
+                    [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] px-3"[31m
+                    [33mtype[31m=[32m"button"[31m
+                  [36m>[31m
+                    [0mDeactivate[0m
+                  [36m</button>[31m
+                [36m</div>[31m
+              [36m</div>[31m
+            [36m</article>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"hidden max-h-[65vh] overflow-auto xl:block"[31m
+          [36m>[31m
+            [36m<table[31m
+              [33mclass[31m=[32m"w-full min-w-[880px] text-left text-sm"[31m
+            [36m>[31m
+              [36m<thead[31m
+                [33mclass[31m=[32m"sticky top-0 z-10 bg-[#EAF5FF] text-xs uppercase text-[#52627A] [&_th]:whitespace-nowrap"[31m
+              [36m>[31m
+                [36m<tr>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mUser[0m
+                  [36m</th>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mRole[0m
+                  [36m</th>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mStatus[0m
+                  [36m</th>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mMFA[0m
+                  [36m</th>[31m
+                  [36m<th[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [0mActions[0m
+                  [36m</th>[31m
+                [36m</tr>[31m
+              [36m</thead>[31m
+              [36m<tbody>[31m
+                [36m<tr[31m
+                  [33mclass[31m=[32m"border-t border-[#DCE7F3]"[31m
+                [36m>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"min-w-[220px] p-3"[31m
+                  [36m>[31m
+                    [36m<span[31m
+                      [33mclass[31m=[32m"font-medium text-[#071A3D]"[31m
+                    [36m>[31m
+                      [0mSynthetic Person[0m
+                    [36m</span>[31m
+                    [36m<span[31m
+                      [33mclass[31m=[32m"block break-all text-xs text-[#52627A]"[31m
+                    [36m>[31m
+                      [0mperson@example.test[0m
+                    [36m</span>[31m
+                  [36m</td>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"p-3"[31m
+                  [36m>[31m
+                    [36m<label[31m
+                      [33mclass[31m=[32m"sr-only"[31m
+                      [33mfor[31m=[32m"role-user-1"[31m
+                    [36m>[31m
+                      [0mRole for [0m
+                      [0mperson@example.test[0m
+                    [36m</label>[31m
+                    [36m<select[31m
+                      [33mclass[31m=[32m"h-10 rounded-lg border border-[#DCE7F3] px-2"[31m
+                      [33mid[31m=[32m"role-user-1"[31m
+                    [36m>[31m
+                      [36m<option>[31m
+                        [0madmin[0m
+                      [36m</option>[31m
+                      [36m<option>[31m
+                        [0mclinician[0m
+                      [36m</option>[31m
+                      [36m<option>[31m
+                        [0moperator[0m
+                      [36m</option>[31m
+                      [36m<option>[31m
+                        [0mreviewer[0m
+                      [36m</option>[31m
+                      [36m<option>[31m
+                        [0mviewer[0m
+                      [36m</option>[31m
+                    [36m</select>[31m
+                  [36m</td>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"whitespace-nowrap p-3"[31m
+                  [36m>[31m
+                    [0mActive[0m
+                  [36m</td>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"whitespace-nowrap p-3"[31m
+                  [36m>[31m
+                    [0mNot enabled[0m
+                  [36m</td>[31m
+                  [36m<td[31m
+                    [33mclass[31m=[32m"whitespace-nowrap p-3"[31m
+                  [36m>[31m
+                    [36m<div[31m
+                      [33mclass[31m=[32m"flex items-center gap-2"[31m
+                    [36m>[31m
+                      [36m<button[31m
+                        [33mclass[31m=[32m"min-h-10 whitespace-nowrap rounded-lg border border-[#DCE7F3] px-3 text-sm text-[#146EF5]"[31m
+                        [33mtype[31m=[32m"button"[31m
+                      [36m>[31m
+                        [0mSessions[0m
+                      [36m</button>[31m
+                      [36m<button[31m
+                        [33mclass[31m=[32m"min-h-10 whitespace-nowrap rounded-lg border border-[#DCE7F3] px-3 text-sm text-[#071A3D] disabled:opacity-50"[31m
+                        [33mtype[31m=[32m"button"[31m
+                      [36m>[31m
+                        [0mDeactivate[0m
+                      [36m</button>[31m
+                    [36m</div>[31m
+                  [36m</td>[31m
+                [36m</tr>[31m
+              [36m</tbody>[31m
+            [36m</table>[31m
+          [36m</div>[31m
+        [36m</section>[31m
+      [36m</section>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m13. Analytics view[2m > [22mrenders without crashing[32m 266[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m13. Analytics view[2m > [22mshows Analytics heading[32m 26[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m13. Analytics view[2m > [22mdisplays total_jobs from API[32m 21[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m14. Pipeline view[2m > [22mrenders without crashing[32m 13[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m14. Pipeline view[2m > [22mshows Data Pipeline heading[32m 28[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m15. Audit & Compliance view[2m > [22mrenders without crashing[32m 5[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m15. Audit & Compliance view[2m > [22mshows Audit heading[32m 18[2mms[22m[39m
+ [32mΓ£ô[39m src/test/pages.test.tsx[2m > [22m15. Audit & Compliance view[2m > [22mshows audit events from API[32m 26[2mms[22m[39m
+ [32mΓ£ô[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mshows when an invitation has been queued for delivery[33m 1475[2mms[22m[39m
+ [31m├ù[39m src/test/authPhase4.test.tsx[2m > [22mPhase 4 authentication pages[2m > [22mlets an administrator approve verified account requests with a role[33m 1525[2mms[22m[39m
+[31m   ΓåÆ expected "vi.fn()" to be called with arguments: [ 'request-1', 'reviewer' ][90m
+
+Number of calls: [1m0[22m
+[31m
+
+Ignored nodes: comments, script, style
+[36m<html>[31m
+  [36m<head />[31m
+  [36m<body>[31m
+    [36m<div>[31m
+      [36m<div>[31m
+        [36m<section[31m
+          [33maria-labelledby[31m=[32m"admin-users-title"[31m
+          [33mclass[31m=[32m"mx-auto w-full max-w-360 min-w-0 space-y-5 pb-8"[31m
+        [36m>[31m
+          [36m<div>[31m
+            [36m<h1[31m
+              [33mclass[31m=[32m"text-xl font-bold text-[#071A3D]"[31m
+              [33mid[31m=[32m"admin-users-title"[31m
+            [36m>[31m
+              [0mUser Management[0m
+            [36m</h1>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-sm text-[#52627A]"[31m
+            [36m>[31m
+              [0mOrganization users and active sessions[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]"[31m
+          [36m>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"sr-only"[31m
+              [33mfor[31m=[32m"user-search"[31m
+            [36m>[31m
+              [0mSearch users[0m
+            [36m</label>[31m
+            [36m<input[31m
+              [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+              [33mid[31m=[32m"user-search"[31m
+              [33mplaceholder[31m=[32m"Search name or email"[31m
+              [33mvalue[31m=[32m""[31m
+            [36m/>[31m
+            [36m<select[31m
+              [33maria-label[31m=[32m"Filter by role"[31m
+              [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+            [36m>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m""[31m
+              [36m>[31m
+                [0mAll roles[0m
+              [36m</option>[31m
+              [36m<option>[31m
+                [0madmin[0m
+              [36m</option>[31m
+              [36m<option>[31m
+                [0mclinician[0m
+              [36m</option>[31m
+              [36m<option>[31m
+                [0moperator[0m
+              [36m</option>[31m
+              [36m<option>[31m
+                [0mreviewer[0m
+              [36m</option>[31m
+              [36m<option>[31m
+                [0mviewer[0m
+              [36m</option>[31m
+            [36m</select>[31m
+            [36m<select[31m
+              [33maria-label[31m=[32m"Filter by status"[31m
+              [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+            [36m>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m""[31m
+              [36m>[31m
+                [0mAll statuses[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"active"[31m
+              [36m>[31m
+                [0mActive[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"inactive"[31m
+              [36m>[31m
+                [0mInactive[0m
+              [36m</option>[31m
+            [36m</select>[31m
+            [36m<select[31m
+              [33maria-label[31m=[32m"Filter by MFA"[31m
+              [33mclass[31m=[32m"min-h-11 rounded-lg border border-[#DCE7F3] bg-white px-3 text-sm"[31m
+            [36m>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m""[31m
+              [36m>[31m
+                [0mAll MFA[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"enabled"[31m
+              [36m>[31m
+                [0mMFA enabled[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"disabled"[31m
+              [36m>[31m
+                [0mMFA disabled[0m
+              [36m</option>[31m
+            [36m</select>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33maria-label[31m=[32m"User management summary"[31m
+            [33mclass[31m=[32m"grid grid-cols-2 gap-3 lg:grid-cols-4"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+            [36m>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+              [36m>[31m
+                [0mTotal users[0m
+              [36m</p>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#071A3D]"[31m
+              [36m>[31m
+                [0m1[0m
+              [36m</p>[31m
+            [36m</div>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+            [36m>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+              [36m>[31m
+                [0mLoaded active[0m
+              [36m</p>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#071A3D]"[31m
+              [36m>[31m
+                [0m1[0m
+              [36m</p>[31m
+            [36m</div>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+            [36m>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+              [36m>[31m
+                [0mPending requests[0m
+              [36m</p>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#071A3D]"[31m
+              [36m>[31m
+                [0m1[0m
+              [36m</p>[31m
+            [36m</div>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-3"[31m
+            [36m>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"text-xs text-[#52627A]"[31m
+              [36m>[31m
+                [0mAdmins without MFA[0m
+              [36m</p>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-1 text-xl font-semibold text-[#B45309]"[31m
+              [36m>[31m
+                [0m0[0m
+              [36m</p>[31m
+            [36m</div>[31m
+          [36m</div>[31m
+          [36m<section[31m
+            [33maria-labelledby[31m=[32m"account-requests-title"[31m
+            [33mclass[31m=[32m"rounded-xl border border-[#DCE7F3] bg-white p-4"[31m
+          [36m>[31m
+            [36m<h2[31m
+              [33mclass[31m=[32m"font-semibold text-[#071A3D]"[31m
+              [33mid[31m=[32m"account-requests-title"[31m
+            [36m>[31m
+              [0mAccount requests[0m
+              [36m<span[31m
+                [33mclass[31m=[32m"ml-2 rounded-full bg-[#EAF5FF] px-2 py-0.5 align-midd...[39m
+
+[2m Test Files [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m7 passed[39m[22m[90m (10)[39m
+[2m      Tests [22m [1m[31m14 failed[39m[22m[2m | [22m[1m[32m116 passed[39m[22m[90m (130)[39m
+[2m   Start at [22m 17:54:49
+[2m   Duration [22m 51.45s[2m (environment 40%, tests 36%, setup 11%, transform 7%, import 5%, worker 1%)[22m
+
+[2mEnvironment [22m [33mjsdom was created 10 times[39m[2m ┬╖ 110.23s total, 40% of tracked time[22m
+[2m            [22m [2mcreate it once per worker with [22m[33mpool: 'vmThreads'[39m[2m (keeps per-file isolation) or [22m[33misolate: false[39m[2m (shares it across files)[22m
+[2m            [22m [2mlearn more: https://vitest.dev/guide/improving-performance#test-environments[22m
+

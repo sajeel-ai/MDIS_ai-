@@ -488,7 +488,7 @@ export function ResetPasswordPage({
                 ? "Send reset code"
                 : step === "code"
                   ? "Verify code"
-                  : "Confirm"}
+                  : "Reset password"}
           </button>
         </form>
       )}

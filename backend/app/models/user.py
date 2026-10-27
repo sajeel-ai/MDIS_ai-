@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, Index, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym, validates
 
@@ -21,6 +21,10 @@ class RegistrationStatus(str, Enum):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        Index("uq_users_email_lower", text("lower(email)"), unique=True),
+        Index("ix_users_registration_org_status", "organization_id", "registration_status"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

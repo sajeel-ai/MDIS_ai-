@@ -43,6 +43,18 @@ async def global_search(
         return {"documents": [], "patients": [], "findings": []}
 
     await enforce_auth_rate_limit(request, db, "global_search")
+    # Persist the collection read before querying PHI so a failed audit write
+    # prevents the read from proceeding.
+    await record_audit_event(
+        db,
+        action="global_search",
+        user_id=current_user.id,
+        organization_id=current_user.organization_id,
+        resource_type="search_collection",
+        request=request,
+        metadata={"query_length": len(query)},
+    )
+    await db.commit()
     term = f"%{query}%"
     organization_id = current_user.organization_id
 
@@ -101,14 +113,16 @@ async def global_search(
         )
     ).all()
 
-    await record_audit_event(
-        db,
-        action="global_search",
-        user_id=current_user.id,
-        organization_id=organization_id,
-        request=request,
-        metadata={"query_length": len(query)},
-    )
+    for doc in document_rows:
+        await record_audit_event(db, action="global_search_result", user_id=current_user.id,
+            organization_id=organization_id, resource_type="document", resource_id=doc.id, request=request)
+    for patient in patient_rows:
+        await record_audit_event(db, action="global_search_result", user_id=current_user.id,
+            organization_id=organization_id, resource_type="patient", resource_id=patient.id, request=request)
+    for entity, _document in finding_rows:
+        await record_audit_event(db, action="global_search_result", user_id=current_user.id,
+            organization_id=organization_id, resource_type="clinical_entity", resource_id=entity.id, request=request)
+    await db.commit()
 
     documents = [
         _item(

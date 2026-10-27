@@ -1,0 +1,33 @@
+......................sss............................................... [ 16%]
+........................................................................ [ 32%]
+........................................................................ [ 48%]
+........................................................................ [ 64%]
+........................................................................ [ 81%]
+........................................................................ [ 97%]
+............                                                             [100%]
+============================== warnings summary ===============================
+tests\integration\test_fhir_validator_ci.py:98
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\tests\integration\test_fhir_validator_ci.py:98: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests\integration\test_fhir_validator_ci.py:112
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\tests\integration\test_fhir_validator_ci.py:112: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests/unit/test_review_batch_safety.py::test_batch_approve_rejects_document_without_linked_patient
+tests/unit/test_settings_retention_api.py::test_trigger_retention_purge_endpoint_admin_success
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\app\services\audit_service.py:56: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    session.add(event)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+venv\Lib\site-packages\_pytest\cacheprovider.py:475
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\_pytest\cacheprovider.py:475: PytestCacheWarning: cache could not write path C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\.pytest_cache\v\cache\nodeids: [Errno 13] Permission denied: 'C:\\Users\\Meta\\project z\\Cognate-AI main\\Cognate-AI\\backend\\.pytest_cache\\v\\cache\\nodeids'
+    config.cache.set("cache/nodeids", sorted(self.cached_nodeids))
+
+venv\Lib\site-packages\_pytest\stepwise.py:51
+  C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\venv\Lib\site-packages\_pytest\stepwise.py:51: PytestCacheWarning: cache could not write path C:\Users\Meta\project z\Cognate-AI main\Cognate-AI\backend\.pytest_cache\v\cache\stepwise: [Errno 13] Permission denied: 'C:\\Users\\Meta\\project z\\Cognate-AI main\\Cognate-AI\\backend\\.pytest_cache\\v\\cache\\stepwise'
+    session.config.cache.set(STEPWISE_CACHE_DIR, [])
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+441 passed, 3 skipped, 6 warnings in 50.79s

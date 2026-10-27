@@ -24,6 +24,7 @@ const api = vi.hoisted(() => ({
   revokeManagedSession: vi.fn(),
   beginMfaSetup: vi.fn(),
   login: vi.fn(),
+  safeApiErrorMessage: vi.fn((_e: unknown, fallback: string) => fallback),
 }))
 
 vi.mock("../services/api", () => ({
@@ -36,6 +37,7 @@ vi.mock("../services/api", () => ({
       super(message)
     }
   },
+  safeApiErrorMessage: api.safeApiErrorMessage,
 }))
 vi.mock("../auth/AuthProvider", () => ({
   useAuth: () => ({ beginMfaSetup: api.beginMfaSetup, login: api.login }),
@@ -384,11 +386,13 @@ describe("Phase 4 authentication pages", () => {
     expect(
       await screen.findByRole("heading", { name: "User Management" }),
     ).toBeInTheDocument()
-    expect(await screen.findByText("person@example.test")).toBeInTheDocument()
+    expect(
+      (await screen.findAllByText("person@example.test"))[0],
+    ).toBeInTheDocument()
     expect(container.querySelector("table")?.parentElement).toHaveClass(
       "overflow-x-auto",
     )
-    await user.click(screen.getByRole("button", { name: "Sessions" }))
+    await user.click(screen.getAllByRole("button", { name: "Sessions" })[0])
     expect(await screen.findByText(/Active sessions:/)).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Revoke session" }))
     expect(confirm).toHaveBeenCalled()
@@ -400,7 +404,7 @@ describe("Phase 4 authentication pages", () => {
       "email delivery not configured",
     )
     await user.selectOptions(
-      screen.getByLabelText("Role for person@example.test"),
+      screen.getAllByLabelText("Role for person@example.test")[0],
       "viewer",
     )
     await waitFor(() =>
@@ -409,7 +413,7 @@ describe("Phase 4 authentication pages", () => {
         "viewer",
       ),
     )
-    await user.click(screen.getByRole("button", { name: "Deactivate" }))
+    await user.click(screen.getAllByRole("button", { name: "Deactivate" })[0])
     await waitFor(() =>
       expect(api.setManagedUserActive).toHaveBeenCalledWith("user-1", false),
     )

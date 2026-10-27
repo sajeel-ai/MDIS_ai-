@@ -19,6 +19,118 @@ from app.models import (
 )
 from app.workflows.states import aggregate_review_status
 from app.services.audit_service import record_audit_event
+from app.config import settings
+
+
+
+def evaluate_approval_safety(
+    *,
+    document: Optional[Document],
+    entity: Optional[ClinicalEntity] = None,
+    active_doc_flags: Optional[List[DocumentValidationFlag]] = None,
+    acknowledged: bool = False,
+    justification: Optional[str] = None,
+    is_batch: bool = False,
+    min_confidence: Optional[float] = None,
+    raise_on_violation: bool = False,
+) -> Tuple[bool, Optional[str]]:
+    """Shared Clinical Safety Gate function for BOTH single and batch approvals.
+
+    Ensures single approval and batch auto-approval cannot diverge.
+
+    Safety rules enforced:
+    1. Patient linkage: A document must be linked to a known patient (patient_id is not None).
+    2. Document validation flag gate: Active (non-superseded) document-level flags
+       with severity warning/error/critical or rule CONFLICT/CRITICAL require manual resolution.
+    3. Conflict/Critical flag gate: Any CONFLICT or CRITICAL flag (entity- or document-level)
+       cannot be approved while unacknowledged.
+    4. Medication / Lab flag override: Overriding MED_DOSE_UNIT, LAB_VALUE_UNIT,
+       DRUG_INTERACTION, or ABNORMAL_LAB flags requires a non-empty clinical justification.
+    5. Batch-specific gates: Batch approval rejects any entity with validation findings
+       (severity warning/error or status fail/warning) or with confidence below threshold.
+    """
+    def _violation(message: str) -> Tuple[bool, Optional[str]]:
+        if raise_on_violation:
+            raise ValueError(message)
+        return False, message
+
+    # Gate 1: Patient Linkage
+    if not document or document.patient_id is None:
+        return _violation("Cannot approve review task for a document without a linked patient.")
+
+    doc_flags = list(active_doc_flags or [])
+    if not doc_flags and document and "validation_flags" in getattr(document, "__dict__", {}):
+        doc_flags = [f for f in document.validation_flags if getattr(f, "superseded_at", None) is None]
+
+    # Gate 2: Document-Level Flags (Batch blocking)
+    if is_batch:
+        for flag in doc_flags:
+            sev = (getattr(flag, "severity", "") or "").lower()
+            code = (getattr(flag, "rule_code", "") or "").upper()
+            if sev in {"warning", "error", "critical"} or code in {"CONFLICT", "CRITICAL"}:
+                return _violation("Document has active validation flags requiring manual review.")
+
+    # Gate 3: Critical / Conflict Flags
+    has_conflict = False
+    if entity and getattr(entity, "validation_results", None):
+        for val in entity.validation_results:
+            code = (getattr(val, "rule_code", "") or getattr(val, "validation_rule", "") or "").upper()
+            sev = (getattr(val, "severity", "") or "").lower()
+            if code in {"CONFLICT", "CRITICAL"} or sev == "critical":
+                has_conflict = True
+                break
+    if not has_conflict:
+        for flag in doc_flags:
+            code = (getattr(flag, "rule_code", "") or "").upper()
+            sev = (getattr(flag, "severity", "") or "").lower()
+            if code in {"CONFLICT", "CRITICAL"} or sev == "critical":
+                has_conflict = True
+                break
+
+    if has_conflict:
+        if is_batch:
+            return _violation("Entity or document has conflict or critical validation flags.")
+        elif not acknowledged:
+            return _violation("Cannot approve review task with unacknowledged CONFLICT validation flag.")
+
+    # Gate 4: Medication / Lab / Drug interaction / Abnormal lab override
+    med_or_lab_codes = {"MED_DOSE_UNIT", "LAB_VALUE_UNIT", "DRUG_INTERACTION", "ABNORMAL_LAB"}
+    has_med_or_lab_flag = False
+    if entity and getattr(entity, "validation_results", None):
+        for val in entity.validation_results:
+            code = (getattr(val, "rule_code", "") or getattr(val, "validation_rule", "") or "").upper()
+            if code in med_or_lab_codes:
+                has_med_or_lab_flag = True
+                break
+    if not has_med_or_lab_flag:
+        for flag in doc_flags:
+            code = (getattr(flag, "rule_code", "") or "").upper()
+            if code in med_or_lab_codes:
+                has_med_or_lab_flag = True
+                break
+
+    if has_med_or_lab_flag:
+        if is_batch:
+            return _violation("Entity has medication or lab flags requiring clinical override justification.")
+        else:
+            override_justification = (justification or "").strip()
+            if not override_justification:
+                return _violation("A non-empty justification is required when overriding a medication or lab validation flag.")
+
+    # Gate 5: Batch-specific Entity Finding & Confidence Gates
+    if is_batch and entity:
+        findings = [
+            v for v in getattr(entity, "validation_results", [])
+            if (getattr(v, "severity", "") or "").lower() in {"warning", "error"}
+            or (getattr(v, "status", "") or "").lower() in {"fail", "warning"}
+        ]
+        if findings:
+            return _violation("Entity has validation warnings or errors.")
+
+        if entity.confidence is None or (min_confidence is not None and entity.confidence < min_confidence):
+            return _violation("Entity confidence is below the required batch approval threshold.")
+
+    return True, None
 
 
 class ReviewService:
@@ -118,7 +230,7 @@ class ReviewService:
             "reason": task.reason or "Needs clinical review",
             "status": task.status,
             "assigned_to": str(task.assigned_to) if task.assigned_to else None,
-            "created_at": task.created_at.isoformat(),
+            "created_at": task.created_at.isoformat() if task.created_at else None,
             "started_at": task.started_at.isoformat() if task.started_at else None,
             "completed_at": task.completed_at.isoformat() if task.completed_at else None,
             "decision": task.decision,
@@ -281,12 +393,14 @@ class ReviewService:
         comment: str | None = None,
         corrected_value: str | None = None,
         reviewer_user_id: uuid.UUID | None = None,
+        acknowledged: bool = False,
+        justification: str | None = None,
     ) -> Dict[str, Any]:
         query = (
             select(ReviewTask)
             .options(
                 selectinload(ReviewTask.document),
-                selectinload(ReviewTask.entity),
+                selectinload(ReviewTask.entity).selectinload(ClinicalEntity.validation_results),
             )
             .where(ReviewTask.id == task_id)
         )
@@ -300,6 +414,30 @@ class ReviewService:
             raise ValueError(f"Invalid decision '{decision}'. Must be one of {valid_decisions}")
 
         target_status = "approved" if decision == "approved" else ("corrected" if decision in ["corrected", "needs_correction"] else "rejected")
+
+        # Clinical Safety Gates for Approval — enforced via shared evaluate_approval_safety
+        if target_status == "approved":
+            active_doc_flags = []
+            if task.document and "validation_flags" in getattr(task.document, "__dict__", {}):
+                active_doc_flags = [f for f in task.document.validation_flags if getattr(f, "superseded_at", None) is None]
+            else:
+                doc_flags_res = await self.session.execute(
+                    select(DocumentValidationFlag).where(
+                        DocumentValidationFlag.document_id == task.document_id,
+                        DocumentValidationFlag.superseded_at.is_(None),
+                    )
+                )
+                active_doc_flags = doc_flags_res.scalars().all()
+
+            evaluate_approval_safety(
+                document=task.document,
+                entity=task.entity,
+                active_doc_flags=active_doc_flags,
+                acknowledged=acknowledged,
+                justification=justification,
+                is_batch=False,
+                raise_on_violation=True,
+            )
 
         task.status = target_status
         task.decision = target_status
@@ -336,6 +474,30 @@ class ReviewService:
             )
             doc.review_status = aggregate_review_status(statuses_res.scalars().all())
 
+        audit_metadata: dict[str, Any] = {
+            "decision": target_status,
+        }
+        if comment:
+            audit_metadata["comment"] = comment
+        override_text = (justification or "").strip()
+        if override_text:
+            audit_metadata["justification"] = override_text
+            audit_metadata["override"] = True
+            override_codes = {"MED_DOSE_UNIT", "LAB_VALUE_UNIT", "DRUG_INTERACTION", "ABNORMAL_LAB"}
+            overridden_ids = set()
+            for validation in getattr(task.entity, "validation_results", []) or []:
+                code = (getattr(validation, "rule_code", None) or getattr(validation, "validation_rule", "")).upper()
+                if code in override_codes and getattr(validation, "id", None):
+                    overridden_ids.add(str(validation.id))
+            for flag in active_doc_flags:
+                code = (getattr(flag, "rule_code", "") or "").upper()
+                if code in override_codes and getattr(flag, "id", None):
+                    overridden_ids.add(str(flag.id))
+            if overridden_ids:
+                audit_metadata["override_flag_ids"] = sorted(overridden_ids)
+        if acknowledged:
+            audit_metadata["conflict_acknowledged"] = True
+
         await record_audit_event(
             self.session,
             action="review_decision",
@@ -343,6 +505,7 @@ class ReviewService:
             organization_id=doc.organization_id if doc else None,
             resource_type="review_task",
             resource_id=task.id,
+            metadata=audit_metadata,
         )
         await self.session.commit()
 
@@ -360,17 +523,27 @@ class ReviewService:
         result = await self.session.execute(query)
         tasks = result.scalars().all()
 
-        # Document-level flag gate: if any active (non-superseded) document-level flag
-        # has severity warning or error, the entire document must go to manual review.
-        doc_flag_res = await self.session.execute(
-            select(DocumentValidationFlag).where(
-                DocumentValidationFlag.document_id == document_id,
-                DocumentValidationFlag.superseded_at.is_(None),
-                DocumentValidationFlag.severity.in_({"warning", "error"}),
-            ).limit(1)
+        document = tasks[0].document if tasks else None
+        active_doc_flags = []
+        if document and "validation_flags" in getattr(document, "__dict__", {}):
+            active_doc_flags = [f for f in document.validation_flags if getattr(f, "superseded_at", None) is None]
+        else:
+            doc_flag_res = await self.session.execute(
+                select(DocumentValidationFlag).where(
+                    DocumentValidationFlag.document_id == document_id,
+                    DocumentValidationFlag.superseded_at.is_(None),
+                )
+            )
+            active_doc_flags = doc_flag_res.scalars().all()
+
+        # Shared safety gate for Document-level batch approval
+        doc_allowed, doc_reason = evaluate_approval_safety(
+            document=document,
+            active_doc_flags=active_doc_flags,
+            is_batch=True,
+            raise_on_violation=False,
         )
-        if doc_flag_res.scalars().first() is not None:
-            document = tasks[0].document if tasks else None
+        if not doc_allowed:
             await record_audit_event(
                 self.session,
                 action="approve_clean_review_items",
@@ -378,19 +551,26 @@ class ReviewService:
                 organization_id=document.organization_id if document else None,
                 resource_type="document",
                 resource_id=document_id,
+                metadata={"blocked_reason": doc_reason},
             )
             await self.session.commit()
             return 0
 
         approved = 0
         now = datetime.now(timezone.utc)
+        min_confidence = settings.review_confidence_threshold
         for task in tasks:
-            findings = [
-                v for v in (task.entity.validation_results if task.entity else [])
-                if v.severity in {"warning", "error"} or v.status in {"fail", "warning"}
-            ]
-            if findings:
+            task_allowed, _ = evaluate_approval_safety(
+                document=task.document,
+                entity=task.entity,
+                active_doc_flags=active_doc_flags,
+                is_batch=True,
+                min_confidence=min_confidence,
+                raise_on_violation=False,
+            )
+            if not task_allowed:
                 continue
+
             task.status = task.decision = "approved"
             task.completed_at = now
             if reviewer_user_id:

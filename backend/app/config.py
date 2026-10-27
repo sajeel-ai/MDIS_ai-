@@ -6,7 +6,7 @@ All configuration is centralized here — no os.getenv() calls scattered
 throughout the codebase.
 """
 
-from pydantic import AliasChoices, Field, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 from urllib.parse import urlparse
@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     # Keep both visible so a conflicting production marker fails closed.
     environment: str | None = None
     debug: bool = False
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug_flag(cls, v):
+        if isinstance(v, str) and v.lower() in {"release", "prod", "production"}:
+            return False
+        return v
+
     app_host: str = "127.0.0.1"
     app_port: int = 8000
     api_prefix: str = "/api/v1"
@@ -53,23 +61,51 @@ class Settings(BaseSettings):
     # Storage
     storage_backend: str = "local"
     storage_local_path: str = "../storage"
+    storage_encryption_key: str = ""
+    storage_encryption_previous_keys: str = ""
     max_upload_size_bytes: int = 25 * 1024 * 1024
     max_document_pages: int = 50
     review_policy: Literal["all", "threshold"] = "all"
     review_confidence_threshold: float = Field(default=0.85, ge=0, le=1)
     review_high_priority_threshold: float = Field(default=0.60, ge=0, le=1)
 
+    # Retention & Purge Policy
+    # 2192 covers six calendar years including two leap days.
+    retention_audit_log_days: int = Field(default=2555, ge=2192)
+    retention_scratchpad_days: int = Field(default=30, ge=1)
+
     # Outbound FHIR is opt-in and may only receive synthetic/test documents.
     fhir_outbound_enabled: bool = False
     fhir_push_enabled: bool = False
     fhir_test_server_url: str = ""
+    smart_on_fhir_configured: bool = False
     fhir_push_max_attempts: int = Field(default=3, ge=1, le=8)
     fhir_push_backoff_seconds: float = Field(default=0.5, ge=0, le=30)
+
+    # FHIR export compliance
+    # R4B (4.3.0) is the default because the installed fhir.resources package is 7.1.0 (R4B).
+    # Switch to "R4" (4.0.1) to use the core R4 validator and US Core 6.x profiles.
+    fhir_version: Literal["R4", "R4B"] = "R4B"
+    # Emit meta.profile with US Core profile URLs on each resource.
+    fhir_us_core_profiles_enabled: bool = False
+    # Minimum terminology-service confidence to mark code_verified=True.
+    # Entities below this threshold are flagged with urn:cognate:needs-coding-review.
+    fhir_coding_confidence_threshold: float = Field(default=0.90, ge=0.0, le=1.0)
 
     # Providers
     ocr_provider: str = "local"  # mock | local | azure
     azure_doc_intel_endpoint: str = ""
     azure_doc_intel_key: str = ""
+
+    # OCR preprocessing (Item 1)
+    ocr_preprocessing_enabled: bool = False
+    ocr_deskew_enabled: bool = True
+    ocr_denoise_enabled: bool = True
+    ocr_contrast_normalize_enabled: bool = True
+    ocr_binarize_enabled: bool = True
+
+    # OCR memory cap (Item 2)
+    ocr_max_image_pixels: int = 89_478_485  # ~10k×10k px, half Pillow's bomb limit
 
     extraction_provider: str = "openai"  # local | mock | openai | hybrid
     extraction_llm_fallback_enabled: bool = False
@@ -86,6 +122,7 @@ class Settings(BaseSettings):
     auth_session_expire_hours: int = Field(default=12, ge=1, le=168)
     auth_cookie_secure: bool = False
     auth_disabled: bool = False
+    allow_anonymous_access: bool = False
     auth_lockout_attempts: int = Field(default=5, ge=1, le=20)
     auth_lockout_minutes: int = Field(default=15, ge=1, le=1440)
     auth_lockout_max_minutes: int = Field(default=1440, ge=15, le=10080)

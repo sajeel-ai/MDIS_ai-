@@ -22,20 +22,20 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: cognate_ai
+          POSTGRES_DB: cognate_ai_test
           POSTGRES_USER: cognate
           POSTGRES_PASSWORD: cognate
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U cognate -d cognate_ai"
+          --health-cmd "pg_isready -U cognate -d cognate_ai_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
       APP_ENV: development
       AUTH_DISABLED: "false"
-      DATABASE_URL: postgresql+asyncpg://cognate:cognate@localhost:5432/cognate_ai
+      DATABASE_URL: postgresql+asyncpg://cognate:cognate@localhost:5432/cognate_ai_test
       STORAGE_LOCAL_PATH: ${{ runner.temp }}/cognate-storage
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +56,9 @@ jobs:
       - name: Apply database migrations
         working-directory: backend
         run: alembic upgrade head
+      - name: Check models match migrations
+        working-directory: backend
+        run: alembic check
       - name: Run backend tests
         working-directory: backend
         run: pytest -q
@@ -64,6 +67,6 @@ jobs:
         run: python -m app.evals.run_eval --check-baseline
       - name: Download official HL7 FHIR validator
         run: curl --fail --location --output validator_cli.jar https://github.com/hapifhir/org.hl7.fhir.core/releases/download/6.9.12/validator_cli.jar
-      - name: Validate synthetic FHIR R4 bundles
+      - name: Validate synthetic FHIR R4 and R4B bundles
         working-directory: backend
         run: python scripts/validate_fhir_fixtures.py --validator ../validator_cli.jar

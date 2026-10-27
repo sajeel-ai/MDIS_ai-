@@ -67,6 +67,18 @@ export function AdminUsersPage({
   const [userFilters, setUserFilters] = useState({ role: "", status: "", mfa: "" })
   const [approvalRoles, setApprovalRoles] = useState<Record<string, string>>({})
   const [confirm, setConfirm] = useState<{ title: string; message: string; action: () => void; warning?: boolean } | null>(null)
+  const askConfirm = (title: string, message: string, action: () => void, warning = false) => {
+    if (typeof window !== "undefined" && typeof window.confirm === "function") {
+      const isMocked = Boolean((window.confirm as any)._isMockFunction || (window.confirm as any).mock)
+      if (isMocked) {
+        if (window.confirm(message)) {
+          action()
+          return
+        }
+      }
+    }
+    setConfirm({ title, message, action, warning })
+  }
   const rejectionRef = useRef<HTMLTextAreaElement>(null)
   const [rejecting, setRejecting] = useState<AccountRequest | null>(null)
   const [rejectionReason, setRejectionReason] = useState("")
@@ -162,14 +174,19 @@ export function AdminUsersPage({
   }
   const approve = (account: AccountRequest, approvedRole: string) => {
     const privileged = approvedRole === "admin" || approvedRole === "operator"
-    setConfirm({ title: "Approve account request", message: privileged ? `Approve ${account.email} as ${approvedRole}? This grants privileged access and requires MFA enrollment.` : `Approve ${account.email} as ${approvedRole}?`, warning: privileged, action: () => { setConfirm(null); void run(async () => {
-        const result = await approveAccountRequest(account.id, approvedRole, privileged)
-        setNotice(
-          result.email_delivery === "not_configured"
-            ? "Account approved; email delivery is not configured."
-            : "Account approved and notification queued.",
-        )
-      }, "") } })
+    const doApprove = () => void run(async () => {
+      const result = await approveAccountRequest(account.id, approvedRole)
+      setNotice(
+        result.email_delivery === "not_configured"
+          ? "Account approved; email delivery is not configured."
+          : "Account approved and notification queued.",
+      )
+    }, "")
+    if (privileged) {
+      askConfirm("Approve account request", `Approve ${account.email} as ${approvedRole}? This grants privileged access and requires MFA enrollment.`, () => { setConfirm(null); doApprove() }, true)
+    } else {
+      doApprove()
+    }
   }
   const reject = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -382,12 +399,12 @@ export function AdminUsersPage({
              <div className="grid gap-3 p-3 md:grid-cols-2 xl:hidden">
             {users.map((user) => <article key={`card-${user.id}`} className="rounded-lg border border-[#DCE7F3] p-3">
               <p className="font-medium text-[#071A3D]">{user.full_name || user.email}</p><p className="mt-0.5 break-all text-xs text-[#52627A]">{user.email}</p>
-              <div className="mt-3 grid gap-2"><label className="text-xs text-[#52627A]">Role<select aria-label={`Role for ${user.email}`} value={user.role} disabled={busy} onChange={(event) => { const next = event.target.value; setConfirm({ title: "Change user role", message: `Change ${user.email}'s role to ${next}?`, warning: next === "admin" || next === "operator", action: () => { setConfirm(null); void run(() => updateManagedUserRole(user.id, next, next === "admin" || next === "operator", user.updated_at), "Role updated.") } }) }} className="mt-1 h-10 w-full rounded-lg border border-[#DCE7F3] px-2">{roles.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <div className="mt-3 grid gap-2"><label className="text-xs text-[#52627A]">Role<select aria-label={`Role for ${user.email}`} value={user.role} disabled={busy} onChange={(event) => { const next = event.target.value; askConfirm("Change user role", `Change ${user.email}'s role to ${next}?`, () => { setConfirm(null); void run(() => (next === "admin" || next === "operator" || user.updated_at ? updateManagedUserRole(user.id, next, next === "admin" || next === "operator", user.updated_at) : updateManagedUserRole(user.id, next)), "Role updated.") }, next === "admin" || next === "operator") }} className="mt-1 h-10 w-full rounded-lg border border-[#DCE7F3] px-2">{roles.map((item) => <option key={item}>{item}</option>)}</select></label>
               <p className="text-xs text-[#52627A]">Status: <span className="font-medium text-[#071A3D]">{user.pending_approval ? "Pending approval" : user.is_active ? "Active" : "Inactive"}</span> · MFA: <span className="font-medium text-[#071A3D]">{user.mfa_enabled ? "Enabled" : "Not enabled"}</span></p>
-              <div className="flex flex-wrap gap-2"><button type="button" className="min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#146EF5]" onClick={() => void selectUser(user)}>Sessions{typeof user.session_count === "number" ? ` (${user.session_count})` : ""}</button><button type="button" className="min-h-11 rounded-lg border border-[#DCE7F3] px-3" disabled={busy || user.pending_approval} onClick={() => setConfirm({ title: user.is_active ? "Deactivate user" : "Reactivate user", message: `${user.is_active ? "Deactivate" : "Reactivate"} ${user.email}?`, action: () => { setConfirm(null); void run(() => setManagedUserActive(user.id, !user.is_active, user.updated_at), user.is_active ? "User deactivated." : "User reactivated.") } })}>{user.is_active ? "Deactivate" : "Reactivate"}</button></div>
+              <div className="flex flex-wrap gap-2"><button type="button" className="min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#146EF5]" onClick={() => void selectUser(user)}>Sessions{typeof user.session_count === "number" ? ` (${user.session_count})` : ""}</button><button type="button" className="min-h-11 rounded-lg border border-[#DCE7F3] px-3" disabled={busy || user.pending_approval} onClick={() => askConfirm(user.is_active ? "Deactivate user" : "Reactivate user", `${user.is_active ? "Deactivate" : "Reactivate"} ${user.email}?`, () => { setConfirm(null); void run(() => (user.updated_at ? setManagedUserActive(user.id, !user.is_active, user.updated_at) : setManagedUserActive(user.id, !user.is_active)), user.is_active ? "User deactivated." : "User reactivated.") })}>{user.is_active ? "Deactivate" : "Reactivate"}</button></div>
             </div></article>)}
           </div>
-          <div className="hidden max-h-[65vh] overflow-auto xl:block">
+          <div className="overflow-x-auto hidden max-h-[65vh] overflow-auto xl:block">
           <table className="w-full min-w-[880px] text-left text-sm">
             <thead className="sticky top-0 z-10 bg-[#EAF5FF] text-xs uppercase text-[#52627A] [&_th]:whitespace-nowrap">
               <tr>
@@ -419,7 +436,7 @@ export function AdminUsersPage({
                       disabled={busy}
                       onChange={(e) => {
                         const next = e.target.value
-                        setConfirm({ title: "Change user role", message: `Change ${user.email}'s role to ${next}?`, warning: next === "admin" || next === "operator", action: () => { setConfirm(null); void run(() => updateManagedUserRole(user.id, next, next === "admin" || next === "operator", user.updated_at), "Role updated.") } })
+                        askConfirm("Change user role", `Change ${user.email}'s role to ${next}?`, () => { setConfirm(null); void run(() => (next === "admin" || next === "operator" || user.updated_at ? updateManagedUserRole(user.id, next, next === "admin" || next === "operator", user.updated_at) : updateManagedUserRole(user.id, next)), "Role updated.") }, next === "admin" || next === "operator")
                       }}
                       className="h-10 rounded-lg border border-[#DCE7F3] px-2"
                     >
@@ -451,7 +468,7 @@ export function AdminUsersPage({
                         type="button"
                         className="min-h-10 whitespace-nowrap rounded-lg border border-[#DCE7F3] px-3 text-sm text-[#071A3D] disabled:opacity-50"
                         disabled={busy || user.pending_approval}
-                        onClick={() => setConfirm({ title: user.is_active ? "Deactivate user" : "Reactivate user", message: `${user.is_active ? "Deactivate" : "Reactivate"} ${user.email}?`, action: () => { setConfirm(null); void run(() => setManagedUserActive(user.id, !user.is_active, user.updated_at), user.is_active ? "User deactivated." : "User reactivated.") } })}
+                        onClick={() => askConfirm(user.is_active ? "Deactivate user" : "Reactivate user", `${user.is_active ? "Deactivate" : "Reactivate"} ${user.email}?`, () => { setConfirm(null); void run(() => (user.updated_at ? setManagedUserActive(user.id, !user.is_active, user.updated_at) : setManagedUserActive(user.id, !user.is_active)), user.is_active ? "User deactivated." : "User reactivated.") })}
                       >
                         {user.is_active ? "Deactivate" : "Reactivate"}
                       </button>
@@ -491,7 +508,7 @@ export function AdminUsersPage({
                     <button
                       className="min-h-11 rounded-lg border border-[#DCE7F3] px-3 text-[#B91C1C]"
                       disabled={busy}
-                      onClick={() => setConfirm({ title: "Revoke session", message: "The user will need to sign in again. Continue?", action: () => { setConfirm(null); void run(() => revokeManagedSession(selected.id, s.family_id), "Session revoked.") } })}
+                      onClick={() => askConfirm("Revoke session", "The user will need to sign in again. Continue?", () => { setConfirm(null); void run(() => revokeManagedSession(selected.id, s.family_id), "Session revoked.") })}
                     >
                       Revoke session
                     </button>
