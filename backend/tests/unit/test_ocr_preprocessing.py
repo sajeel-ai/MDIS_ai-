@@ -120,9 +120,13 @@ class TestDeskew:
 
         if not __import__("shutil").which("tesseract"):
             pytest.skip("Tesseract executable is unavailable")
-        font_path = Path(r"C:\Windows\Fonts\arial.ttf")
-        if not font_path.is_file():
-            pytest.skip("Arial test font is unavailable")
+        font_candidates = (
+            Path(r"C:\Windows\Fonts\arial.ttf"),
+            Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        )
+        font_path = next((candidate for candidate in font_candidates if candidate.is_file()), None)
+        if font_path is None:
+            pytest.skip("No supported OCR test font is installed")
 
         page = Image.new("L", (2400, 1400), 255)
         draw = ImageDraw.Draw(page)

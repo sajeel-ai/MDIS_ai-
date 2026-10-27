@@ -5,7 +5,12 @@ WORKDIR /app
 # Local OCR requires the native Tesseract and Poppler executables in addition
 # to the Python wrappers installed below.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tesseract-ocr poppler-utils \
+    && apt-get install -y --no-install-recommends \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        poppler-utils \
+        libgomp1 \
+        fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies first (cached layer)
