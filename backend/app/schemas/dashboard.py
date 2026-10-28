@@ -18,6 +18,11 @@ class ReviewQueueSummary(BaseModel):
     medium_priority: int
     standard: int
     ai_conflicts: Optional[int] = None
+    awaiting_review: Optional[int] = None
+    critical_flags: Optional[int] = None
+    low_confidence: Optional[int] = None
+    approved: Optional[int] = None
+    failed: Optional[int] = None
 
 
 class ExtractionQualityItem(BaseModel):

@@ -428,6 +428,11 @@ export interface ReviewQueueSummary {
   standard: number
 
   ai_conflicts: number | null
+  awaiting_review?: number | null
+  critical_flags?: number | null
+  low_confidence?: number | null
+  approved?: number | null
+  failed?: number | null
 }
 
 export interface ExtractionQualityItem {
@@ -1044,6 +1049,15 @@ export async function fetchPatients(
   return apiFetch(`/patients?${params}`)
 }
 
+export async function searchPatientsWithoutUrlQuery(query: string): Promise<GlobalSearchItem[]> {
+  const response = await apiFetch<{ patients: GlobalSearchItem[] }>('/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ q: query }),
+  })
+  return response.patients.filter((item) => item.type === 'patient')
+}
+
 export async function fetchPatientTimeline(
   patientId: string,
 ): Promise<PatientTimeline> {
@@ -1065,6 +1079,8 @@ export interface DocumentItem {
   patient_name: string | null
 
   mrn: string | null
+
+  patient_id?: string | null
 
   doc_type: string
 
@@ -1112,6 +1128,31 @@ export interface DocumentProcessResponse {
   status: string
 
   message: string
+}
+
+export interface ProcessingJobStep {
+  id: string
+  step_name: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped' | string
+  started_at?: string | null
+  completed_at?: string | null
+  processing_ms?: number | null
+  error_code?: string | null
+  error_message?: string | null
+}
+
+export interface ProcessingJobResponse {
+  job_id: string
+  document_id: string
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | string
+  pipeline_version: string
+  started_at?: string | null
+  completed_at?: string | null
+  processing_ms?: number | null
+  warning_count: number
+  error_code?: string | null
+  error_message?: string | null
+  steps: ProcessingJobStep[]
 }
 
 export interface EvidenceSpanItem {
@@ -1197,6 +1238,14 @@ export async function uploadDocument(
   })
 }
 
+export async function linkDocumentPatient(documentId: string, patientId: string): Promise<{ document_id: string; patient_id: string }> {
+  return apiFetch(`/documents/${documentId}/patient`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patient_id: patientId }),
+  })
+}
+
 export async function processDocument(
   documentId: string,
 ): Promise<DocumentProcessResponse> {
@@ -1239,7 +1288,7 @@ export async function fetchDocumentEvidence(
   return apiFetch(`/documents/${documentId}/evidence`)
 }
 
-export async function fetchProcessingJob(jobId: string): Promise<AIOpsJob> {
+export async function fetchProcessingJob(jobId: string): Promise<ProcessingJobResponse> {
   return apiFetch(`/processing/${jobId}`)
 }
 

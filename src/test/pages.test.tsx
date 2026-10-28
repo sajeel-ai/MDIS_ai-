@@ -296,18 +296,19 @@ describe("1. Dashboard page", () => {
     await waitFor(() => expect(screen.getByText("142")).toBeInTheDocument())
   })
 
-  it("Export button shows info banner on click", async () => {
+  it("routes the Upload document action to the existing upload screen", async () => {
     const { Dashboard } = await import("../views/Dashboard")
-    render(<Dashboard onNavigate={vi.fn()} />)
-    fireEvent.click(screen.getByText("Export"))
-    await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument())
+    const onNavigate = vi.fn()
+    render(<Dashboard onNavigate={onNavigate} />)
+    fireEvent.click(screen.getByRole("button", { name: "Upload document" }))
+    expect(onNavigate).toHaveBeenCalledWith("documents")
   })
 
-  it("New Extraction button shows info banner on click", async () => {
+  it("does not render dashboard actions that do not call a backend endpoint", async () => {
     const { Dashboard } = await import("../views/Dashboard")
     render(<Dashboard onNavigate={vi.fn()} />)
-    fireEvent.click(screen.getByText("New Extraction"))
-    await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument())
+    expect(screen.queryByRole("button", { name: "Export" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "New Extraction" })).not.toBeInTheDocument()
   })
 
   it("shows recent cases from API", async () => {
@@ -499,18 +500,11 @@ describe("5. Workflows page", () => {
     expect(nodeBtn).toHaveAttribute("aria-pressed")
   })
 
-  it("Test Pipeline shows info banner on click", async () => {
+  it("does not offer workflow actions without backend endpoints", async () => {
     const { WorkflowsPage } = await import("../pages/Workflows")
     render(<WorkflowsPage onNavigate={vi.fn()} />)
-    fireEvent.click(screen.getByRole("button", { name: /Test Pipeline/i }))
-    await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument())
-  })
-
-  it("New Workflow shows info banner on click", async () => {
-    const { WorkflowsPage } = await import("../pages/Workflows")
-    render(<WorkflowsPage onNavigate={vi.fn()} />)
-    fireEvent.click(screen.getByRole("button", { name: /New Workflow/i }))
-    await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument())
+    expect(screen.queryByRole("button", { name: /Test Pipeline/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /New Workflow/i })).not.toBeInTheDocument()
   })
 
   it("clicking a node toggles aria-pressed to true", async () => {

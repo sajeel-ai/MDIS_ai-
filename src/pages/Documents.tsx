@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -9,15 +9,19 @@ import {
   fetchDocuments,
   fetchPatients,
   uploadDocument,
+  linkDocumentPatient,
   processDocument,
   retryDocumentProcessing,
   reprocessDocument,
   fetchProcessingJob,
   fetchReviewQueue,
+  searchPatientsWithoutUrlQuery,
   type DocumentItem,
   type Patient,
+  type ProcessingJobResponse,
   safeApiErrorMessage,
 } from '../services/api';
+import { MAX_UPLOAD_BYTES, validateUploadFile } from '../utils/uploadValidation';
 
 export interface DocumentsPageProps {
   onNavigate: (view: string, documentId?: string, reviewTaskId?: string) => void;
@@ -43,29 +47,29 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
   // Upload modal state
   const [showModal, setShowModal] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientSearchError, setPatientSearchError] = useState<string | null>(null);
   const [documentType, setDocumentType] = useState('discharge_summary');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dropActive, setDropActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Processing state
   const [processingDocId, setProcessingDocId] = useState<string | null>(null);
   const [processingError, setProcessingError] = useState<string | null>(null);
+  const [processingSnapshot, setProcessingSnapshot] = useState<ProcessingJobResponse | null>(null);
+  const pollTimer = useRef<number | null>(null);
+  const [patientLinkSelections, setPatientLinkSelections] = useState<Record<string, string>>({});
+  const [linkingDocumentId, setLinkingDocumentId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [docsResp, patsResp] = await Promise.all([
-        fetchDocuments(page, pageSize, statusFilter, search, unlinkedPatient, sort),
-        fetchPatients(1, 100),
-      ]);
+      const docsResp = await fetchDocuments(page, pageSize, statusFilter, search, unlinkedPatient, sort);
       setDocuments(docsResp.items);
       setTotal(docsResp.total);
-      setPatients(patsResp.items);
-      if (patsResp.items.length > 0 && !selectedPatientId) {
-        setSelectedPatientId(patsResp.items[0].id);
-      }
     } catch (_err) {
       setError('Unable to load documents. Please try refreshing the page.');
     } finally {
@@ -79,6 +83,34 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
   }, [statusFilter, search, page, pageSize, unlinkedPatient, sort]);
 
   useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setPatientSearchError(null);
+      try {
+        if (patientSearch.trim().length >= 3) {
+          const results = await searchPatientsWithoutUrlQuery(patientSearch.trim());
+          if (active) {
+            setPatients(results.map((item) => ({
+              id: item.id, first_name: item.display_label, last_name: null, mrn: null,
+              gender: null, dob: null, external_patient_id: null,
+            })));
+          }
+        } else {
+          const result = await fetchPatients(1, 100);
+          if (active) setPatients(result.items);
+        }
+      } catch (err) {
+        if (active) setPatientSearchError(safeApiErrorMessage(err, 'Unable to search patients.'));
+      }
+    }, 250);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [patientSearch]);
+
+  useEffect(() => () => {
+    if (pollTimer.current !== null) window.clearInterval(pollTimer.current);
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams();
     if (statusFilter) params.set('status', statusFilter);
     params.set('page', String(page));
@@ -90,12 +122,14 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPatientId) {
-      setUploadError('Please select a patient');
-      return;
-    }
     if (!selectedFile) {
       setUploadError('Please select a file to upload');
+      return;
+    }
+
+    const fileError = await validateUploadFile(selectedFile);
+    if (fileError) {
+      setUploadError(fileError);
       return;
     }
 
@@ -103,7 +137,7 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
     setUploadError(null);
 
     const formData = new FormData();
-    formData.append('patient_id', selectedPatientId);
+    if (selectedPatientId) formData.append('patient_id', selectedPatientId);
     formData.append('document_type', documentType);
     formData.append('file', selectedFile);
 
@@ -134,26 +168,63 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
         ? { ...item, status: processResp.status }
         : item));
 
-      // Poll without replacing the document table with the page-level loading state.
-      const interval = window.setInterval(async () => {
+      if (pollTimer.current !== null) window.clearInterval(pollTimer.current);
+      let terminal = false;
+      const poll = async () => {
         try {
           const job = await fetchProcessingJob(jobId);
-          if (job.status === 'completed' || job.status === 'failed') {
-            clearInterval(interval);
+          setProcessingSnapshot(job);
+          if (job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') {
+            terminal = true;
+            if (pollTimer.current !== null) window.clearInterval(pollTimer.current);
+            pollTimer.current = null;
             setProcessingDocId(null);
-            setDocuments((items) => items.map((item) => item.id === docId
-              ? { ...item, status: job.status }
-              : item));
+            if (job.status === 'failed') {
+              setDocuments((items) => items.map((item) => item.id === docId ? { ...item, status: 'failed' } : item));
+            } else if (job.status === 'completed') {
+              const refreshed = await fetchDocuments(page, pageSize, statusFilter, search, unlinkedPatient, sort);
+              setDocuments(refreshed.items);
+              setTotal(refreshed.total);
+            } else {
+              setProcessingError('Processing was cancelled by the backend.');
+            }
           }
         } catch (err) {
-          clearInterval(interval);
+          terminal = true;
+          if (pollTimer.current !== null) window.clearInterval(pollTimer.current);
+          pollTimer.current = null;
           setProcessingDocId(null);
           setProcessingError(safeApiErrorMessage(err));
         }
-      }, 1000);
+      };
+      await poll();
+      if (!terminal) pollTimer.current = window.setInterval(() => void poll(), 1000);
     } catch (err) {
       setProcessingError(safeApiErrorMessage(err));
       setProcessingDocId(null);
+    }
+  };
+
+  const chooseUploadFile = async (file?: File) => {
+    setSelectedFile(file || null);
+    setUploadError(null);
+    if (!file) return;
+    const validationMessage = await validateUploadFile(file);
+    if (validationMessage) setUploadError(validationMessage);
+  };
+
+  const linkPatientToDocument = async (documentId: string) => {
+    const patientId = patientLinkSelections[documentId];
+    if (!patientId) return;
+    setLinkingDocumentId(documentId);
+    setError(null);
+    try {
+      await linkDocumentPatient(documentId, patientId);
+      await loadData();
+    } catch (err) {
+      setError(safeApiErrorMessage(err, 'Unable to link this patient.'));
+    } finally {
+      setLinkingDocumentId(null);
     }
   };
 
@@ -212,15 +283,25 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
 
               <form onSubmit={handleUploadSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#52627A] mb-1">
-                    Select Patient *
+                  <label htmlFor="patient-search" className="block text-xs font-mono uppercase text-[#52627A] mb-1">
+                    Find a patient (optional)
                   </label>
+                  <input
+                    id="patient-search"
+                    type="search"
+                    value={patientSearch}
+                    onChange={(e) => setPatientSearch(e.target.value)}
+                    placeholder="Search existing patients"
+                    className="mb-2 w-full text-xs p-2.5 rounded border border-[#DCE7F3] bg-white text-[#071A3D] outline-none"
+                    autoComplete="off"
+                  />
                   <select
+                    aria-label="Patient link (optional)"
                     value={selectedPatientId}
                     onChange={(e) => setSelectedPatientId(e.target.value)}
                     className="w-full text-xs p-2.5 rounded border border-[#DCE7F3] bg-[#EAF5FF] text-[#071A3D] outline-none"
-                    required
                   >
+                    <option value="">No patient linked — link later before approval</option>
                     {patients.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.first_name && p.last_name
@@ -230,6 +311,8 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
                       </option>
                     ))}
                   </select>
+                  {patientSearchError && <p role="alert" className="mt-1 text-xs text-red-700">{patientSearchError}</p>}
+                  {!selectedPatientId && <p className="mt-1 text-[11px] text-amber-800">Approval remains blocked until a patient is linked.</p>}
                 </div>
 
                 <div>
@@ -252,16 +335,25 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#52627A] mb-1">
-                    Document File (PDF / Image / Text) *
-                  </label>
+                  <label htmlFor="upload-file" className="block text-xs font-mono uppercase text-[#52627A] mb-1">Document file (PDF / PNG / JPG / TIFF / TXT) *</label>
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDropActive(true); }}
+                    onDragLeave={() => setDropActive(false)}
+                    onDrop={(e) => { e.preventDefault(); setDropActive(false); void chooseUploadFile(e.dataTransfer.files?.[0]); }}
+                    className={`rounded-lg border-2 border-dashed p-4 text-center ${dropActive ? 'border-blue-600 bg-blue-50' : 'border-[#DCE7F3] bg-white'}`}
+                  >
+                    <p className="mb-2 text-xs text-[#52627A]">Drop one document here or choose a file. Maximum size: {Math.floor(MAX_UPLOAD_BYTES / (1024 * 1024))} MiB.</p>
                   <input
+                    id="upload-file"
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg,.tiff,.txt"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    onChange={(e) => void chooseUploadFile(e.target.files?.[0])}
                     className="w-full text-xs p-2 border border-[#DCE7F3] rounded bg-white"
                     required
                   />
+                    {selectedFile && <p className="mt-2 truncate text-xs text-[#071A3D]">{selectedFile.name} · {Math.ceil(selectedFile.size / 1024)} KiB</p>}
+                  </div>
+                  <p className="mt-1 text-[11px] text-[#52627A]">Files are checked by signature and size here and again by the server. OCR quality score is not available from the backend.</p>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t border-[#DCE7F3]">
@@ -345,6 +437,41 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
           </div>
         )}
 
+        {processingSnapshot && (
+          <section aria-label="Processing status" className="rounded-lg border border-[#DCE7F3] bg-white p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-[#071A3D]">Processing status</h2>
+                <p className="mt-1 text-xs text-[#52627A]">Overall status: {processingSnapshot.status === 'completed'
+                  ? (documents.find((item) => item.id === processingSnapshot.document_id)?.review_status === 'pending' ? 'Ready for review' : 'Completed')
+                  : processingSnapshot.status}</p>
+              </div>
+              {processingSnapshot.status === 'failed' && (
+                <Button size="sm" variant="outline" onClick={() => void handleProcessDocument(processingSnapshot.document_id, true)}>
+                  Retry processing
+                </Button>
+              )}
+            </div>
+            {processingSnapshot.steps.length ? (
+              <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {processingSnapshot.steps.map((step) => (
+                  <li key={step.id} className="rounded border border-[#EAF5FF] bg-[#F5FAFF] p-2 text-xs">
+                    <span className="font-medium text-[#071A3D]">{{
+                      provider_initialization: 'Provider setup', upload_validation: 'Uploaded file validation',
+                      ocr: 'Reading text', text_normalization: 'Text normalization',
+                      clinical_extraction: 'Extracting entities', entity_normalization: 'Entity normalization',
+                      evidence_linking: 'Evidence linking', validation: 'Safety checks', review_routing: 'Review routing',
+                    }[step.step_name] || step.step_name.replace(/_/g, ' ')}</span>
+                    <span className="ml-2 text-[#52627A]">{step.status.replace(/_/g, ' ')}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : <p className="mt-3 text-xs text-[#52627A]">Pipeline steps have not been reported yet. Overall status: {processingSnapshot.status}.</p>}
+            <p className="mt-2 text-[11px] text-[#52627A]">Section-finding is not reported as a separate backend stage; no stage progress is inferred. OCR quality score: not available.</p>
+            {processingSnapshot.status === 'failed' && <p role="alert" className="mt-2 text-xs text-red-800">{processingSnapshot.error_message || processingSnapshot.error_code || 'Processing failed; a reason was not returned.'}</p>}
+          </section>
+        )}
+
         {/* Document Table */}
         <Card className="p-0 overflow-hidden">
           {loading ? (
@@ -388,9 +515,29 @@ export function DocumentsPage({ onNavigate }: DocumentsPageProps) {
                         </div>
                       </td>
                       <td className="py-3 px-4 font-medium text-[#071A3D]">
-                        {item.patient_name || 'MIMIC / Synthetic Patient'}
+                        {item.patient_id === null || (!item.patient_id && !item.patient_name && !item.mrn)
+                          ? 'No patient linked'
+                          : item.patient_name || item.mrn || 'Patient name not available'}
                         <div className="text-[10px] text-[#52627A] font-mono">
-                          {item.mrn ? `MRN: ${item.mrn}` : `ID: ${item.id.slice(0, 6)}`}
+                          {item.patient_id === null || (!item.patient_id && !item.patient_name && !item.mrn)
+                            ? <div className="space-y-1.5">
+                              <div>Approval blocked until patient is linked.</div>
+                              <div className="flex items-center gap-1">
+                                <select
+                                  aria-label={`Patient to link for ${item.case_id}`}
+                                  value={patientLinkSelections[item.id] || ''}
+                                  onChange={(event) => setPatientLinkSelections((current) => ({ ...current, [item.id]: event.target.value }))}
+                                  className="max-w-36 rounded border border-[#DCE7F3] bg-white px-1 py-1 text-[10px]"
+                                >
+                                  <option value="">Select existing patient</option>
+                                  {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.first_name || patient.last_name ? [patient.first_name, patient.last_name].filter(Boolean).join(' ') : patient.mrn || patient.id.slice(0, 8)}</option>)}
+                                </select>
+                                <Button type="button" size="sm" variant="outline" disabled={!patientLinkSelections[item.id] || linkingDocumentId === item.id} onClick={() => void linkPatientToDocument(item.id)}>
+                                  {linkingDocumentId === item.id ? 'Linking…' : 'Link patient'}
+                                </Button>
+                              </div>
+                            </div>
+                            : item.mrn ? `MRN: ${item.mrn}` : 'Patient identifier not available'}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-[#52627A] capitalize">

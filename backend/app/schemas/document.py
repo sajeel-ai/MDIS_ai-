@@ -18,6 +18,7 @@ class DocumentResponse(BaseModel):
     file_name: Optional[str] = None
     patient_name: Optional[str] = None
     mrn: Optional[str] = None
+    patient_id: Optional[str] = None
     doc_type: str
     status: DocumentStatus
     review_status: ReviewStatus = "not_required"

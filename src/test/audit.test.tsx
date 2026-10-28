@@ -119,39 +119,15 @@ describe("Phase 2 — Settings: no false HIPAA/AES-256/TLS claims", () => {
   })
 })
 
-// ── Phase 5: Workflow buttons show info banner ─────────────────────────────
+// ── Phase 5: workflow page exposes only real backend status links ─────────
 
-describe("Phase 5 — Workflow controls show honest feedback", () => {
-  it("Test Pipeline button shows info banner on click", async () => {
+describe("Phase 5 — Workflow controls", () => {
+  it("does not render manual execution or workflow creation actions without backend endpoints", async () => {
     const { WorkflowsPage } = await import("../pages/Workflows")
-
     render(<WorkflowsPage onNavigate={vi.fn()} />)
-
-    fireEvent.click(screen.getByText("Test Pipeline"))
-
-    await waitFor(() => {
-      const banner = screen.getByRole("status")
-
-      expect(banner).toBeInTheDocument()
-
-      expect(banner.textContent).toMatch(/not configured|administrator/i)
-    })
-  })
-
-  it("New Workflow button shows info banner on click", async () => {
-    const { WorkflowsPage } = await import("../pages/Workflows")
-
-    render(<WorkflowsPage onNavigate={vi.fn()} />)
-
-    fireEvent.click(screen.getByText("New Workflow"))
-
-    await waitFor(() => {
-      const banner = screen.getByRole("status")
-
-      expect(banner).toBeInTheDocument()
-
-      expect(banner.textContent).toMatch(/not available|future release/i)
-    })
+    expect(screen.queryByRole("button", { name: /test pipeline/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /new workflow/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/workflow editing and manual execution are unavailable/i)).toBeInTheDocument()
   })
 
   it("workflow canvas nodes are keyboard-accessible buttons", async () => {
@@ -173,31 +149,28 @@ describe("Phase 5 — Workflow controls show honest feedback", () => {
   })
 })
 
-// ── Phase 14: Dashboard buttons show feedback ──────────────────────────────
+// ── Dashboard actions use real navigation or are omitted ──────────────────
 
-describe("Phase 14 — Dashboard non-functional action buttons", () => {
-  it("Export button shows an aria-live status region", async () => {
+describe("Dashboard actions", () => {
+  it("routes Upload document to the existing upload screen", async () => {
     const { Dashboard } = await import("../views/Dashboard")
+    const onNavigate = vi.fn()
 
-    render(<Dashboard onNavigate={vi.fn()} />)
+    render(<Dashboard onNavigate={onNavigate} />)
 
-    fireEvent.click(screen.getByText("Export"))
+    fireEvent.click(screen.getByRole("button", { name: /upload document/i }))
 
-    await waitFor(() => {
-      expect(screen.getByRole("status")).toBeInTheDocument()
-    })
+    expect(onNavigate).toHaveBeenCalledWith("documents")
+    expect(screen.queryByRole("button", { name: /^export$/i })).not.toBeInTheDocument()
   })
 
-  it("New Extraction button shows an aria-live status region", async () => {
+  it("shows unavailable values instead of fallback metric bars when the API has no data", async () => {
     const { Dashboard } = await import("../views/Dashboard")
-
     render(<Dashboard onNavigate={vi.fn()} />)
 
-    fireEvent.click(screen.getByText("New Extraction"))
-
-    await waitFor(() => {
-      expect(screen.getByRole("status")).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getAllByText(/not available/i).length).toBeGreaterThan(0))
+    expect(screen.getByText(/no model confidence values are available/i)).toBeInTheDocument()
+    expect(screen.queryByText("Diagnoses")).not.toBeInTheDocument()
   })
 })
 

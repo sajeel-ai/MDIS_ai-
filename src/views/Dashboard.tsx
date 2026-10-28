@@ -69,43 +69,26 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: string, params?: Rec
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionBanner, setActionBanner] = useState<string | null>(null);
+  const [reloadVersion, setReloadVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(null);
     fetchDashboard()
       .then((d) => { if (!cancelled) { setData(d); setLoading(false); } })
-      .catch((e) => { if (!cancelled) { setError(safeApiErrorMessage(e, "Access restricted (admin/operator only)")); setLoading(false); } });
+      .catch((e) => { if (!cancelled) { setData(null); setError(safeApiErrorMessage(e, "Dashboard data is unavailable.")); setLoading(false); } });
     return () => { cancelled = true; };
-  }, []);
-
-  const showBanner = (msg: string) => {
-    setActionBanner(msg);
-    setTimeout(() => setActionBanner(null), 5000);
-  };
-
-  const handleExport = () => showBanner('Data export is not configured in this environment. Contact your system administrator.');
-  const handleNewExtraction = () => showBanner('Manual extraction queuing is not available yet. Documents are processed automatically on upload.');
+  }, [reloadVersion]);
 
   const metrics = data?.metrics;
   const queueSummary = data?.review_queue_summary;
   const quality = data?.extraction_quality ?? [];
   const recentCases: RecentCaseItem[] = data?.recent_cases ?? [];
 
-  const pct = (n: number | null, total: number) =>
-    total > 0 && n !== null ? Math.round((n / total) * 100) : 0;
-
-  const qualityColors: Record<string, string> = {
-    diagnoses: 'linear-gradient(90deg, #146EF5, #16C7E8)',
-    medications: 'linear-gradient(90deg, #146EF5, #16C7E8)',
-    symptoms: 'linear-gradient(90deg, #146EF5, #16C7E8)',
-    procedures: 'linear-gradient(90deg, #146EF5, #16C7E8)',
-    temporal: 'linear-gradient(90deg, #146EF5, #16C7E8)'
-  };
-
   const lastUpdated = metrics?.last_updated_at
     ? new Date(metrics.last_updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '—';
+    : 'not available';
 
   return (
     <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ background: '#F5FAFF' }}>
@@ -115,44 +98,26 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: string, params?: Rec
           <div>
             <h1 className="font-sans text-lg sm:text-xl font-bold text-[#071A3D]">Clinical Intelligence Dashboard</h1>
             <p className="text-[#52627A] text-xs font-mono mt-0.5">
-              {loading ? 'Loading…' : error ? '⚠ Backend offline — showing cached data' : `Last updated: ${lastUpdated}`}
+              {loading ? 'Loading dashboard data…' : error ? 'Dashboard data is unavailable' : `Last updated: ${lastUpdated}`}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleExport}
-              aria-label="Export data (not yet configured)"
-              className="px-3 py-1.5 rounded-md text-xs font-medium bg-[#F5FAFF] text-[#52627A] hover:bg-[#DCE7F3] transition-colors"
-            >
-              Export
-            </button>
-            <button
-              onClick={handleNewExtraction}
-              aria-label="Queue new extraction (not yet available)"
+              onClick={() => onNavigate('documents')}
+              aria-label="Upload document"
               className="px-3 py-1.5 rounded-md text-xs font-medium bg-[#146EF5] text-white hover:bg-[#146EF5] transition-colors"
             >
-              New Extraction
+              Upload document
             </button>
           </div>
         </div>
       </div>
 
       <div className="p-4 sm:p-6 space-y-6">
-        {/* Action banner */}
-        {actionBanner && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex items-start gap-3 p-4 rounded-lg bg-[#EAF5FF] border border-[#DCE7F3] text-xs text-[#146EF5]"
-          >
-            <span aria-hidden="true">ℹ</span>
-            {actionBanner}
-          </div>
-        )}
-
         {error && (
-          <div className="rounded-lg p-3 bg-amber-50 border border-amber-200 text-xs text-amber-800 font-mono">
-            ⚠ Backend unreachable: {error}. Displaying empty state.
+          <div role="alert" className="flex items-center justify-between gap-3 rounded-lg p-3 bg-amber-50 border border-amber-200 text-xs text-amber-800">
+            <span>{error}</span>
+            <button onClick={() => setReloadVersion((version) => version + 1)} className="shrink-0 underline">Retry</button>
           </div>
         )}
 
@@ -166,24 +131,22 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: string, params?: Rec
             <>
               <MetricCard
                 label="Total Documents"
-                value={metrics ? metrics.total_documents.toLocaleString() : '—'}
-                sub={metrics ? `${pct(metrics.processed, metrics.total_documents)}% success rate` : undefined}
+                value={metrics ? metrics.total_documents.toLocaleString() : 'not available'}
               />
               <MetricCard
                 label="Processed"
-                value={metrics ? metrics.processed.toLocaleString() : '—'}
-                sub={metrics?.success_rate != null ? `${(metrics.success_rate * 100).toFixed(1)}% success rate` : undefined}
+                value={metrics ? metrics.processed.toLocaleString() : 'not available'}
+                sub={metrics?.success_rate != null ? `${(metrics.success_rate * 100).toFixed(1)}% of total documents completed` : 'Completion rate not available'}
                 color="#071A3D"
               />
               <MetricCard
-                label="Pending Review"
-                value={metrics ? metrics.pending_review.toLocaleString() : '—'}
+                label="Awaiting Review"
+                value={metrics ? metrics.pending_review.toLocaleString() : 'not available'}
                 color="#071A3D"
               />
               <MetricCard
                 label="Failed"
-                value={metrics ? metrics.failed.toLocaleString() : '—'}
-                sub={metrics && metrics.total_documents > 0 ? `${pct(metrics.failed, metrics.total_documents)}% failure rate` : undefined}
+                value={metrics ? metrics.failed.toLocaleString() : 'not available'}
                 color="#071A3D"
               />
             </>
@@ -201,33 +164,17 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: string, params?: Rec
               ) : quality.length > 0 ? (
                 quality.map((r) => {
                   const pctVal = r.model_confidence_uncalibrated !== null ? Math.round(r.model_confidence_uncalibrated * 100) : null;
-                  const color = qualityColors[r.entity_type] || '#52627A';
                   return (
                     <div key={r.entity_type}>
                       <div className="flex justify-between mb-1">
                         <span className="text-xs text-[#52627A] capitalize">{r.entity_type}</span>
                       </div>
-                      {pctVal === null ? <span className="text-xs text-[#52627A]">Not measured</span> : <MiniBar pct={pctVal} color={color} />}
+                      {pctVal === null ? <span className="text-xs text-[#52627A]">not available</span> : <MiniBar pct={pctVal} color="#146EF5" />}
                     </div>
                   );
                 })
               ) : (
-                // Fallback static display when no AI entities exist yet
-                [
-                  { label: 'Diagnoses', pct: 0, color: '#146EF5' },
-                  { label: 'Medications', pct: 0, color: '#146EF5' },
-                  { label: 'Symptoms', pct: 0, color: '#146EF5' },
-                  { label: 'Procedures', pct: 0, color: '#146EF5' },
-                  { label: 'Temporal', pct: 0, color: '#146EF5' },
-                ].map((r) => (
-                  <div key={r.label}>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-xs text-[#52627A]">{r.label}</span>
-                      <span className="text-xs text-[#52627A]">No data</span>
-                    </div>
-                    <MiniBar pct={r.pct} color={r.color} />
-                  </div>
-                ))
+                <p className="text-xs text-[#52627A]">No model confidence values are available.</p>
               )}
             </div>
           </div>
@@ -240,18 +187,20 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: string, params?: Rec
                 [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10" />)
               ) : (
                 [
-                  { label: 'High Priority', count: queueSummary?.high_priority ?? 0, color: '#071A3D', dot: '#d97706' },
-                  { label: 'Medium Priority', count: queueSummary?.medium_priority ?? 0, color: '#071A3D', dot: '#146EF5' },
-                  { label: 'Standard', count: queueSummary?.standard ?? 0, color: '#071A3D', dot: '#146EF5' },
-                  { label: 'AI Conflicts', count: queueSummary?.ai_conflicts ?? 0, color: '#071A3D', dot: '#071A3D' },
+                  { label: 'Awaiting review', count: queueSummary?.awaiting_review, color: '#071A3D', dot: '#146EF5' },
+                  { label: 'Critical flags', count: queueSummary?.critical_flags, color: '#7F1D1D', dot: '#dc2626' },
+                  { label: 'Low confidence', count: queueSummary?.low_confidence, color: '#92400E', dot: '#d97706' },
+                  { label: 'Approved', count: queueSummary?.approved, color: '#166534', dot: '#16a34a' },
+                  { label: 'Failed', count: queueSummary?.failed, color: '#7F1D1D', dot: '#dc2626' },
                 ].map((r) => (
                   <button
                     key={r.label}
-                    onClick={() => onNavigate('review')}
+                    onClick={() => onNavigate(r.label === 'Failed' ? 'documents' : 'review')}
+                    disabled={r.count === undefined || r.count === null}
                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-md border border-[#DCE7F3] bg-white transition-colors hover:bg-[#EAF5FF]"
                   >
                     <span className="flex items-center gap-2 text-xs font-medium text-[#52627A]"><span className="w-2 h-2 rounded-full" style={{ background: r.dot }} />{r.label}</span>
-                    <span className="font-sans text-base font-bold" style={{ color: r.color }}>{r.count}</span>
+                    <span className="font-sans text-base font-bold" style={{ color: r.color }}>{r.count ?? 'not available'}</span>
                   </button>
                 ))
               )}
@@ -306,7 +255,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: string, params?: Rec
                         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#146EF5', fontWeight: 500 }}>{c.id}</span>
                       </td>
                       <td className="px-5 py-3.5" style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#071A3D' }}>
-                        {c.patient_name || c.mrn || '—'}
+                        {c.patient_name || c.mrn || 'not available'}
                       </td>
                       <td className="px-5 py-3.5" style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#52627A' }}>{c.doc_type}</td>
                       <td className="px-5 py-3.5"><StatusPill status={c.status} /></td>

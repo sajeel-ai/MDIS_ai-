@@ -282,10 +282,13 @@ def make_pdf(page_count: int) -> bytes:
     return data
 
 
-async def upload(client: AsyncClient, patient_id: uuid.UUID, filename: str, data: bytes, content_type: str):
+async def upload(client: AsyncClient, patient_id: uuid.UUID | None, filename: str, data: bytes, content_type: str):
+    form_data = {"document_type": "synthetic_note"}
+    if patient_id is not None:
+        form_data["patient_id"] = str(patient_id)
     return await client.post(
         "/api/v1/documents/upload",
-        data={"patient_id": str(patient_id), "document_type": "synthetic_note"},
+        data=form_data,
         files={"file": (filename, io.BytesIO(data), content_type)},
     )
 
@@ -306,6 +309,34 @@ async def test_upload_rejects_empty_file(tenant_data, tenant_client):
 async def test_upload_ignores_client_mime_and_checks_magic_bytes(tenant_data, tenant_client):
     response = await upload(tenant_client, tenant_data["patient_a"].id, "note.pdf", b"not a pdf", "application/pdf")
     assert response.status_code == 415
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_image_with_signature_but_corrupt_payload(tenant_data, tenant_client):
+    response = await upload(
+        tenant_client,
+        tenant_data["patient_a"].id,
+        "corrupt.png",
+        b"\x89PNG\r\n\x1a\nnot a valid image payload",
+        "image/png",
+    )
+    assert response.status_code == 415
+
+
+@pytest.mark.asyncio
+async def test_upload_allows_unlinked_document_in_current_organization(tenant_data, tenant_client):
+    response = await upload(
+        tenant_client,
+        None,
+        "unlinked.txt",
+        b"Synthetic document without a linked patient.",
+        "text/plain",
+    )
+    assert response.status_code == 201, response.text
+    stored = await tenant_data["db"].get(Document, uuid.UUID(response.json()["id"]))
+    assert stored is not None
+    assert stored.patient_id is None
+    assert stored.organization_id == tenant_data["org_a"].id
 
 
 @pytest.mark.asyncio

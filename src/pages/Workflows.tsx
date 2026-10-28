@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { Card, CardHeader, CardTitle } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Plus, Play, GitBranch, ArrowRight, CheckCircle2, Info } from 'lucide-react';
+import { GitBranch, ArrowRight } from 'lucide-react';
 import { fetchAIOpsHealth, fetchAIOpsMetrics, fetchDocuments, fetchFHIRMetadata, fetchReviewPolicy } from '../services/api';
 
 export interface WorkflowsPageProps {
@@ -11,40 +10,17 @@ export interface WorkflowsPageProps {
 }
 
 const WORKFLOW_NODES = [
-  { id: 'n1', title: 'Document Input', sub: 'PDF / Image Ingestion', type: 'Trigger', color: 'bg-white' },
-  { id: 'n2', title: 'OCR Processing', sub: 'Tesseract / Vision Engine', type: 'OCR', color: 'bg-white' },
-  { id: 'n3', title: 'Clinical NLP Extraction', sub: 'SNOMED / ICD-10 Normalization', type: 'AI Extraction', color: 'bg-white' },
-  { id: 'n4', title: 'Model confidence (uncalibrated)', sub: 'Configured review threshold: 85%', type: 'Validation Gate', color: 'bg-white' },
-  { id: 'n5', title: 'FHIR-shaped export', sub: 'JSON document export', type: 'Export', color: 'bg-white' },
+  { id: 'n1', title: 'Document Input', sub: 'Uploaded documents', type: 'Documents', color: 'bg-white' },
+  { id: 'n2', title: 'OCR Processing', sub: 'Live pipeline health', type: 'OCR', color: 'bg-white' },
+  { id: 'n3', title: 'Clinical Extraction', sub: 'Live extraction metrics', type: 'Extraction', color: 'bg-white' },
+  { id: 'n4', title: 'Review Policy', sub: 'Live review thresholds', type: 'Review', color: 'bg-white' },
+  { id: 'n5', title: 'FHIR Export', sub: 'FHIR connection metadata', type: 'FHIR', color: 'bg-white' },
 ];
 
 export function WorkflowsPage({ onNavigate }: WorkflowsPageProps) {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [nodeDetails, setNodeDetails] = useState<string[]>([]);
   const [nodeLoading, setNodeLoading] = useState(false);
-  // Banner state for "not yet configured" actions
-  const [infoBanner, setInfoBanner] = useState<string | null>(null);
-
-  const showInfo = (msg: string) => {
-    setInfoBanner(msg);
-    // Auto-dismiss after 5 s
-    setTimeout(() => setInfoBanner(null), 5000);
-  };
-
-  const handleTestPipeline = () => {
-    showInfo(
-      'Pipeline execution is not configured in this environment. ' +
-      'Contact your system administrator to enable workflow testing.'
-    );
-  };
-
-  const handleNewWorkflow = () => {
-    showInfo(
-      'Workflow creation is not available yet. ' +
-      'This feature will be enabled in a future release.'
-    );
-  };
-
   useEffect(() => {
     if (!selectedNode) {
       setNodeDetails([]);
@@ -71,7 +47,7 @@ export function WorkflowsPage({ onNavigate }: WorkflowsPageProps) {
         } else {
           const fhir = await fetchFHIRMetadata();
           details = fhir.reachable
-            ? [`Status: Connected`, `Server: ${fhir.server_name || 'FHIR server'}`, `FHIR version: ${fhir.fhir_version || '4.x'}`]
+            ? [`Status: Connected`, `Server: ${fhir.server_name || 'not available'}`, `FHIR version: ${fhir.fhir_version || 'not available'}`]
             : [`Status: ${fhir.status === 'not_configured' ? 'Not configured' : 'Unavailable'}`, fhir.reason ? `Reason: ${fhir.reason}` : 'Configure the FHIR test server to connect'];
         }
         if (active) setNodeDetails(details);
@@ -94,50 +70,21 @@ export function WorkflowsPage({ onNavigate }: WorkflowsPageProps) {
           <div>
             <h1 className="text-xl font-bold text-[#071A3D]">Clinical Workflows &amp; Automation</h1>
             <p className="text-xs text-[#52627A] mt-0.5">
-              Visual pipeline automation canvas for ingestion, extraction, and FHIR export
+              Read-only links to backend configuration and status. Workflow editing and manual execution are unavailable.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              icon={<Play size={14} aria-hidden="true" />}
-              onClick={handleTestPipeline}
-              aria-label="Test pipeline (not yet configured)"
-            >
-              Test Pipeline
-            </Button>
-            <Button
-              icon={<Plus size={14} aria-hidden="true" />}
-              onClick={handleNewWorkflow}
-              aria-label="Create new workflow (not yet available)"
-            >
-              New Workflow
-            </Button>
-          </div>
         </div>
-
-        {/* Info banner — shown when a non-functional action is triggered */}
-        {infoBanner && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex items-start gap-3 p-4 rounded-lg bg-[#EAF5FF] border border-[#DCE7F3] text-xs text-[#146EF5]"
-          >
-            <Info size={16} className="flex-shrink-0 mt-0.5 text-[#146EF5]" aria-hidden="true" />
-            <span>{infoBanner}</span>
-          </div>
-        )}
 
         {/* Canvas Area */}
         <Card className="p-6 bg-[#EAF5FF] min-h-[420px] flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4 border-b border-[#DCE7F3] pb-3 bg-white p-3 rounded-md">
             <div className="flex items-center gap-2">
               <GitBranch size={16} className="text-[#146EF5]" aria-hidden="true" />
-              <span className="text-sm font-semibold text-[#071A3D]">
-                Discharge Summary Extraction Pipeline (v2.1)
+                <span className="text-sm font-semibold text-[#071A3D]">
+                Backend configuration and status checks
               </span>
             </div>
-            <Badge variant="success">Active</Badge>
+            <Badge variant="neutral">Read only</Badge>
           </div>
 
           {/* Connected Flow Canvas */}
@@ -159,7 +106,6 @@ export function WorkflowsPage({ onNavigate }: WorkflowsPageProps) {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-mono text-[#52627A] uppercase">{node.type}</span>
-                      <CheckCircle2 size={14} className="text-green-600" aria-hidden="true" />
                     </div>
                     <h4 className="text-xs font-bold text-[#071A3D] font-sans">{node.title}</h4>
                     <p className="text-[10px] text-[#52627A] mt-1">{node.sub}</p>
@@ -189,7 +135,7 @@ export function WorkflowsPage({ onNavigate }: WorkflowsPageProps) {
 
           <div className="flex items-center justify-between pt-4 border-t border-[#DCE7F3] text-xs text-[#52627A]">
             <span>Select any node to view its configuration details</span>
-            <span className="font-mono text-[10px]">Canvas Scale: 100%</span>
+            <span className="font-mono text-[10px]">Read-only status view</span>
           </div>
         </Card>
       </div>

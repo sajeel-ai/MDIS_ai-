@@ -106,32 +106,27 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
   const canReview = currentUserRole === 'reviewer' || currentUserRole === 'admin';
 
   // Filters
+  const initialFilters = new URLSearchParams(window.location.search);
   const getInitialStatusFilter = () => {
     if (initialTaskId) return 'all';
-    try {
-      const saved = typeof window !== 'undefined' ? sessionStorage.getItem('mdis_review_status_filter') : null;
-      if (saved && ['pending', 'in_review', 'approved', 'rejected', 'all'].includes(saved)) {
-        return saved;
-      }
-    } catch {
-      // ignore
-    }
+    const saved = initialFilters.get('status');
+    if (saved && ['pending', 'in_review', 'approved', 'rejected', 'all'].includes(saved)) return saved;
     return 'pending';
   };
   const [statusFilter, setStatusFilter] = useState(getInitialStatusFilter);
 
-  const handleStatusFilterChange = (st: string) => {
-    setStatusFilter(st);
-    try {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('mdis_review_status_filter', st);
-      }
-    } catch {
-      // ignore
-    }
-  };
-  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState(() => {
+    const priority = initialFilters.get('priority');
+    return priority && ['all', 'high', 'medium', 'normal'].includes(priority) ? priority : 'all';
+  });
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set('status', statusFilter);
+    params.set('priority', priorityFilter);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  }, [statusFilter, priorityFilter]);
 
   // Action States
   const [submitting, setSubmitting] = useState(false);
@@ -558,7 +553,7 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
             {['pending', 'in_review', 'approved', 'rejected', 'all'].map((st) => (
               <button
                 key={st}
-                onClick={() => handleStatusFilterChange(st)}
+                onClick={() => setStatusFilter(st)}
                 className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${
                   statusFilter === st
                     ? 'bg-[#071A3D] text-white'

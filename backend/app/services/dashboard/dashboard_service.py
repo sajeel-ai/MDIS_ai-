@@ -2,38 +2,46 @@
 
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import false, select, func
 from sqlalchemy.orm import selectinload
 
-from app.models import Document, ReviewTask, Extraction, ClinicalEntity, Patient, ValidationResult
+from app.models import Document, DocumentValidationFlag, ReviewTask, Extraction, ClinicalEntity, Patient, ValidationResult
 from app.config import settings
 
 
 
 class DashboardService:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, organization_id=None):
         self.session = session
+        self.organization_id = organization_id
+
+    def _organization_scope(self):
+        if self.organization_id is None:
+            return false()
+        return Document.organization_id == self.organization_id
 
     async def get_dashboard_data(self) -> dict:
         # Total documents count
-        doc_count_res = await self.session.execute(select(func.count()).select_from(Document))
+        doc_count_res = await self.session.execute(select(func.count()).select_from(Document).where(self._organization_scope()))
         total_documents = doc_count_res.scalar() or 0
 
         # Processed count
         proc_count_res = await self.session.execute(
-            select(func.count()).select_from(Document).where(Document.status == "completed")
+            select(func.count()).select_from(Document).where(self._organization_scope(), Document.status == "completed")
         )
         processed = proc_count_res.scalar() or 0
 
         # Pending review count
         pending_res = await self.session.execute(
-            select(func.count()).select_from(ReviewTask).where(ReviewTask.status == "pending")
+            select(func.count()).select_from(ReviewTask).join(Document, Document.id == ReviewTask.document_id).where(
+                self._organization_scope(), ReviewTask.status == "pending"
+            )
         )
         pending_review = pending_res.scalar() or 0
 
         # Failed count
         failed_res = await self.session.execute(
-            select(func.count()).select_from(Document).where(Document.status == "failed")
+            select(func.count()).select_from(Document).where(self._organization_scope(), Document.status == "failed")
         )
         failed = failed_res.scalar() or 0
 
@@ -41,27 +49,74 @@ class DashboardService:
 
         # Priority breakdown
         hp_res = await self.session.execute(
-            select(func.count()).select_from(ReviewTask).where(
-                ReviewTask.status == "pending", ReviewTask.priority == "high"
+            select(func.count()).select_from(ReviewTask).join(Document, Document.id == ReviewTask.document_id).where(
+                self._organization_scope(), ReviewTask.status == "pending", ReviewTask.priority == "high"
             )
         )
         high_priority = hp_res.scalar() or 0
 
         mp_res = await self.session.execute(
-            select(func.count()).select_from(ReviewTask).where(
-                ReviewTask.status == "pending", ReviewTask.priority == "medium"
+            select(func.count()).select_from(ReviewTask).join(Document, Document.id == ReviewTask.document_id).where(
+                self._organization_scope(), ReviewTask.status == "pending", ReviewTask.priority == "medium"
             )
         )
         medium_priority = mp_res.scalar() or 0
 
         standard = max(0, pending_review - high_priority - medium_priority)
         conflict_res = await self.session.execute(
-            select(func.count()).select_from(ValidationResult).where(
+            select(func.count()).select_from(ValidationResult)
+            .join(ClinicalEntity, ClinicalEntity.id == ValidationResult.entity_id)
+            .join(Extraction, Extraction.id == ClinicalEntity.extraction_id)
+            .join(Document, Document.id == Extraction.document_id)
+            .where(self._organization_scope(),
                 ValidationResult.rule_code == "CONFLICT",
                 ValidationResult.severity.in_(["warning", "error"]),
             )
         )
         ai_conflicts = conflict_res.scalar() or 0
+
+        critical_entity_res = await self.session.execute(
+            select(func.count()).select_from(ValidationResult)
+            .join(ClinicalEntity, ClinicalEntity.id == ValidationResult.entity_id)
+            .join(Extraction, Extraction.id == ClinicalEntity.extraction_id)
+            .join(Document, Document.id == Extraction.document_id)
+            .where(self._organization_scope(),
+                ValidationResult.status.in_(["warning", "fail", "error"]),
+                (ValidationResult.severity == "critical")
+                | (ValidationResult.rule_code.in_(["CRITICAL", "CONFLICT"])),
+            )
+        )
+        critical_document_res = await self.session.execute(
+            select(func.count()).select_from(DocumentValidationFlag)
+            .join(Document, Document.id == DocumentValidationFlag.document_id)
+            .where(self._organization_scope(),
+                DocumentValidationFlag.superseded_at.is_(None),
+                (DocumentValidationFlag.severity == "critical")
+                | (DocumentValidationFlag.rule_code.in_(["CRITICAL", "CONFLICT"])),
+            )
+        )
+        critical_flags = (critical_entity_res.scalar() or 0) + (critical_document_res.scalar() or 0)
+
+        low_confidence_res = await self.session.execute(
+            select(func.count())
+            .select_from(ReviewTask)
+            .join(ClinicalEntity, ClinicalEntity.id == ReviewTask.entity_id)
+            .join(Document, Document.id == ReviewTask.document_id)
+            .where(
+                self._organization_scope(),
+                ReviewTask.status == "pending",
+                ClinicalEntity.confidence < settings.review_high_priority_threshold,
+            )
+        )
+        low_confidence = low_confidence_res.scalar() or 0
+
+        approved_res = await self.session.execute(
+            select(func.count()).select_from(Document).where(
+                self._organization_scope(),
+                Document.status == "completed", Document.review_status == "approved"
+            )
+        )
+        approved = approved_res.scalar() or 0
 
         # Extraction quality by entity type
         quality_types = [
@@ -74,7 +129,11 @@ class DashboardService:
         extraction_quality = []
         for t, db_type in quality_types:
             avg_res = await self.session.execute(
-                select(func.avg(ClinicalEntity.confidence)).where(
+                select(func.avg(ClinicalEntity.confidence))
+                .join(Extraction, Extraction.id == ClinicalEntity.extraction_id)
+                .join(Document, Document.id == Extraction.document_id)
+                .where(
+                    self._organization_scope(),
                     ClinicalEntity.entity_type == db_type,
                     ClinicalEntity.assertion == "present",
                     (ClinicalEntity.section != "ALLERGIES") | (ClinicalEntity.section.is_(None)),
@@ -94,6 +153,7 @@ class DashboardService:
                 selectinload(Document.review_tasks),
                 selectinload(Document.extractions).selectinload(Extraction.entities).selectinload(ClinicalEntity.evidence_spans)
             )
+            .where(self._organization_scope())
             .order_by(Document.updated_at.desc())
             .limit(10)
         )
@@ -153,7 +213,7 @@ class DashboardService:
                     else (
                         "medium"
                         if any(
-                            ent.confidence is not None and float(ent.confidence) >= 0.65
+                            ent.confidence is not None and float(ent.confidence) >= settings.review_high_priority_threshold
                             and ent.assertion == "present"
                             and not (ent.entity_type == "medication" and ent.section == "ALLERGIES")
                             for ext in d.extractions
@@ -191,6 +251,11 @@ class DashboardService:
                 "medium_priority": medium_priority,
                 "standard": standard,
                 "ai_conflicts": ai_conflicts,
+                "awaiting_review": pending_review,
+                "critical_flags": critical_flags,
+                "low_confidence": low_confidence,
+                "approved": approved,
+                "failed": failed,
             },
             "extraction_quality": extraction_quality,
             "recent_cases": recent_cases,

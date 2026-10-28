@@ -4,7 +4,7 @@ import uuid
 from typing import List, Tuple, Dict, Any, Optional
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import case, select, func, or_
 from sqlalchemy.orm import selectinload
 
 from app.models import (
@@ -25,6 +25,35 @@ from app.config import settings
 
 class ReviewVersionConflict(ValueError):
     """Raised when a reviewer submits a stale review task version."""
+
+
+def review_queue_ordering():
+    critical_entity_flag = select(ValidationResult.id).where(
+        ValidationResult.entity_id == ReviewTask.entity_id,
+        ValidationResult.status.in_(["warning", "fail", "error"]),
+        or_(
+            ValidationResult.severity == "critical",
+            ValidationResult.rule_code.in_(["CRITICAL", "CONFLICT"]),
+        ),
+    ).exists()
+    critical_document_flag = select(DocumentValidationFlag.id).where(
+        DocumentValidationFlag.document_id == ReviewTask.document_id,
+        DocumentValidationFlag.superseded_at.is_(None),
+        or_(
+            DocumentValidationFlag.severity == "critical",
+            DocumentValidationFlag.rule_code.in_(["CRITICAL", "CONFLICT"]),
+        ),
+    ).exists()
+    urgency_rank = case(
+        (or_(critical_entity_flag, critical_document_flag), 0),
+        (ClinicalEntity.confidence < settings.review_high_priority_threshold, 1),
+        else_=2,
+    )
+    return (
+        urgency_rank.asc(),
+        ClinicalEntity.confidence.asc().nulls_last(),
+        ReviewTask.created_at.asc(),
+    )
 
 
 
@@ -275,7 +304,9 @@ class ReviewService:
             selectinload(ReviewTask.document).selectinload(Document.versions),
             selectinload(ReviewTask.entity).selectinload(ClinicalEntity.evidence_spans),
             selectinload(ReviewTask.entity).selectinload(ClinicalEntity.validation_results),
-        ).join(ReviewTask.document).where(Document.source.in_(["UserUpload", "upload"]))
+        ).join(ReviewTask.document).outerjoin(
+            ClinicalEntity, ClinicalEntity.id == ReviewTask.entity_id
+        ).where(Document.source.in_(["UserUpload", "upload"]))
 
         if status:
             if status == "all":
@@ -308,7 +339,7 @@ class ReviewService:
         total = total_res.scalar() or 0
 
         offset = (page - 1) * page_size
-        query = query.order_by(ReviewTask.created_at.desc()).offset(offset).limit(page_size)
+        query = query.order_by(*review_queue_ordering()).offset(offset).limit(page_size)
         res = await self.session.execute(query)
         tasks = res.scalars().all()
 

@@ -82,18 +82,19 @@ vi.mock('../services/api', async (importOriginal) => {
 describe('Review UX Enhancements — Item 5', () => {
   beforeEach(() => {
     sessionStorage.clear();
+    window.history.replaceState({}, '', '/review');
   });
 
-  it('persists status filter to sessionStorage when filter changes', async () => {
+  it('persists status filter in URL query parameters when filter changes', async () => {
     render(<ReviewCenter onNavigate={vi.fn()} />);
     await waitFor(() => expect(screen.getByText('In Review')).toBeInTheDocument());
 
     fireEvent.click(screen.getByText('In Review'));
-    expect(sessionStorage.getItem('mdis_review_status_filter')).toBe('in_review');
+    expect(new URL(window.location.href).searchParams.get('status')).toBe('in_review');
   });
 
-  it('restores status filter from sessionStorage on mount', async () => {
-    sessionStorage.setItem('mdis_review_status_filter', 'approved');
+  it('restores status filter from URL query parameters on mount', async () => {
+    window.history.replaceState({}, '', '/review?status=approved');
     render(<ReviewCenter onNavigate={vi.fn()} />);
 
     await waitFor(() => {

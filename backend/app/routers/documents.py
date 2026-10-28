@@ -94,13 +94,15 @@ async def run_async_processing_task(job_id: uuid.UUID):
 
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(UserRole.CLINICIAN, UserRole.ADMIN))])
 async def upload_document(
-    patient_id: uuid.UUID = Form(...),
+    patient_id: Optional[uuid.UUID] = Form(None),
     document_type: str = Form(...),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: UserContext = Depends(get_current_user),
     request: Request = None,
 ):
+    if current_user.organization_id is None:
+        raise HTTPException(status_code=403, detail="An organization is required to upload documents.")
     service = DocumentService(db)
     raw_name = file.filename or "upload"
     extension = Path(raw_name.replace("\\", "/")).suffix.lower()
@@ -130,7 +132,8 @@ async def upload_document(
         if extension == ".txt":
             with open(temp_path, "rb") as _f:
                 _raw = _f.read()
-            if b"\x00" in _raw:
+            has_utf16_bom = _raw.startswith((b"\xff\xfe", b"\xfe\xff"))
+            if b"\x00" in _raw and not has_utf16_bom:
                 raise HTTPException(status_code=415, detail="TXT upload must not contain null bytes.")
             from charset_normalizer import from_bytes as _detect
             _best = _detect(_raw).best()
@@ -158,9 +161,10 @@ async def upload_document(
             if extension == ".pdf":
                 with fitz.open(temp_path) as pdf:
                     page_count = pdf.page_count
-            elif extension == ".tiff":
+            elif extension in {".png", ".jpg", ".jpeg", ".tiff"}:
                 with Image.open(temp_path) as image:
                     page_count = getattr(image, "n_frames", 1)
+                    image.verify()
             else:
                 page_count = 1
         except Exception:
@@ -176,6 +180,7 @@ async def upload_document(
             mime_type=mime_types[extension],
             file_path=temp_path,
             content_hash=digest.hexdigest(),
+            organization_id=current_user.organization_id,
         )
         await record_audit_event(db, action="upload_document", user_id=current_user.id, organization_id=current_user.organization_id, resource_type="document", resource_id=uuid.UUID(doc_resp["id"]))
         return doc_resp

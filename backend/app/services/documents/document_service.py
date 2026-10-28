@@ -32,22 +32,31 @@ class DocumentService:
 
     async def upload_document(
         self,
-        patient_id: uuid.UUID,
+        patient_id: uuid.UUID | None,
         document_type: str,
         file_bytes: bytes,
         file_name: str,
         mime_type: str | None = None,
         file_path: str | Path | None = None,
         content_hash: str | None = None,
+        organization_id: uuid.UUID | None = None,
     ) -> dict:
-        org_id = self.session.info.get("organization_id")
-        patient_query = select(Patient).where(Patient.id == patient_id)
-        if org_id is not None:
-            patient_query = patient_query.where(Patient.organization_id == org_id)
-        pat_res = await self.session.execute(patient_query)
-        patient = pat_res.scalars().first()
-        if not patient:
-            raise ValueError(f"Patient '{patient_id}' not found")
+        org_id = organization_id or self.session.info.get("organization_id")
+        patient = None
+        if patient_id is not None:
+            patient_query = select(Patient).where(
+                Patient.id == patient_id,
+                Patient.deleted_at.is_(None),
+            )
+            if org_id is not None:
+                patient_query = patient_query.where(Patient.organization_id == org_id)
+            pat_res = await self.session.execute(patient_query)
+            patient = pat_res.scalars().first()
+            if not patient:
+                raise ValueError(f"Patient '{patient_id}' not found")
+            org_id = patient.organization_id
+        if org_id is None:
+            raise ValueError("An organization is required to upload a document")
 
         from app.providers.storage import get_storage_provider
         storage_provider = get_storage_provider()
@@ -59,7 +68,7 @@ class DocumentService:
 
         doc = Document(
             patient_id=patient_id,
-            organization_id=patient.organization_id,
+            organization_id=org_id,
             document_type=document_type,
             source="UserUpload",
             file_name=file_name,
@@ -81,7 +90,7 @@ class DocumentService:
                 ]
                 if part
             )
-            if (patient.first_name or patient.last_name)
+            if patient and (patient.first_name or patient.last_name)
             else None
         )
         case_id = f"CL-{str(doc.id)[:6].upper()}"
@@ -92,7 +101,8 @@ class DocumentService:
             "id": str(doc.id),
             "case_id": case_id,
             "patient_name": patient_name,
-            "mrn": patient.mrn,
+            "mrn": patient.mrn if patient else None,
+            "patient_id": str(patient.id) if patient else None,
             "doc_type": doc.document_type,
             "status": doc.status,
             "review_status": doc.review_status,
@@ -206,6 +216,7 @@ class DocumentService:
                 "file_name": file_name,
                 "patient_name": patient_name,
                 "mrn": d.patient.mrn if d.patient else None,
+                "patient_id": str(d.patient_id) if d.patient_id else None,
                 "doc_type": d.document_type,
                 "status": d.status,
                 "review_status": d.review_status,
