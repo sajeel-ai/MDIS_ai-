@@ -84,6 +84,37 @@ def test_present_entity_exported() -> None:
     assert _condition_count(bundle) == 1
 
 
+def test_nullable_confidence_and_new_review_metadata_do_not_change_fhir_condition_gate() -> None:
+    present = _make_entity(
+        assertion="present", status="approved", confidence=None,
+        source="reviewer_added", experiencer="patient", temporality="current",
+        exclusion_reason=None,
+    )
+    absent = _make_entity(
+        id="00000000-0000-0000-0000-000000000098", assertion="absent",
+        confidence=None, source="reviewer_added", experiencer="family",
+        temporality="historical",
+    )
+    bundle = build_document_fhir_bundle(_make_document([present, absent]), include_unreviewed=True)
+    assert _condition_count(bundle) == 1
+
+
+def test_fhir_export_blocks_soft_deleted_patient():
+    from datetime import datetime, timezone
+
+    document = _make_document([_make_entity()])
+    document.patient.deleted_at = datetime.now(timezone.utc)
+    with pytest.raises(ValueError, match="soft-deleted"):
+        build_document_fhir_bundle(document, include_unreviewed=True)
+
+
+def test_fhir_projection_rejects_unlinked_patient_descriptively():
+    document = _make_document([_make_entity()])
+    document.patient = None
+    with pytest.raises(ValueError, match="requires a linked patient"):
+        build_document_fhir_bundle(document, include_unreviewed=True)
+
+
 def test_absent_entity_not_exported() -> None:
     entity = _make_entity(assertion="absent", status="approved")
     doc = _make_document([entity])

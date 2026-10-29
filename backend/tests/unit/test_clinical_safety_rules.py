@@ -504,3 +504,20 @@ def test_shared_safety_gates_parity_between_single_and_batch_approval():
     )
     assert not allowed
     assert "medication" in reason.lower() or "override" in reason.lower()
+
+    # Case D: low and unavailable confidence must block both paths too.
+    for confidence in (0.20, None):
+        entity = ClinicalEntity(
+            id=uuid.uuid4(), entity_type="condition", confidence=confidence,
+        )
+        with pytest.raises(ValueError, match="confidence"):
+            evaluate_approval_safety(
+                document=linked_doc, entity=entity, is_batch=False,
+                raise_on_violation=True,
+            )
+        allowed, reason = evaluate_approval_safety(
+            document=linked_doc, entity=entity, is_batch=True,
+            min_confidence=0.85, raise_on_violation=False,
+        )
+        assert not allowed
+        assert "confidence" in reason.lower()

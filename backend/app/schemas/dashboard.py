@@ -21,6 +21,7 @@ class ReviewQueueSummary(BaseModel):
     awaiting_review: Optional[int] = None
     critical_flags: Optional[int] = None
     low_confidence: Optional[int] = None
+    confidence_unavailable: Optional[int] = None
     approved: Optional[int] = None
     failed: Optional[int] = None
 

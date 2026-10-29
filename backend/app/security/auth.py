@@ -80,6 +80,14 @@ def validate_jwt_configuration() -> None:
             raise RuntimeError("Mock OCR and extraction providers may only be used in development")
         if not settings.storage_encryption_key and not os.getenv("STORAGE_ENCRYPTION_KEY"):
             raise RuntimeError("STORAGE_ENCRYPTION_KEY must be configured outside development")
+        from app.security.storage_crypto import validate_storage_key_strength
+        try:
+            validate_storage_key_strength(
+                settings.storage_encryption_key or os.getenv("STORAGE_ENCRYPTION_KEY", ""),
+                production=True,
+            )
+        except ValueError as exc:
+            raise RuntimeError(str(exc)) from exc
         try:
             from app.security.mfa import _key
             _key()

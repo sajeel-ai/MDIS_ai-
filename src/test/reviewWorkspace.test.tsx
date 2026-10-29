@@ -19,6 +19,8 @@ const baseTask = {
   reason: 'Human review required', status: 'pending', assigned_to: 'reviewer-1',
   created_at: '2026-01-01T00:00:00Z', completed_at: null, decision: null, comment: null,
   version: 3, decision_actor: null, decision_at: null,
+  checks_ran: ['evidence_exact', 'confidence_range'],
+  checks_not_implemented: ['family_attribution', 'historical_as_current'],
   document: { id: 'doc-1', file_name: 'synthetic-note.pdf', document_type: 'progress_note', review_status: 'pending' },
   patient: { id: 'patient-1', display_name: 'Synthetic patient', mrn: 'SYN-001' },
   entity,
@@ -84,6 +86,8 @@ describe('Review workspace', () => {
     expect(screen.getByText(/Instructions \/ conditional/)).toBeInTheDocument()
     expect(screen.getByText(/Evidence highlighting unavailable for this item/i)).toBeInTheDocument()
     expect(screen.getByText(/Confidence: not available/)).toBeInTheDocument()
+    expect(screen.getByText(/Checks run: evidence_exact, confidence_range/i)).toBeInTheDocument()
+    expect(screen.getByText(/Not implemented: family_attribution, historical_as_current/i)).toBeInTheDocument()
     expect(screen.getAllByText('AI extracted').length).toBeGreaterThan(0)
   })
 
@@ -153,7 +157,40 @@ describe('Review workspace', () => {
     expect(JSON.parse(String(request?.init?.body))).toMatchObject({ decision: 'approved', expected_version: 3, justification: 'Reviewed by clinician' })
   })
 
-  it('shows a reload action for stale edit conflicts and documents unavailable add-item action', async () => {
+  it('draws and persists a missing item with the real versioned API payload', async () => {
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      requests.push({ url, init })
+      if (url.endsWith('/review/task-1')) return jsonResponse(baseTask)
+      if (url.includes('/review/queue')) return jsonResponse({ items: [baseTask], total: 1, page: 1, page_size: 100, has_next: false })
+      if (url.endsWith('/review/policy')) return jsonResponse({ policy: 'all', confidence_threshold: 0.85, high_priority_threshold: 0.5 })
+      if (url.endsWith('/documents/doc-1/entities')) return jsonResponse([entity])
+      if (url.endsWith('/documents/doc-1')) return jsonResponse({ ...baseTask.document, page_count: 1, version_number: 7, mime_type: 'application/pdf' })
+      if (url.endsWith('/documents/doc-1/pages/1/image')) return new Response(new Blob(['image']))
+      return jsonResponse({ entity_id: 'reviewer-added-1', version: 1, source: 'reviewer_added', confidence: null })
+    })
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 100, bottom: 100, width: 100, height: 100,
+      toJSON: () => ({}),
+    } as DOMRect)
+    render(<ReviewWorkspace initialTaskId="task-1" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Add missing item' }))
+    const drawingSurface = screen.getByLabelText('Draw evidence box')
+    fireEvent.pointerDown(drawingSurface, { clientX: 10, clientY: 20 })
+    fireEvent.pointerUp(drawingSurface, { clientX: 40, clientY: 50 })
+    fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'symptom' } })
+    fireEvent.change(screen.getByLabelText('Text'), { target: { value: 'cough' } })
+    fireEvent.change(screen.getByLabelText('Evidence text'), { target: { value: 'Asthma' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save finding' }))
+    await waitFor(() => expect(requests.some((request) => request.url.endsWith('/review/documents/doc-1/entities/add-missing'))).toBe(true))
+    const request = requests.find((item) => item.url.endsWith('/review/documents/doc-1/entities/add-missing'))
+    expect(JSON.parse(String(request?.init?.body))).toEqual({
+      expected_version: 7, type: 'symptom', text: 'cough', page: 1,
+      bbox: [0.1, 0.2, 0.4, 0.5], evidence_text: 'Asthma',
+    })
+  })
+
+  it('blocks edits and additions after a stale conflict until reload', async () => {
     forceConflict = true
     render(<ReviewWorkspace initialTaskId="task-1" />)
     fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
@@ -162,7 +199,6 @@ describe('Review workspace', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/changed|conflict/i)
     expect(screen.getByRole('button', { name: /reload/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /add missing item/i })).toBeDisabled()
-    expect(screen.getByText(/not available.*reviewer-added/i)).toBeInTheDocument()
   })
 
   it('opens the keyboard shortcut help with ?', async () => {

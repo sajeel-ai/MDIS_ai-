@@ -8,6 +8,7 @@ from sqlalchemy import case, select, func, or_
 from sqlalchemy.orm import selectinload
 
 from app.models import (
+    AuditEvent,
     ReviewTask,
     Document,
     DocumentValidationFlag,
@@ -18,6 +19,7 @@ from app.models import (
     ValidationResult,
     ClinicalEntityRevision,
 )
+from app.services.validation.engine import CHECKS_NOT_IMPLEMENTED, ENTITY_CHECKS_RUN
 from app.workflows.states import aggregate_review_status
 from app.services.audit_service import record_audit_event
 from app.config import settings
@@ -25,6 +27,17 @@ from app.config import settings
 
 class ReviewVersionConflict(ValueError):
     """Raised when a reviewer submits a stale review task version."""
+
+
+def _increment_version(record: Any) -> None:
+    """Increment an ORM record version before/after persistence safely.
+
+    SQLAlchemy's Python-side ``mapped_column(default=1)`` is applied at flush,
+    so a newly-created ReviewTask or ClinicalEntity can still have ``None`` in
+    memory. Its effective initial version is 1; the first persisted change is 2.
+    """
+    current = getattr(record, "version", None)
+    record.version = (1 if current is None else current) + 1
 
 
 def review_queue_ordering():
@@ -46,7 +59,7 @@ def review_queue_ordering():
     ).exists()
     urgency_rank = case(
         (or_(critical_entity_flag, critical_document_flag), 0),
-        (ClinicalEntity.confidence < settings.review_high_priority_threshold, 1),
+        (or_(ClinicalEntity.confidence.is_(None), ClinicalEntity.confidence < settings.review_high_priority_threshold), 1),
         else_=2,
     )
     return (
@@ -91,6 +104,9 @@ def evaluate_approval_safety(
     # Gate 1: Patient Linkage
     if not document or document.patient_id is None:
         return _violation("Cannot approve review task for a document without a linked patient.")
+    deleted_at = getattr(getattr(document, "patient", None), "deleted_at", None)
+    if isinstance(deleted_at, datetime):
+        return _violation("Cannot approve review task because the linked patient is soft-deleted.")
 
     doc_flags = list(active_doc_flags or [])
     if not doc_flags and document and "validation_flags" in getattr(document, "__dict__", {}):
@@ -151,7 +167,23 @@ def evaluate_approval_safety(
             if not override_justification:
                 return _violation("A non-empty justification is required when overriding a medication or lab validation flag.")
 
-    # Gate 5: Batch-specific Entity Finding & Confidence Gates
+    # Reviewer-added entities are never eligible for batch approval. Check
+    # provenance before confidence so the caller receives the specific reason.
+    if is_batch and entity and getattr(entity, "source", None) == "reviewer_added":
+        return _violation("Reviewer-added entities cannot be batch approved.")
+
+    # Confidence is an approval gate for both manually-approved single tasks
+    # and batch approval. Missing confidence is unavailable, never high.
+    if entity:
+        confidence_threshold = (
+            min_confidence
+            if min_confidence is not None
+            else settings.review_confidence_threshold
+        )
+        if entity.confidence is None or entity.confidence < confidence_threshold:
+            return _violation("Entity confidence is below the required approval threshold.")
+
+    # Gate 5: Batch-specific Entity Finding & Reviewer-added gates
     if is_batch and entity:
         findings = [
             v for v in getattr(entity, "validation_results", [])
@@ -160,9 +192,6 @@ def evaluate_approval_safety(
         ]
         if findings:
             return _violation("Entity has validation warnings or errors.")
-
-        if entity.confidence is None or (min_confidence is not None and entity.confidence < min_confidence):
-            return _violation("Entity confidence is below the required batch approval threshold.")
 
     return True, None
 
@@ -179,7 +208,8 @@ class ReviewService:
         patient = doc.patient if doc else None
 
         patient_dict = None
-        if patient:
+        patient_deleted = bool(patient and isinstance(patient.deleted_at, datetime))
+        if patient and not patient_deleted:
             name_parts = [p for p in [patient.first_name, patient.last_name] if p]
             display_name = " ".join(name_parts) if name_parts else f"Patient {patient.mrn}"
             patient_dict = {
@@ -211,7 +241,7 @@ class ReviewService:
                 "type": entity.entity_type,
                 "raw_text": entity.raw_text,
                 "normalized_value": entity.normalized_value,
-                "confidence": float(entity.confidence),
+                "confidence": float(entity.confidence) if entity.confidence is not None else None,
                 "assertion": entity.assertion,
                 "section": entity.section,
                 "status": entity.status,
@@ -221,7 +251,7 @@ class ReviewService:
                 "temporality": entity.temporality,
                 "exclusion_reason": entity.exclusion_reason,
                 "ocr_confidence": float(entity.ocr_confidence) if entity.ocr_confidence is not None else None,
-                "extraction_confidence": float(entity.confidence),
+                "extraction_confidence": float(entity.confidence) if entity.confidence is not None else None,
                 "group": (entity.details or {}).get("group"),
                 "source": entity.source,
                 "version": entity.version,
@@ -280,6 +310,7 @@ class ReviewService:
             "comment": task.comment,
             "document": doc_dict,
             "patient": patient_dict,
+            "patient_deleted": patient_deleted,
             "entity": entity_dict,
             "validation_results": validation_results,
             "evidence": evidence_dict,
@@ -288,6 +319,8 @@ class ReviewService:
             "version": task.version,
             "decision_actor": str(task.assigned_to) if task.completed_at and task.assigned_to else None,
             "decision_at": task.completed_at.isoformat() if task.completed_at else None,
+            "checks_ran": list(ENTITY_CHECKS_RUN) if entity else [],
+            "checks_not_implemented": list(CHECKS_NOT_IMPLEMENTED),
         }
 
     async def get_review_queue(
@@ -365,7 +398,22 @@ class ReviewService:
         if not task:
             raise ValueError(f"ReviewTask {task_id} not found")
 
-        return await self._build_task_dict(task, include_source_text=True)
+        payload = await self._build_task_dict(task, include_source_text=True)
+        if task.completed_at:
+            decision_audit = await self.session.scalar(
+                select(AuditEvent)
+                .where(
+                    AuditEvent.action == "review_decision",
+                    AuditEvent.resource_type == "review_task",
+                    AuditEvent.resource_id == task.id,
+                )
+                .order_by(AuditEvent.created_at.desc())
+                .limit(1)
+            )
+            if decision_audit is not None:
+                payload["decision_actor"] = str(decision_audit.user_id) if decision_audit.user_id else None
+                payload["decision_at"] = decision_audit.created_at.isoformat() if decision_audit.created_at else None
+        return payload
 
     async def get_review_stats(self) -> Dict[str, int]:
         result = await self.session.execute(
@@ -448,7 +496,7 @@ class ReviewService:
         query = (
             select(ReviewTask)
             .options(
-                selectinload(ReviewTask.document),
+                selectinload(ReviewTask.document).selectinload(Document.patient),
                 selectinload(ReviewTask.entity).selectinload(ClinicalEntity.validation_results),
             )
             .where(ReviewTask.id == task_id)
@@ -520,7 +568,7 @@ class ReviewService:
                     if corrected_value and corrected_value.strip():
                         entity.original_ai_value = entity.original_ai_value or entity.normalized_value
                         entity.normalized_value = corrected_value.strip()
-                entity.version += 1
+                _increment_version(entity)
                 self.session.add(ClinicalEntityRevision(
                     entity_id=entity.id,
                     actor_user_id=reviewer_user_id,
@@ -534,7 +582,7 @@ class ReviewService:
                     },
                     comment=comment,
                 ))
-        task.version += 1
+        _increment_version(task)
 
         # Keep processing status independent from the review lifecycle.
         doc_res = await self.session.execute(
@@ -587,7 +635,7 @@ class ReviewService:
     async def approve_clean_for_document(self, document_id: uuid.UUID, reviewer_user_id: uuid.UUID | None = None, organization_id: uuid.UUID | None = None) -> int:
         query = (
             select(ReviewTask)
-            .options(selectinload(ReviewTask.entity).selectinload(ClinicalEntity.validation_results), selectinload(ReviewTask.document))
+            .options(selectinload(ReviewTask.entity).selectinload(ClinicalEntity.validation_results), selectinload(ReviewTask.document).selectinload(Document.patient))
             .join(ReviewTask.document)
             .where(ReviewTask.document_id == document_id, ReviewTask.status.in_(["pending", "in_review"]))
         )
@@ -646,7 +694,7 @@ class ReviewService:
 
             task.status = task.decision = "approved"
             task.completed_at = now
-            task.version += 1
+            _increment_version(task)
             if reviewer_user_id:
                 task.assigned_to = reviewer_user_id
             if task.entity:
@@ -656,7 +704,7 @@ class ReviewService:
                     "assertion": task.entity.assertion,
                 }
                 task.entity.status = "approved"
-                task.entity.version += 1
+                _increment_version(task.entity)
                 self.session.add(ClinicalEntityRevision(
                     entity_id=task.entity.id,
                     actor_user_id=reviewer_user_id,

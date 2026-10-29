@@ -128,11 +128,11 @@ class TestDeskew:
         if font_path is None:
             pytest.skip("No supported OCR test font is installed")
 
-        page = Image.new("L", (2400, 1400), 255)
+        page = Image.new("L", (1500, 900), 255)
         draw = ImageDraw.Draw(page)
-        font = ImageFont.truetype(str(font_path), 100)
+        font = ImageFont.truetype(str(font_path), 72)
         word = "TARGET"
-        origin = (180, 420)
+        origin = (140, 280)
         gt = draw.textbbox(origin, word, font=font)
         draw.text(origin, word, fill=0, font=font)
         angle = 6.0
@@ -156,7 +156,7 @@ class TestDeskew:
         monkeypatch.setattr(settings, "ocr_denoise_enabled", False)
         monkeypatch.setattr(settings, "ocr_contrast_normalize_enabled", False)
         monkeypatch.setattr(settings, "ocr_binarize_enabled", False)
-        monkeypatch.setattr(settings, "ocr_max_image_pixels", 1_000_000)
+        monkeypatch.setattr(settings, "ocr_max_image_pixels", 400_000)
 
         _, _, boxes = LocalOCRProvider._tesseract_image_data(str(rotated_path))
         target_boxes = [box["bounding_box"] for box in boxes if str(box.get("text", "")).upper() == word]

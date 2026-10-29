@@ -6,6 +6,17 @@ from .rules import (
     required_fields, conflict, vital_mentioned_not_extracted,
 )
 
+# These validators are run for every extracted entity by ``validate_entities``.
+# Returned on review tasks so the UI can distinguish a check that ran without
+# findings from one that the system does not implement.
+ENTITY_CHECKS_RUN = [
+    "required_fields", "evidence_bounds", "evidence_exact", "confidence_range",
+    "code_system_format", "med_dose_unit", "lab_value_unit", "date_plausible",
+    "duplicate_entity", "conflicts",
+]
+DOCUMENT_CHECKS_RUN = ["vital_mentioned_not_extracted"]
+CHECKS_NOT_IMPLEMENTED = ["family_attribution", "historical_as_current"]
+
 
 def validate_document_level_issues(source_text: str, items: list[ExtractedEntity]) -> list[ValidationIssue]:
     """Validate document-level constraints, such as vitals mentioned but not extracted."""

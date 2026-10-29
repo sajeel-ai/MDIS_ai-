@@ -8,7 +8,7 @@ import pytest
 
 from app.models import ClinicalEntity, Document, ProcessingJob, ReviewTask, ValidationResult, AuditEvent
 from app.services.processing.job_service import JobService
-from app.services.review.review_service import ReviewService
+from app.services.review.review_service import ReviewService, _increment_version
 from app.workflows.clinical_processing import ClinicalProcessingWorkflow
 from app.workflows.states import aggregate_review_status
 
@@ -18,6 +18,25 @@ def _result(first=None, all_items=None):
     result.scalars.return_value.first.return_value = first
     result.scalars.return_value.all.return_value = [] if all_items is None else all_items
     return result
+
+
+def test_increment_version_uses_mapped_default_before_first_flush():
+    task = ReviewTask(
+        id=uuid.uuid4(), document_id=uuid.uuid4(), priority="normal", status="pending"
+    )
+    entity = ClinicalEntity(
+        id=uuid.uuid4(), extraction_id=uuid.uuid4(), entity_type="diagnosis",
+        raw_text="Cough", normalized_value="Cough", confidence=0.9,
+        status="unreviewed",
+    )
+
+    assert task.version is None
+    assert entity.version is None
+    _increment_version(task)
+    _increment_version(entity)
+
+    assert task.version == 2
+    assert entity.version == 2
 
 
 @pytest.mark.asyncio
@@ -245,6 +264,8 @@ async def test_approve_clean_items_skips_entities_with_warnings():
     assert count == 1
     assert clean_task.status == "approved"
     assert clean_entity.status == "approved"
+    assert clean_task.version == 2
+    assert clean_entity.version == 2
     assert flagged_task.status == "pending"
     assert flagged_entity.status == "unreviewed"
     assert any(isinstance(event, AuditEvent) and event.action == "approve_clean_review_items" for event in added)
@@ -405,3 +426,5 @@ async def test_vital_warning_flag_does_not_block_manual_approval():
 
     assert task.status == "approved", "Manual approval must succeed even with vital warning flag"
     assert task.completed_at is not None
+    assert task.version == 2
+    assert entity_with_vital_flag.version == 2

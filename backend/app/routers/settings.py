@@ -48,15 +48,11 @@ async def trigger_retention_purge(
         metadata={"dry_run": dry_run},
     )
     await db.commit()
-    if not dry_run:
-        try:
-            await RetentionPurgeService(db).run_retention_purge(
-                dry_run=False,
-            )
-        except RetentionPurgeBlockedError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from None
     service = RetentionPurgeService(db)
-    result = await service.run_retention_purge(dry_run=dry_run)
+    try:
+        result = await service.run_retention_purge(dry_run=dry_run)
+    except RetentionPurgeBlockedError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
     return result
 
 

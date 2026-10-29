@@ -219,6 +219,8 @@ async def test_cross_organization_document_and_patient_are_not_found(tenant_data
     doc_response = await tenant_client.get(f"/api/v1/documents/{tenant_data['document_b'].id}")
     patient_response = await tenant_client.get(f"/api/v1/patients/{tenant_data['patient_b'].id}/timeline")
     assert doc_response.status_code == 404
+    image_response = await tenant_client.get(f"/api/v1/documents/{tenant_data['document_b'].id}/pages/1/image")
+    assert image_response.status_code == 404
     assert patient_response.status_code == 404
     job_response = await tenant_client.get(f"/api/v1/processing/{tenant_data['job_b_id']}")
     job_steps_response = await tenant_client.get(f"/api/v1/processing/{tenant_data['job_b_id']}/steps")
@@ -239,6 +241,19 @@ async def test_cross_organization_entities_evidence_and_review_are_not_found(ten
     assert review.status_code == 404
     assert fhir.status_code == 404
     assert csv_export.status_code == 404
+    add_missing = await tenant_client.post(
+        f"/api/v1/review/documents/{document_id}/entities/add-missing",
+        json={"expected_version": 1, "type": "symptom", "text": "cough", "page": 1,
+              "bbox": [0.1, 0.1, 0.3, 0.3], "evidence_text": "cough"},
+    )
+    assert add_missing.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_dashboard_counts_are_scoped_to_the_authenticated_organization(tenant_data, tenant_client):
+    response = await tenant_client.get("/api/v1/dashboard")
+    assert response.status_code == 200, response.text
+    assert response.json()["metrics"]["total_documents"] == 1
 
 
 @pytest.mark.asyncio
@@ -271,6 +286,15 @@ async def test_missing_token_gets_401_and_wrong_role_gets_403(tenant_data, tenan
 
     denied = await tenant_client.get("/api/v1/aiops/health")
     assert denied.status_code == 403, denied.text
+    payload = {"expected_version": 1, "type": "symptom", "text": "cough", "page": 1,
+               "bbox": [0.1, 0.1, 0.3, 0.3], "evidence_text": "cough"}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        no_token_add = await client.post("/api/v1/review/documents/00000000-0000-0000-0000-000000000001/entities/add-missing", json=payload)
+    wrong_role_add = await tenant_client.post(
+        "/api/v1/review/documents/00000000-0000-0000-0000-000000000001/entities/add-missing", json=payload,
+    )
+    assert no_token_add.status_code == 401
+    assert wrong_role_add.status_code == 403
 
 
 def make_pdf(page_count: int) -> bytes:
@@ -389,7 +413,7 @@ async def test_phi_read_endpoints_persist_actor_resource_action_time_and_ip(tena
     db = tenant_data["db"]
     document = tenant_data["document_a"]
     document.file_name = "phi-audit-search-target.txt"
-    document.mime_type = "text/plain"
+    document.mime_type = "image/png"
     extraction = Extraction(document_id=document.id, status="completed")
     db.add(extraction)
     await db.flush()
@@ -414,20 +438,31 @@ async def test_phi_read_endpoints_persist_actor_resource_action_time_and_ip(tena
     task = ReviewTask(document_id=document.id, entity_id=entity.id, status="pending", priority="normal")
     db.add_all([flag, task])
     await db.flush()
-    storage_key = f"documents/{document.id}/audit-fixture.txt"
+    from PIL import Image
+    image_buffer = io.BytesIO()
+    Image.new("RGB", (24, 24), "white").save(image_buffer, format="PNG")
+    storage_key = f"documents/{document.id}/audit-fixture.png"
     from app.providers.storage.local import LocalStorageProvider
-    await LocalStorageProvider().save_file(storage_key, b"synthetic file bytes")
+    await LocalStorageProvider().save_file(storage_key, image_buffer.getvalue())
     document.storage_key = storage_key
+    job = ProcessingJob(document_id=document.id, status="completed", pipeline_version="test")
+    db.add(job)
+    await db.flush()
     await db.commit()
 
     endpoints = [
         ("GET", f"/api/v1/documents?search=search-target", "view_document_in_list", document.id),
         ("GET", f"/api/v1/documents/{document.id}", "view_document", document.id),
         ("GET", f"/api/v1/documents/{document.id}/file", "read_file", document.id),
+        ("GET", f"/api/v1/documents/{document.id}/pages/1/image", "read_page_image", document.id),
+        ("GET", f"/api/v1/documents/{document.id}/processing", "read_processing_status", document.id),
         ("GET", f"/api/v1/documents/{document.id}/entities", "view_entities", document.id),
         ("GET", f"/api/v1/documents/{document.id}/validation-flags", "view_validation_flags", document.id),
         ("GET", f"/api/v1/review/{task.id}", "view_review_task", task.id),
         ("GET", f"/api/v1/review/queue?document_id={document.id}", "view_review_task", task.id),
+        ("GET", f"/api/v1/processing/{job.id}", "read_processing_job", job.id),
+        ("GET", f"/api/v1/processing/{job.id}/steps", "read_processing_job_steps", job.id),
+        ("GET", "/api/v1/dashboard", "read_dashboard", None),
         ("POST", "/api/v1/search", "global_search_result", document.id),
         ("GET", f"/api/v1/documents/{document.id}/export/json", "export_document", document.id),
         ("GET", f"/api/v1/documents/{document.id}/fhir", "export_fhir", document.id),

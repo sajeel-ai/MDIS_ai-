@@ -431,6 +431,7 @@ export interface ReviewQueueSummary {
   awaiting_review?: number | null
   critical_flags?: number | null
   low_confidence?: number | null
+  confidence_unavailable?: number | null
   approved?: number | null
   failed?: number | null
 }
@@ -509,7 +510,7 @@ export interface EntityReviewSummary {
 
   normalized_value?: string | null
 
-  confidence: number
+  confidence: number | null
   assertion: "present" | "absent" | "possible" | "historical" | "family" | "hypothetical" | "conditional" | "discontinued"
   section: string | null
   status: string
@@ -582,6 +583,7 @@ export interface ReviewTask {
   document?: DocumentReviewSummary | null
 
   patient?: PatientReviewSummary | null
+  patient_deleted?: boolean
 
   entity?: EntityReviewSummary | null
 
@@ -593,6 +595,8 @@ export interface ReviewTask {
   version?: number | null
   decision_actor?: string | null
   decision_at?: string | null
+  checks_ran?: string[]
+  checks_not_implemented?: string[]
 }
 
 export interface ReviewStats {
@@ -770,6 +774,17 @@ export async function undoReviewEntity(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ expected_version: expectedVersion }),
+  })
+}
+
+export async function addMissingReviewEntity(
+  documentId: string,
+  payload: { expected_version: number; type: string; text: string; page: number; bbox: [number, number, number, number]; evidence_text: string },
+): Promise<{ entity_id: string; version: number; source: 'reviewer_added'; confidence: null }> {
+  return apiFetch(`/review/documents/${documentId}/entities/add-missing`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   })
 }
 
@@ -1081,6 +1096,7 @@ export interface DocumentItem {
   mrn: string | null
 
   patient_id?: string | null
+  patient_deleted?: boolean
 
   doc_type: string
 
@@ -1103,6 +1119,7 @@ export interface PipelineStageItem {
 }
 
 export interface DocumentDetailResponse extends DocumentItem {
+  patient_deleted?: boolean
   dob: string | null
 
   source_text: string
@@ -1184,7 +1201,7 @@ export interface ClinicalEntityItem {
 
   normalized_value: string
 
-  confidence: number
+  confidence: number | null
   assertion: "present" | "absent" | "possible" | "historical" | "family" | "hypothetical" | "conditional" | "discontinued"
   section: string | null
   status: string

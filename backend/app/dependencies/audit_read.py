@@ -30,6 +30,7 @@ def audit_read_access(action: str, resource_type: str = "document") -> Callable:
             request.path_params.get("document_id")
             or request.path_params.get("resource_id")
             or request.path_params.get("task_id")
+            or request.path_params.get("job_id")
             or request.path_params.get("id")
         )
         resource_id: Optional[uuid.UUID] = None

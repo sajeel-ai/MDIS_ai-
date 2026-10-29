@@ -5,7 +5,7 @@
  * 1. Approve button is disabled with a visible reason when document has no linked patient.
  * 2. Approve button is disabled when med/lab validation flags are present until an override justification is provided.
  */
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { unlinkedTask, flaggedTask, lowConfidenceTask } = vi.hoisted(() => {
@@ -185,13 +185,14 @@ describe('Clinical Safety: Approve button disabled state & override justificatio
     // Justification textarea must be present
     const justificationInput = screen.getByPlaceholderText(/state clinical reason for overriding/i)
     expect(justificationInput).toBeInTheDocument()
+    await waitFor(() => expect(justificationInput).toBeEnabled())
 
     // Once user provides justification, Approve button is enabled
     fireEvent.change(justificationInput, {
       target: { value: 'Confirmed hyperkalemia clinically consistent with hemolysis artifact.' },
     })
 
-    expect(approveBtn).toBeEnabled()
+    await waitFor(() => expect(approveBtn).toBeEnabled())
   })
 
   it('blocks batch approval when the selected finding has any validation flag', async () => {

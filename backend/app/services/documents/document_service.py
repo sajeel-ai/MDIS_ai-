@@ -181,6 +181,7 @@ class DocumentService:
 
         items = []
         for d in docs:
+            patient_deleted = bool(d.patient and d.patient.deleted_at is not None)
             patient_name = (
             " ".join(
                 part
@@ -194,7 +195,7 @@ class DocumentService:
                 ]
                 if part
             )
-            if d.patient and (d.patient.first_name or d.patient.last_name)
+            if d.patient and not patient_deleted and (d.patient.first_name or d.patient.last_name)
             else None
         )
             case_id = f"CL-{str(d.id)[:6].upper()}"
@@ -204,7 +205,8 @@ class DocumentService:
             if d.extractions:
                 all_entities = [e for ext in d.extractions for e in ext.entities]
                 if all_entities:
-                    avg_conf = sum(e.confidence for e in all_entities) / len(all_entities)
+                    measured = [e.confidence for e in all_entities if e.confidence is not None]
+                    avg_conf = sum(measured) / len(measured) if measured else None
 
             conf_str = ("high" if avg_conf is not None and avg_conf >= settings.review_confidence_threshold else "medium" if avg_conf is not None and avg_conf >= 0.65 else "low" if avg_conf is not None else "not_available")
 
@@ -215,8 +217,9 @@ class DocumentService:
                 "case_id": case_id,
                 "file_name": file_name,
                 "patient_name": patient_name,
-                "mrn": d.patient.mrn if d.patient else None,
+                "mrn": d.patient.mrn if d.patient and not patient_deleted else None,
                 "patient_id": str(d.patient_id) if d.patient_id else None,
+                "patient_deleted": patient_deleted,
                 "doc_type": d.document_type,
                 "status": d.status,
                 "review_status": d.review_status,
@@ -240,6 +243,7 @@ class DocumentService:
         if not d:
             return None
 
+        patient_deleted = bool(d.patient and d.patient.deleted_at is not None)
         patient_name = (
             " ".join(
                 part
@@ -253,7 +257,7 @@ class DocumentService:
                 ]
                 if part
             )
-            if d.patient and (d.patient.first_name or d.patient.last_name)
+            if d.patient and not patient_deleted and (d.patient.first_name or d.patient.last_name)
             else None
         )
         case_id = f"CL-{str(d.id)[:6].upper()}"
@@ -291,7 +295,8 @@ class DocumentService:
         if d.extractions:
             all_entities = [e for ext in d.extractions for e in ext.entities]
             if all_entities:
-                avg_conf = sum(e.confidence for e in all_entities) / len(all_entities)
+                measured = [e.confidence for e in all_entities if e.confidence is not None]
+                avg_conf = sum(measured) / len(measured) if measured else None
 
         conf_str = (
             "high"
@@ -307,8 +312,9 @@ class DocumentService:
             "id": str(d.id),
             "case_id": case_id,
             "patient_name": patient_name,
-            "mrn": d.patient.mrn if d.patient else None,
-            "dob": d.patient.dob.strftime("%Y-%m-%d") if d.patient and d.patient.dob else None,
+            "mrn": d.patient.mrn if d.patient and not patient_deleted else None,
+            "dob": d.patient.dob.strftime("%Y-%m-%d") if d.patient and not patient_deleted and d.patient.dob else None,
+            "patient_deleted": patient_deleted,
             "doc_type": d.document_type,
             "status": d.status,
             "review_status": d.review_status,
@@ -351,7 +357,7 @@ class DocumentService:
                     "entity_type": entity.entity_type,
                     "raw_text": entity.raw_text,
                     "normalized_value": entity.normalized_value,
-                    "confidence": float(entity.confidence),
+                    "confidence": float(entity.confidence) if entity.confidence is not None else None,
                     "assertion": entity.assertion,
                     "section": entity.section,
                     "status": entity.status,
@@ -360,7 +366,7 @@ class DocumentService:
                     "temporality": entity.temporality,
                     "exclusion_reason": entity.exclusion_reason,
                     "ocr_confidence": float(entity.ocr_confidence) if entity.ocr_confidence is not None else None,
-                    "extraction_confidence": float(entity.confidence),
+                    "extraction_confidence": float(entity.confidence) if entity.confidence is not None else None,
                     "group": (entity.details or {}).get("group"),
                     "source": entity.source,
                     "version": entity.version,

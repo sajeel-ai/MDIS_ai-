@@ -3,6 +3,7 @@ import type { MutableRefObject } from 'react'
 import { AlertTriangle, ChevronLeft, ChevronRight, CircleHelp, FileText, Flag, LoaderCircle, Minus, Plus } from 'lucide-react'
 import {
   ApiError,
+  addMissingReviewEntity,
   commentOnReviewEntity,
   editReviewEntity,
   fetchDocumentDetails,
@@ -141,6 +142,12 @@ export function ReviewWorkspace({ initialTaskId }: Props) {
   const [acknowledged, setAcknowledged] = useState(false)
   const [conflict, setConflict] = useState(false)
   const [shortcuts, setShortcuts] = useState(false)
+  const [addMode, setAddMode] = useState(false)
+  const [drawStart, setDrawStart] = useState<[number, number] | null>(null)
+  const [drawnBox, setDrawnBox] = useState<[number, number, number, number] | null>(null)
+  const [addType, setAddType] = useState('symptom')
+  const [addText, setAddText] = useState('')
+  const [addEvidenceText, setAddEvidenceText] = useState('')
   const cardRefs = useRef<Record<string, HTMLButtonElement | null>>({})
 
   const load = useCallback(async () => {
@@ -217,7 +224,9 @@ export function ReviewWorkspace({ initialTaskId }: Props) {
   const flags = taskFlags(currentTask)
   const unacknowledgedCritical = flags.some((flag) => flag.severity?.toLowerCase() === 'critical' || /critical|conflict/i.test(flag.rule_code || ''))
   const hasPatient = Boolean(currentTask?.patient?.id)
-  const acceptDisabledReason = !hasPatient
+  const acceptDisabledReason = currentTask?.patient_deleted
+    ? 'Cannot accept: the linked patient is soft-deleted. Restore the patient first.'
+    : !hasPatient
     ? 'Cannot accept: this document has no linked patient.'
     : unacknowledgedCritical && !acknowledged
       ? 'Cannot accept: acknowledge the critical or conflict flag first.'
@@ -304,6 +313,21 @@ export function ReviewWorkspace({ initialTaskId }: Props) {
     } catch (caught) { handleActionError(caught) } finally { setSaving(false) }
   }
 
+  const onAddMissing = async () => {
+    if (!task || !document || !drawnBox || !addType.trim() || !addText.trim() || !addEvidenceText.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      await addMissingReviewEntity(task.document_id, {
+        expected_version: document.version_number,
+        type: addType.trim(), text: addText.trim(), page, bbox: drawnBox,
+        evidence_text: addEvidenceText.trim(),
+      })
+      setAddMode(false); setDrawnBox(null); setAddText(''); setAddEvidenceText('')
+      await refresh()
+    } catch (caught) { handleActionError(caught) } finally { setSaving(false) }
+  }
+
   function handleActionError(caught: unknown) {
     if (caught instanceof ApiError && caught.status === 409) setConflict(true)
     setError(caught instanceof ApiError && caught.status === 409
@@ -337,7 +361,7 @@ export function ReviewWorkspace({ initialTaskId }: Props) {
   return (
     <main className="flex h-[calc(100dvh-7rem)] min-h-[560px] min-w-0 flex-col overflow-hidden bg-slate-50 text-slate-900" aria-label="Review workspace">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
-        <div className="min-w-0"><h1 className="truncate text-base font-semibold">Review workspace</h1><p className="truncate text-xs text-slate-600">{task.document?.file_name || 'Document'} · Reviewer: {task.decision_actor || currentTask?.assigned_to || 'not available'} · {task.decision_at ? new Date(task.decision_at).toLocaleString() : 'time not available'}</p></div>
+        <div className="min-w-0"><h1 className="truncate text-base font-semibold">Review workspace</h1><p className="truncate text-xs text-slate-600">{task.document?.file_name || 'Document'} · Decision by: {task.decision_actor || 'not available'} · {task.decision_at ? new Date(task.decision_at).toLocaleString() : 'time not available'}</p></div>
         <div className="flex shrink-0 items-center gap-2"><span role="status" className="text-xs text-emerald-800">{saving ? 'Saving…' : saved ? 'Saved' : ''}</span><button aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)" onClick={() => setShortcuts(true)} className="rounded-lg border border-slate-300 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><CircleHelp size={17} /></button></div>
       </header>
 
@@ -350,7 +374,7 @@ export function ReviewWorkspace({ initialTaskId }: Props) {
           <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2"><h2 className="flex items-center gap-2 text-sm font-semibold"><FileText size={16} />Document</h2><div className="flex items-center gap-1"><button aria-label="Previous page" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="rounded p-1.5 hover:bg-slate-100 disabled:opacity-40"><ChevronLeft size={16} /></button><span className="min-w-16 text-center text-xs">Page {page} / {document?.page_count ?? 'not available'}</span><button aria-label="Next page" disabled={page >= (document?.page_count || 1)} onClick={() => setPage((value) => value + 1)} className="rounded p-1.5 hover:bg-slate-100 disabled:opacity-40"><ChevronRight size={16} /></button><button aria-label="Zoom out" onClick={() => setZoom((value) => Math.max(50, value - 10))} className="rounded p-1.5 hover:bg-slate-100"><Minus size={16} /></button><span className="w-10 text-center text-xs">{zoom}%</span><button aria-label="Zoom in" onClick={() => setZoom((value) => Math.min(200, value + 10))} className="rounded p-1.5 hover:bg-slate-100"><Plus size={16} /></button></div></div>
           <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-slate-100 p-3" data-testid="page-scroll-container">
             {imageLoading && <div className="flex h-full items-center justify-center text-sm text-slate-600"><LoaderCircle className="mr-2 animate-spin" size={18} />Loading page…</div>}
-            {!imageLoading && imageUrl && <div className="relative mx-auto" style={{ width: `${zoom}%`, maxWidth: 'none' }}><img src={imageUrl} alt={`Original document page ${page}`} className="block h-auto w-full select-none" draggable={false} />{entities.map((item) => { const box = item.evidence_spans?.find((span) => span.page_number === page)?.bbox; if (!box) return null; const [x1, y1, x2, y2] = box; return <button key={item.id} type="button" data-testid={`source-box-${item.id}`} aria-label={`Evidence highlight for ${item.normalized_value || item.raw_text}`} aria-pressed={selectedId === item.id} onClick={() => selectEntity(item)} className={`absolute border-2 ${selectedId === item.id ? 'border-amber-600 bg-amber-300/30' : 'border-cyan-600 bg-cyan-300/20'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700`} style={{ left: `${x1 * 100}%`, top: `${y1 * 100}%`, width: `${Math.max(0, x2 - x1) * 100}%`, height: `${Math.max(0, y2 - y1) * 100}%` }} />})}</div>}
+            {!imageLoading && imageUrl && <div className="relative mx-auto" style={{ width: `${zoom}%`, maxWidth: 'none' }}><img src={imageUrl} alt={`Original document page ${page}`} className="block h-auto w-full select-none" draggable={false} />{entities.map((item) => { const box = item.evidence_spans?.find((span) => span.page_number === page)?.bbox; if (!box) return null; const [x1, y1, x2, y2] = box; return <button key={item.id} type="button" data-testid={`source-box-${item.id}`} aria-label={`Evidence highlight for ${item.normalized_value || item.raw_text}`} aria-pressed={selectedId === item.id} onClick={() => selectEntity(item)} className={`absolute border-2 ${selectedId === item.id ? 'border-amber-600 bg-amber-300/30' : 'border-cyan-600 bg-cyan-300/20'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700`} style={{ left: `${x1 * 100}%`, top: `${y1 * 100}%`, width: `${Math.max(0, x2 - x1) * 100}%`, height: `${Math.max(0, y2 - y1) * 100}%` }} />})}{addMode && <div className="absolute inset-0 z-10 cursor-crosshair touch-none" aria-label="Draw evidence box" onPointerDown={(event) => { const rect = event.currentTarget.getBoundingClientRect(); const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)); const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)); setDrawStart([x, y]); setDrawnBox(null) }} onPointerUp={(event) => { if (!drawStart) return; const rect = event.currentTarget.getBoundingClientRect(); const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)); const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)); setDrawnBox([Math.min(x, drawStart[0]), Math.min(y, drawStart[1]), Math.max(x, drawStart[0]), Math.max(y, drawStart[1])]); setDrawStart(null) }}>{drawnBox && <div className="absolute border-2 border-amber-600 bg-amber-300/30" style={{ left: `${drawnBox[0] * 100}%`, top: `${drawnBox[1] * 100}%`, width: `${(drawnBox[2] - drawnBox[0]) * 100}%`, height: `${(drawnBox[3] - drawnBox[1]) * 100}%` }} />}</div>}</div>}
             {!imageLoading && !imageUrl && <div className="flex h-full items-center justify-center text-sm text-slate-600">Page image is unavailable. <button className="ml-1 underline" onClick={() => setImageRetry((value) => value + 1)}>Retry</button></div>}
           </div>
           {!selected?.evidence_spans?.some((span) => span.page_number === page && span.bbox) && <p className="border-t border-slate-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">Evidence highlighting unavailable for this item.</p>}
@@ -366,8 +390,8 @@ export function ReviewWorkspace({ initialTaskId }: Props) {
             <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold">{selected.normalized_value || selected.raw_text}</span><span className="rounded bg-slate-100 px-2 py-0.5 text-[10px]">{sourceLabel(selected.source)}</span></div>
             {editMode ? <div className="space-y-2"><div data-testid="edit-diff" className="rounded border border-slate-200 bg-slate-50 p-2 text-xs"><div>Original AI value: <del>{selected.original_ai_value || selected.normalized_value || selected.raw_text}</del></div><div>Proposed change: <ins>{proposal || 'not available'}</ins></div></div><label className="block text-xs" htmlFor="proposed-value">Proposed value</label><input id="proposed-value" value={proposal} onChange={(event) => setProposal(event.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600" /><div className="flex gap-2"><button onClick={() => void onEdit()} disabled={saving || !proposal.trim()} className="rounded bg-blue-700 px-3 py-1.5 text-xs text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save changes'}</button><button onClick={() => { setEditMode(false); setProposal(selected.normalized_value || selected.raw_text) }} className="rounded border border-slate-300 px-3 py-1.5 text-xs">Cancel</button></div></div> : <div className="flex flex-wrap gap-2"><button onClick={() => setEditMode(true)} disabled={saving} className="rounded border border-slate-300 px-3 py-1.5 text-xs">Edit</button><button onClick={() => void onReject()} disabled={saving} className="rounded border border-rose-300 px-3 py-1.5 text-xs text-rose-800">Reject</button><button onClick={() => void onUndo()} disabled={saving || currentTask?.status === 'approved'} className="rounded border border-slate-300 px-3 py-1.5 text-xs">Undo</button></div>}
             <label className="block text-xs" htmlFor="review-comment">Comment</label><div className="flex gap-2"><input id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1.5 text-xs" /><button onClick={() => void onComment()} disabled={saving || !comment.trim()} className="rounded border border-slate-300 px-2 text-xs">Save comment</button></div>
-            <div className="flex flex-wrap gap-2"><button onClick={() => void onAccept()} disabled={saving || Boolean(acceptDisabledReason)} className="rounded bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">Accept</button><button disabled title="Backend support is unavailable; extraction confidence must not be fabricated." className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-500">Add missing item</button></div>
-            <p className="text-[10px] text-slate-600">Add missing item is not available: reviewer-added entities currently require an extraction confidence value that the backend cannot truthfully supply.</p>
+            <div className="flex flex-wrap gap-2"><button onClick={() => void onAccept()} disabled={saving || Boolean(acceptDisabledReason)} className="rounded bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">Accept</button><button onClick={() => { setAddMode((enabled) => !enabled); setDrawnBox(null) }} disabled={saving || conflict} className="rounded border border-blue-300 px-3 py-1.5 text-xs text-blue-900">{addMode ? 'Cancel add' : 'Add missing item'}</button></div>
+            {addMode && <div className="space-y-2 rounded border border-blue-200 bg-blue-50 p-2"><p className="text-xs">Draw a box on page {page}, then enter the finding and exact OCR evidence. Confidence will be not available; the item requires individual review.</p><label className="block text-xs">Type<input value={addType} onChange={(event) => setAddType(event.target.value)} className="mt-1 w-full rounded border p-1.5" /></label><label className="block text-xs">Text<input value={addText} onChange={(event) => setAddText(event.target.value)} className="mt-1 w-full rounded border p-1.5" /></label><label className="block text-xs">Evidence text<input value={addEvidenceText} onChange={(event) => setAddEvidenceText(event.target.value)} className="mt-1 w-full rounded border p-1.5" /></label><button onClick={() => void onAddMissing()} disabled={saving || !drawnBox || !addText.trim() || !addEvidenceText.trim()} className="rounded bg-blue-700 px-3 py-1.5 text-xs text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save finding'}</button></div>}
             {acceptDisabledReason && <p role="status" className="rounded bg-amber-50 p-2 text-xs text-amber-950"><AlertTriangle size={13} className="mr-1 inline" />{acceptDisabledReason}</p>}
             {unacknowledgedCritical && <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />Acknowledge critical or conflict flag</label>}
             {flags.length > 0 && <div><label htmlFor="override-reason" className="block text-xs">Written override reason (required)</label><textarea id="override-reason" value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} className="mt-1 w-full rounded border border-slate-300 p-2 text-xs" rows={2} /></div>}
@@ -377,7 +401,10 @@ export function ReviewWorkspace({ initialTaskId }: Props) {
         <section aria-label="Flags" className={`${panel === 'flags' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white md:flex`}>
           <h2 className="shrink-0 border-b border-slate-200 p-3 text-sm font-semibold">Flags returned by the backend</h2>
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">{flags.length ? flags.map((flag, index) => <article key={`${flag.rule_code}-${index}`} className={`rounded-lg border p-3 ${flag.severity?.toLowerCase() === 'critical' ? 'border-red-300 bg-red-50 text-red-950' : 'border-amber-300 bg-amber-50 text-amber-950'}`}><div className="flex items-center gap-2 text-xs font-semibold"><Flag size={14} />{flag.severity || 'Severity not available'} · {flag.rule_code || 'Rule not available'}</div><p className="mt-1 text-xs">{flag.message || 'Message not available'}</p><button onClick={() => selected && selectEntity(selected)} className="mt-2 text-xs font-medium underline">Go to affected entity</button></article>) : <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">No flags were returned for this review task.</div>}</div>
-          <p className="shrink-0 border-t border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-700">Checks not implemented by the backend: family/patient attribution mismatch and historical findings incorrectly treated as current.</p>
+          <div className="shrink-0 border-t border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-700">
+            <p>Checks run: {task?.checks_ran?.length ? task.checks_ran.join(', ') : 'not available'}</p>
+            <p className="mt-1">Not implemented: {task?.checks_not_implemented?.length ? task.checks_not_implemented.join(', ') : 'not available'}</p>
+          </div>
         </section>
       </div>
 

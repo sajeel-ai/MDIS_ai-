@@ -1,5 +1,10 @@
 """Static inventory check for authentication and role protection on PHI APIs."""
 from fastapi.routing import APIRoute
+from types import SimpleNamespace
+import pytest
+from fastapi import HTTPException
+from app.models import UserRole
+from app.security.rbac import RoleChecker
 
 from app.main import app
 
@@ -15,7 +20,7 @@ PHI_PREFIXES = (
     "/api/v1/documents", "/api/v1/patients", "/api/v1/review",
     "/api/v1/search", "/api/v1/processing", "/api/v1/audit",
     "/api/v1/notifications", "/api/v1/dashboard", "/api/v1/aiops",
-    "/api/v1/admin", "/api/v1/settings",
+    "/api/v1/admin", "/api/v1/settings", "/api/v1/integrations/fhir",
 )
 
 
@@ -56,3 +61,23 @@ def test_invitation_acceptance_uses_single_use_token_and_csrf_guard():
     route = next(r for r in app.routes if isinstance(r, APIRoute) and r.path == "/api/v1/admin/invitations/accept")
     assert "csrf_protect" in _dependency_names(route)
     assert ("POST", route.path) in TOKEN_AUTHENTICATED_NON_PHI
+
+
+def test_role_checker_rejects_synthetic_anonymous_admin():
+    anonymous_admin = SimpleNamespace(email="anon@dev.local", role=UserRole.ADMIN)
+    with pytest.raises(HTTPException) as exc:
+        RoleChecker([UserRole.ADMIN])(anonymous_admin)
+    assert exc.value.status_code == 401
+
+
+def test_processing_job_reads_are_audited_before_response():
+    expected = {
+        "/api/v1/processing/{job_id}",
+        "/api/v1/processing/{job_id}/steps",
+    }
+    for path in expected:
+        route = next(r for r in app.routes if isinstance(r, APIRoute) and r.path == path)
+        dependencies = _dependency_names(route)
+        assert "get_current_user" in dependencies
+        assert "role_checker" in dependencies
+        assert "audit_dependency" in dependencies

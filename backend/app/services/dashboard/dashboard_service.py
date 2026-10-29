@@ -105,10 +105,24 @@ class DashboardService:
             .where(
                 self._organization_scope(),
                 ReviewTask.status == "pending",
+                ClinicalEntity.confidence.is_not(None),
                 ClinicalEntity.confidence < settings.review_high_priority_threshold,
             )
         )
         low_confidence = low_confidence_res.scalar() or 0
+
+        unavailable_confidence_res = await self.session.execute(
+            select(func.count())
+            .select_from(ReviewTask)
+            .join(ClinicalEntity, ClinicalEntity.id == ReviewTask.entity_id)
+            .join(Document, Document.id == ReviewTask.document_id)
+            .where(
+                self._organization_scope(),
+                ReviewTask.status == "pending",
+                ClinicalEntity.confidence.is_(None),
+            )
+        )
+        confidence_unavailable = unavailable_confidence_res.scalar() or 0
 
         approved_res = await self.session.execute(
             select(func.count()).select_from(Document).where(
@@ -254,6 +268,7 @@ class DashboardService:
                 "awaiting_review": pending_review,
                 "critical_flags": critical_flags,
                 "low_confidence": low_confidence,
+                "confidence_unavailable": confidence_unavailable,
                 "approved": approved,
                 "failed": failed,
             },

@@ -11,10 +11,12 @@ Covers:
 """
 
 import uuid
+import hashlib
 from datetime import datetime, timedelta, timezone
 import pytest
 import pytest_asyncio
 from sqlalchemy import delete, select, func
+from starlette.requests import Request
 
 from app.db import AsyncSessionLocal, engine
 from app.models import (
@@ -41,6 +43,8 @@ from app.services.validation.engine import validate_document_level_issues
 from app.workflows.clinical_processing import ClinicalProcessingWorkflow
 from app.services.retention.retention_service import RetentionPurgeService
 from app.config import settings
+from app.services.dashboard.dashboard_service import DashboardService
+from app.services.review.review_service import review_queue_ordering
 
 
 @pytest_asyncio.fixture
@@ -475,6 +479,26 @@ async def test_pg_scratchpad_purge_deletes_expired_jobs_and_preserves_audit(pg_t
     assert await db.scalar(select(func.count()).select_from(AuditEvent)) == audit_count_before
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pg_retention_legal_hold_excludes_audit_event_and_never_deletes_audit(pg_test_env, monkeypatch):
+    db = pg_test_env["db"]
+    monkeypatch.setattr(settings, "retention_audit_log_days", 2192)
+    old_at = datetime.now(timezone.utc) - timedelta(days=2193)
+    held = AuditEvent(action="synthetic_held_event", legal_hold=True, created_at=old_at)
+    unheld = AuditEvent(action="synthetic_unheld_event", legal_hold=False, created_at=old_at)
+    db.add_all([held, unheld])
+    await db.flush()
+    held_id, unheld_id = held.id, unheld.id
+
+    result = await RetentionPurgeService(db).run_retention_purge(dry_run=False)
+
+    assert result["audit_logs_eligible"] == 1
+    assert result["audit_logs_purged"] == 0
+    assert await db.get(AuditEvent, held_id) is not None
+    assert await db.get(AuditEvent, unheld_id) is not None
+
+
 @pytest.mark.asyncio
 async def test_pg_reprocess_supersedes_and_keeps_old_rows(pg_test_env):
     """Reprocessing marks previous flags as superseded while retaining them for history."""
@@ -781,6 +805,43 @@ async def test_pg_single_and_batch_approval_share_critical_flag_gate(pg_test_env
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("confidence", [0.2, None], ids=["low", "unavailable"])
+@pytest.mark.asyncio
+async def test_pg_single_and_batch_approval_block_low_or_unavailable_confidence(pg_test_env, confidence):
+    db = pg_test_env["db"]
+    document = pg_test_env["doc_a"]
+    extraction = Extraction(document_id=document.id, status="completed")
+    db.add(extraction)
+    await db.flush()
+    entity = ClinicalEntity(
+        extraction_id=extraction.id, entity_type="symptom", raw_text="synthetic confidence case",
+        normalized_value="synthetic confidence case", confidence=confidence,
+        status="unreviewed", assertion="present",
+    )
+    db.add(entity)
+    await db.flush()
+    task = ReviewTask(document_id=document.id, entity_id=entity.id, status="pending", priority="normal")
+    db.add(task)
+    await db.commit()
+
+    service = ReviewService(db)
+    with pytest.raises(ValueError, match="confidence"):
+        await service.record_review_decision(
+            task_id=task.id, decision="approved", reviewer_user_id=pg_test_env["reviewer"].id,
+        )
+    await db.refresh(task)
+    assert task.status == "pending"
+
+    approved_count = await service.approve_clean_for_document(
+        document.id, reviewer_user_id=pg_test_env["reviewer"].id,
+        organization_id=document.organization_id,
+    )
+    await db.refresh(task)
+    assert approved_count == 0
+    assert task.status == "pending"
+
+
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_pg_review_decision_persists_revision_and_rejects_stale_version(pg_test_env):
     db = pg_test_env["db"]
@@ -813,6 +874,13 @@ async def test_pg_review_decision_persists_revision_and_rejects_stale_version(pg
     assert revision.created_at is not None
     audit = await db.scalar(select(AuditEvent).where(AuditEvent.action == "review_decision", AuditEvent.resource_id == task_id))
     assert audit is not None and audit.user_id == reviewer_id
+    # The decision actor comes from its audit record, not the mutable assignee.
+    task = await db.get(ReviewTask, task_id)
+    task.assigned_to = None
+    await db.flush()
+    details = await ReviewService(db).get_review_task_detail(task_id)
+    assert details["decision_actor"] == str(reviewer_id)
+    assert details["decision_at"] == audit.created_at.isoformat()
 
     with pytest.raises(ReviewVersionConflict, match="changed"):
         await ReviewService(db).record_review_decision(
@@ -834,4 +902,143 @@ async def test_pg_soft_delete_patient_preserves_document_link_and_hides_active_s
     await db.flush()
     assert document.patient_id == patient_id
     assert await db.scalar(select(Patient.id).where(Patient.id == patient_id, Patient.deleted_at.is_(None))) is None
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pg_add_missing_entity_persists_versioned_evidence_revision_and_audit(pg_test_env):
+    from fastapi import HTTPException
+    from app.dependencies import UserContext
+    from app.routers.review import AddMissingEntityRequest, add_missing_review_entity
+
+    db = pg_test_env["db"]
+    document = pg_test_env["doc_a"]
+    reviewer = pg_test_env["reviewer"]
+    source = "Cough was reported."
+    version = DocumentVersion(
+        document_id=document.id, version_number=1, raw_text=source,
+        text_hash=hashlib.sha256(source.encode()).hexdigest(), page_count=1,
+    )
+    extraction = Extraction(document_id=document.id, status="completed", model_name="synthetic")
+    db.add_all([version, extraction])
+    await db.flush()
+    request = Request({
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+        "method": "POST", "scheme": "http", "path": "/api/v1/review/documents/add-missing",
+        "raw_path": b"/api/v1/review/documents/add-missing", "query_string": b"",
+        "headers": [(b"user-agent", b"synthetic-test")],
+        "client": ("127.0.0.1", 43210), "server": ("test", 80),
+    })
+    user_context = UserContext(id=reviewer.id, organization_id=document.organization_id, role=UserRole.REVIEWER, email=reviewer.email)
+    with pytest.raises(HTTPException) as stale:
+        await add_missing_review_entity(
+            document.id,
+            AddMissingEntityRequest(expected_version=2, type="symptom", text="cough", page=1, bbox=[0.1, 0.2, 0.4, 0.3], evidence_text="Cough"),
+            request, db, user_context,
+        )
+    assert stale.value.status_code == 409
+    with pytest.raises(HTTPException) as unverifiable:
+        await add_missing_review_entity(
+            document.id,
+            AddMissingEntityRequest(expected_version=1, type="symptom", text="cough", page=1, bbox=[0.1, 0.2, 0.4, 0.3], evidence_text="not present"),
+            request, db, user_context,
+        )
+    assert unverifiable.value.status_code == 422
+    response = await add_missing_review_entity(
+        document.id,
+        AddMissingEntityRequest(
+            expected_version=1, type="symptom", text="cough", page=1,
+            bbox=[0.1, 0.2, 0.4, 0.3], evidence_text="Cough",
+        ),
+        request, db,
+        user_context,
+    )
+    entity_id = uuid.UUID(response["entity_id"])
+    entity = await db.get(ClinicalEntity, entity_id)
+    span = await db.scalar(select(EvidenceSpan).where(EvidenceSpan.entity_id == entity_id))
+    revision = await db.scalar(select(ClinicalEntityRevision).where(ClinicalEntityRevision.entity_id == entity_id))
+    task = await db.scalar(select(ReviewTask).where(ReviewTask.entity_id == entity_id))
+    audit = await db.scalar(select(AuditEvent).where(AuditEvent.action == "review_entity_added", AuditEvent.resource_id == entity_id))
+    assert entity is not None and entity.source == "reviewer_added" and entity.confidence is None
+    assert span is not None and span.page_number == 1 and span.bbox == [0.1, 0.2, 0.4, 0.3]
+    assert revision is not None and revision.source == "reviewer_added" and revision.actor_user_id == reviewer.id
+    assert revision.created_at is not None
+    assert task is not None and task.status == "pending"
+    assert audit is not None and audit.user_id == reviewer.id
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pg_review_queue_ordering_executes_and_dashboard_counts_are_tenant_scoped(pg_test_env):
+    db = pg_test_env["db"]
+    document = pg_test_env["doc_a"]
+    document.source = "upload"
+    extraction = Extraction(document_id=document.id, status="completed", model_name="synthetic")
+    db.add(extraction)
+    await db.flush()
+    critical_entity = ClinicalEntity(extraction_id=extraction.id, entity_type="symptom", raw_text="critical", confidence=0.9, status="unreviewed", assertion="present")
+    low_entity = ClinicalEntity(extraction_id=extraction.id, entity_type="symptom", raw_text="low", confidence=0.4, status="unreviewed", assertion="present")
+    unknown_entity = ClinicalEntity(extraction_id=extraction.id, entity_type="symptom", raw_text="unknown", confidence=None, status="unreviewed", assertion="present", source="reviewer_added")
+    db.add_all([critical_entity, low_entity, unknown_entity])
+    await db.flush()
+    db.add(ValidationResult(entity_id=critical_entity.id, validation_rule="critical", rule_code="CRITICAL", status="warning", severity="critical", message="Synthetic critical flag"))
+    tasks = [
+        ReviewTask(document_id=document.id, entity_id=ent.id, status="pending", priority="normal", reason="synthetic")
+        for ent in [critical_entity, low_entity, unknown_entity]
+    ]
+    db.add_all(tasks)
+    await db.flush()
+    ordered_ids = (await db.scalars(
+        select(ReviewTask.id)
+        .outerjoin(ClinicalEntity, ClinicalEntity.id == ReviewTask.entity_id)
+        .where(ReviewTask.id.in_([task.id for task in tasks]))
+        .order_by(*review_queue_ordering())
+    )).all()
+    assert ordered_ids == [tasks[0].id, tasks[1].id, tasks[2].id]
+
+    data_a = await DashboardService(db, organization_id=document.organization_id).get_dashboard_data()
+    data_b = await DashboardService(db, organization_id=pg_test_env["doc_b"].organization_id).get_dashboard_data()
+    assert data_a["metrics"]["total_documents"] == 1
+    assert data_a["review_queue_summary"]["awaiting_review"] == 3
+    assert data_a["review_queue_summary"]["low_confidence"] == 1
+    assert data_a["review_queue_summary"]["confidence_unavailable"] == 1
+    assert data_b["metrics"]["total_documents"] == 1
+    assert data_b["review_queue_summary"]["awaiting_review"] == 0
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pg_patient_soft_delete_restore_preserves_document_and_audits_both_actions(pg_test_env):
+    from app.dependencies import UserContext
+    from app.routers.patients import restore_patient, soft_delete_patient
+
+    db = pg_test_env["db"]
+    document = pg_test_env["doc_a"]
+    patient_id = document.patient_id
+    admin = UserContext(
+        id=pg_test_env["reviewer"].id, organization_id=document.organization_id,
+        role=UserRole.ADMIN, email=pg_test_env["reviewer"].email,
+    )
+    request = Request({
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+        "method": "POST", "scheme": "http", "path": "/api/v1/patients/restore",
+        "raw_path": b"/api/v1/patients/restore", "query_string": b"",
+        "headers": [], "client": ("127.0.0.1", 43210), "server": ("test", 80),
+    })
+    await soft_delete_patient(patient_id, request, db, admin)
+    assert (await db.get(Patient, patient_id)).deleted_at is not None
+    assert document.patient_id == patient_id
+    details = await DocumentService(db).get_document_details(document.id)
+    assert details["patient_deleted"] is True
+    assert details["patient_name"] is None and details["mrn"] is None
+    from app.services.fhir.fhir_service import FHIRProjectionService
+    with pytest.raises(ValueError, match="soft-deleted"):
+        await FHIRProjectionService(db).generate_document_fhir_bundle(document.id)
+    await restore_patient(patient_id, request, db, admin)
+    assert (await db.get(Patient, patient_id)).deleted_at is None
+    actions = set((await db.scalars(select(AuditEvent.action).where(
+        AuditEvent.resource_type == "patient", AuditEvent.resource_id == patient_id,
+        AuditEvent.action.in_(["soft_delete_patient", "restore_patient"]),
+    ))).all())
+    assert actions == {"soft_delete_patient", "restore_patient"}
 

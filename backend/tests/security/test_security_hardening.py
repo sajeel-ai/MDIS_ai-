@@ -79,6 +79,44 @@ def test_storage_encryption_key_is_required_even_in_development(monkeypatch):
         get_storage_encryption_key()
 
 
+def test_cors_startup_rejects_wildcard_without_database_access(monkeypatch):
+    monkeypatch.setattr(settings, "app_env", "development")
+    monkeypatch.setattr(settings, "environment", None)
+    monkeypatch.setattr(settings, "cors_origins", "*")
+    monkeypatch.setattr(settings, "jwt_secret_key", "a-private-jwt-secret-value-with-over-32-chars")
+    monkeypatch.setattr(settings, "jwt_issuer", "mdis-test-issuer")
+    monkeypatch.setattr(settings, "jwt_audience", "mdis-test-audience")
+    with pytest.raises(RuntimeError, match="explicit origin allowlist"):
+        validate_jwt_configuration()
+
+
+def test_production_startup_rejects_obviously_weak_storage_keys(monkeypatch):
+    from app.security.storage_crypto import validate_storage_key_strength
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "environment", None)
+    monkeypatch.setattr(settings, "allow_anonymous_access", False)
+    monkeypatch.setattr(settings, "auth_disabled", False)
+    monkeypatch.setattr(settings, "jwt_secret_key", "a-private-jwt-secret-value-with-over-32-chars")
+    monkeypatch.setattr(settings, "jwt_issuer", "mdis-test-issuer")
+    monkeypatch.setattr(settings, "jwt_audience", "mdis-test-audience")
+    monkeypatch.setattr(settings, "cors_origins", "https://review.example.test")
+    monkeypatch.setattr(settings, "auth_cookie_secure", True)
+    monkeypatch.setattr(settings, "debug", False)
+    monkeypatch.setattr(settings, "ocr_provider", "azure")
+    monkeypatch.setattr(settings, "extraction_provider", "openai")
+    monkeypatch.setattr(settings, "storage_encryption_key", "0" * 64)
+    monkeypatch.delenv("VITE_AUTH_BYPASS", raising=False)
+
+    with pytest.raises(RuntimeError, match="STORAGE_ENCRYPTION_KEY.*weak"):
+        validate_jwt_configuration()
+
+    with pytest.raises(ValueError, match="weak"):
+        validate_storage_key_strength("0" * 64, production=True)
+    with pytest.raises(ValueError, match="weak"):
+        validate_storage_key_strength("0123456789abcdef" * 4, production=True)
+    validate_storage_key_strength("0" * 64, production=False)
+
+
 @pytest.mark.asyncio
 async def test_anonymous_admin_is_rejected_by_role_protected_document_routes():
     anonymous_admin = User(

@@ -23,7 +23,7 @@ class EntityReviewSummary(BaseModel):
     type: str
     raw_text: str
     normalized_value: Optional[str] = None
-    confidence: float
+    confidence: Optional[float] = None
     assertion: str = "present"
     section: Optional[str] = None
     status: str
@@ -71,6 +71,7 @@ class ReviewTaskResponse(BaseModel):
     comment: Optional[str] = None
     document: Optional[DocumentReviewSummary] = None
     patient: Optional[PatientReviewSummary] = None
+    patient_deleted: bool = False
     entity: Optional[EntityReviewSummary] = None
     evidence: Optional[EvidenceReviewSummary] = None
     validation: Optional[ValidationReviewSummary] = None
@@ -79,6 +80,8 @@ class ReviewTaskResponse(BaseModel):
     version: Optional[int] = None
     decision_actor: Optional[str] = None
     decision_at: Optional[str] = None
+    checks_ran: List[str] = []
+    checks_not_implemented: List[str] = []
 
 
 class ReviewDecisionRequest(BaseModel):

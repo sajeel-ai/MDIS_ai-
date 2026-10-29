@@ -31,8 +31,8 @@ class ClinicalEntity(Base):
     original_ai_value: Mapped[str | None] = mapped_column(Text)
     # The standardized/normalized form (e.g., SNOMED preferred term).
 
-    confidence: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)
-    # 0.0000 – 1.0000
+    confidence: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
+    # 0.0000 – 1.0000; null means the value was not measured (for example, reviewer-added).
 
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="unreviewed", index=True

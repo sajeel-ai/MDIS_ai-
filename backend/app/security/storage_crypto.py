@@ -53,6 +53,32 @@ def _parse_key_bytes(raw: bytes | str) -> bytes:
     raise ValueError(f"Storage encryption key must be {KEY_LENGTH_BYTES} bytes (raw, hex, or base64)")
 
 
+def validate_storage_key_strength(raw: bytes | str, *, production: bool) -> None:
+    """Reject obvious example/placeholder AES keys in production only.
+
+    This catches common configuration mistakes; it is not an entropy
+    estimator and does not replace secret-manager key generation.
+    """
+    key = _parse_key_bytes(raw)
+    if not production:
+        return
+    lowered = key.lower()
+    raw_text = raw.decode("utf-8", errors="ignore") if isinstance(raw, bytes) else raw.strip()
+    raw_lowered = raw_text.casefold()
+    repeated = len(set(key)) <= 1
+    sequences = (
+        b"0123456789abcdef" * 2,
+        b"abcdefghijklmnopqrstuvwxyz"[:KEY_LENGTH_BYTES],
+    )
+    placeholder = any(token in lowered for token in (b"placeholder", b"changeme", b"test-only", b"example"))
+    patterned_text = any(
+        pattern in raw_lowered
+        for pattern in ("0123456789abcdef" * 2, "abcdefghijklmnopqrstuvwxyz"[:KEY_LENGTH_BYTES])
+    )
+    if repeated or placeholder or patterned_text or any(sequence in lowered for sequence in sequences):
+        raise ValueError("STORAGE_ENCRYPTION_KEY is weak or appears to be a placeholder")
+
+
 def get_storage_encryption_key(key: bytes | str | None = None) -> bytes:
     """Resolve active 256-bit encryption key from parameter, settings, or environment."""
     if key is not None:

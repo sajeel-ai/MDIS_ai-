@@ -132,6 +132,7 @@ async def test_live_retention_purge_runs_scratchpad_cleanup_without_deleting_aud
             assert res.json()["audit_logs_purged"] == 0
             assert res.json()["scratchpad_records_purged"] == 0
             assert "processing_jobs" in str(db.execute.await_args_list[-1].args[0])
+            assert db.execute.await_count == 3, "live purge should execute once, not repeat the delete pass"
     finally:
         app.dependency_overrides.clear()
 

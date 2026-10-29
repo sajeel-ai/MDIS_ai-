@@ -369,13 +369,15 @@ class ClinicalProcessingWorkflow:
                         continue
                     has_rule_findings = any(i.severity in {"warning", "error"} for i in issues)
                     priority = (
-                        "high" if review_ent.confidence < settings.review_high_priority_threshold
+                        "high" if review_ent.confidence is None or review_ent.confidence < settings.review_high_priority_threshold
                         else "medium" if review_ent.confidence < settings.review_confidence_threshold
                         else "normal"
                     )
                     reason = (
                         "Validation rules require review: " + ", ".join(i.rule_code for i in issues)
                         if has_rule_findings
+                        else "High priority review: model confidence is not available"
+                        if review_ent.confidence is None
                         else f"High priority review: model confidence ({review_ent.confidence:.2f}) is below configured threshold"
                         if review_ent.confidence < settings.review_high_priority_threshold
                         else (

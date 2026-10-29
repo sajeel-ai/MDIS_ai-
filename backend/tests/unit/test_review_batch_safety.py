@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from app.models import ClinicalEntity, Document, ReviewTask, ValidationResult
+from app.models import ClinicalEntity, ClinicalEntityRevision, Document, ReviewTask, ValidationResult
 from app.services.review.review_service import ReviewService
 
 
@@ -57,6 +57,8 @@ async def test_batch_approve_rejects_document_without_linked_patient():
 @pytest.mark.asyncio
 async def test_batch_approve_skips_low_confidence_entities():
     session = AsyncMock()
+    added_revisions = []
+    session.add = MagicMock(side_effect=added_revisions.append)
     service = ReviewService(session)
 
     doc_id = uuid.uuid4()
@@ -104,4 +106,90 @@ async def test_batch_approve_skips_low_confidence_entities():
         assert approved_count == 1
         assert mock_task_low.status == "pending"
         assert mock_task_high.status == "approved"
+        assert len(added_revisions) == 1
+        assert isinstance(added_revisions[0], ClinicalEntityRevision)
+        assert added_revisions[0].entity_id == mock_entity_high.id
+
+
+def test_batch_gate_rejects_unavailable_confidence_and_reviewer_added_entities():
+    from app.services.review.review_service import evaluate_approval_safety
+
+    linked_document = MagicMock(spec=Document)
+    linked_document.patient_id = uuid.uuid4()
+    linked_document.validation_flags = []
+
+    unavailable = MagicMock(spec=ClinicalEntity)
+    unavailable.confidence = None
+    unavailable.source = "ai_extracted"
+    unavailable.validation_results = []
+    allowed, reason = evaluate_approval_safety(
+        document=linked_document,
+        entity=unavailable,
+        is_batch=True,
+        min_confidence=0.85,
+    )
+    assert not allowed
+    assert "confidence" in reason.lower()
+
+    reviewer_added = MagicMock(spec=ClinicalEntity)
+    reviewer_added.confidence = None
+    reviewer_added.source = "reviewer_added"
+    reviewer_added.validation_results = []
+    allowed, reason = evaluate_approval_safety(
+        document=linked_document,
+        entity=reviewer_added,
+        is_batch=True,
+        min_confidence=0.85,
+    )
+    assert not allowed
+    assert "reviewer-added" in reason.lower()
+
+    # High confidence must not bypass the provenance-specific batch gate.
+    reviewer_added.confidence = 0.98
+    allowed, reason = evaluate_approval_safety(
+        document=linked_document,
+        entity=reviewer_added,
+        is_batch=True,
+        min_confidence=0.85,
+    )
+    assert not allowed
+    assert "reviewer-added" in reason.lower()
+
+
+def test_reviewer_added_entity_with_high_confidence_never_batch_approved():
+    from app.services.review.review_service import evaluate_approval_safety
+
+    document = MagicMock(spec=Document)
+    document.patient_id = uuid.uuid4()
+    document.validation_flags = []
+    entity = MagicMock(spec=ClinicalEntity)
+    entity.confidence = 0.98
+    entity.source = "reviewer_added"
+    entity.validation_results = []
+
+    allowed, reason = evaluate_approval_safety(
+        document=document,
+        entity=entity,
+        is_batch=True,
+        min_confidence=0.85,
+    )
+
+    assert not allowed
+    assert "reviewer-added" in reason.lower()
+
+
+def test_single_and_batch_approval_gate_rejects_soft_deleted_patient():
+    from app.services.review.review_service import evaluate_approval_safety
+
+    document = MagicMock(spec=Document)
+    document.patient_id = uuid.uuid4()
+    document.validation_flags = []
+    document.patient = MagicMock()
+    document.patient.deleted_at = datetime.now(timezone.utc)
+    for is_batch in (False, True):
+        allowed, reason = evaluate_approval_safety(
+            document=document, is_batch=is_batch, raise_on_violation=False,
+        )
+        assert not allowed
+        assert "soft-deleted" in reason
 

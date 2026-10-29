@@ -284,14 +284,18 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
 
   const hasAnyBatchValidationFlag = allValidationResults.length > 0 || Boolean(singleValidationRule);
   const belowBatchConfidenceThreshold = Boolean(
-    detailTask?.entity && reviewPolicy && detailTask.entity.confidence < reviewPolicy.confidence_threshold
+    detailTask?.entity && (detailTask.entity.source === 'reviewer_added' || detailTask.entity.confidence == null || (reviewPolicy && detailTask.entity.confidence < reviewPolicy.confidence_threshold))
   );
   const batchApprovalDisabledReason = !hasLinkedPatient
     ? 'Cannot batch approve: document has no linked patient record.'
     : hasAnyBatchValidationFlag
       ? 'Cannot batch approve: validation flags require manual review.'
       : belowBatchConfidenceThreshold
-        ? 'Cannot batch approve: confidence is below the review threshold.'
+        ? detailTask?.entity?.source === 'reviewer_added'
+          ? 'Cannot batch approve: reviewer-added findings require individual review.'
+          : detailTask?.entity?.confidence == null
+            ? 'Cannot batch approve: confidence is not available.'
+            : 'Cannot batch approve: confidence is below the review threshold.'
         : null;
 
   let approvalDisabledReason: string | null = null;
@@ -969,16 +973,16 @@ export function ReviewCenter({ onNavigate, initialTaskId, detailOnly = false, fr
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-mono font-bold text-[#071A3D]">
-                            {Math.round(detailTask.entity.confidence * 100)}%
+                            {detailTask.entity.confidence == null ? 'not available' : `${Math.round(detailTask.entity.confidence * 100)}%`}
                           </span>
-                          <span className={`text-[11px] font-semibold ${reviewPolicy && detailTask.entity.confidence >= reviewPolicy.confidence_threshold ? 'text-emerald-700' : 'text-amber-700'}`}>
-                            {reviewPolicy && detailTask.entity.confidence >= reviewPolicy.confidence_threshold ? 'At or above review threshold' : 'Review threshold flag'}
+                          <span className={`text-[11px] font-semibold ${detailTask.entity.confidence != null && reviewPolicy && detailTask.entity.confidence >= reviewPolicy.confidence_threshold ? 'text-emerald-700' : 'text-amber-700'}`}>
+                            {detailTask.entity.confidence == null ? 'Confidence not available' : reviewPolicy && detailTask.entity.confidence >= reviewPolicy.confidence_threshold ? 'At or above review threshold' : 'Review threshold flag'}
                           </span>
                         </div>
                         <div className="w-full bg-[#DCE7F3] h-1.5 rounded-full mt-2 overflow-hidden">
                           <div
-                            className={`h-full ${reviewPolicy && detailTask.entity.confidence >= reviewPolicy.confidence_threshold ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                            style={{ width: `${Math.round(detailTask.entity.confidence * 100)}%` }}
+                            className={`h-full ${detailTask.entity.confidence != null && reviewPolicy && detailTask.entity.confidence >= reviewPolicy.confidence_threshold ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                            style={{ width: `${detailTask.entity.confidence == null ? 0 : Math.round(detailTask.entity.confidence * 100)}%` }}
                           />
                         </div>
                       </div>

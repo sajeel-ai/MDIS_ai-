@@ -52,7 +52,7 @@ function PipelinePanel({ stages }: { stages: PipelineStageItem[] }) {
 
 function RealEntityCard({ entity, onViewSource, reviewPolicy }: { entity: ClinicalEntityItem; onViewSource: () => void; reviewPolicy: ReviewPolicy | null }) {
   const [expanded, setExpanded] = useState(false);
-  const confStr = !reviewPolicy
+  const confStr = entity.confidence == null || !reviewPolicy
     ? 'unavailable'
     : entity.confidence >= reviewPolicy.confidence_threshold
       ? 'high'
@@ -136,7 +136,7 @@ function RealEntityCard({ entity, onViewSource, reviewPolicy }: { entity: Clinic
             </div>
             <div className="flex justify-between">
               <span className="text-[#52627A]">Model confidence (uncalibrated):</span>
-              <span className="text-[#071A3D]">{(entity.confidence * 100).toFixed(1)}%</span>
+              <span className="text-[#071A3D]">{entity.confidence == null ? 'not available' : `${(entity.confidence * 100).toFixed(1)}%`}</span>
             </div>
           </div>
         <button onClick={() => setExpanded(false)} className="mt-2 text-xs text-[#52627A] hover:text-[#146EF5] transition-colors">Close ↑</button>
@@ -375,6 +375,7 @@ export function ClinicalWorkspace({
                   status={docDetails.lifecycle_status || deriveDocumentLifecycleStatus(docDetails.status, docDetails.review_status)}
                 />
               </div>
+              {docDetails.patient_deleted && <p role="status" className="mt-1 text-xs font-medium text-rose-800">Linked patient is soft-deleted. Restore the patient before FHIR export.</p>}
             </div>
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 font-mono text-xs text-[#15803d] bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">

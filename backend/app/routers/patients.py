@@ -97,6 +97,26 @@ async def soft_delete_patient(
     return None
 
 
+@router.post("/{patient_id}/restore", dependencies=[Depends(require_roles(UserRole.ADMIN))])
+async def restore_patient(
+    patient_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserContext = Depends(get_current_user),
+):
+    """Restore a soft-deleted patient without changing linked documents."""
+    patient = await authorize_patient_access(patient_id, current_user, db, request)
+    if patient.deleted_at is not None:
+        patient.deleted_at = None
+        await record_audit_event(
+            db, action="restore_patient", user_id=current_user.id,
+            organization_id=current_user.organization_id, resource_type="patient",
+            resource_id=patient.id, request=request,
+        )
+        await db.commit()
+    return {"patient_id": str(patient.id), "restored": True}
+
+
 @router.get("/{patient_id}/timeline", response_model=PatientTimelineResponse)
 async def get_patient_timeline(
     patient_id: uuid.UUID,

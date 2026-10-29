@@ -190,6 +190,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: string, params?: Rec
                   { label: 'Awaiting review', count: queueSummary?.awaiting_review, color: '#071A3D', dot: '#146EF5' },
                   { label: 'Critical flags', count: queueSummary?.critical_flags, color: '#7F1D1D', dot: '#dc2626' },
                   { label: 'Low confidence', count: queueSummary?.low_confidence, color: '#92400E', dot: '#d97706' },
+                  { label: 'Confidence unavailable', count: queueSummary?.confidence_unavailable, color: '#475569', dot: '#64748b' },
                   { label: 'Approved', count: queueSummary?.approved, color: '#166534', dot: '#16a34a' },
                   { label: 'Failed', count: queueSummary?.failed, color: '#7F1D1D', dot: '#dc2626' },
                 ].map((r) => (

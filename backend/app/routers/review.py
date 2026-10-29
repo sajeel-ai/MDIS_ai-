@@ -19,7 +19,9 @@ from app.config import settings
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.models import ClinicalEntity, ClinicalEntityRevision, Document, Extraction, ReviewTask
+from app.models import DocumentVersion, EvidenceSpan
 from app.security.authorization import authorize_document_access
+from app.services.extraction.review_contract import verify_evidence
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,15 @@ class EntityEditRequest(EntityVersionRequest):
 
 class EntityCommentRequest(EntityVersionRequest):
     comment: str = Field(min_length=1, max_length=4000)
+
+
+class AddMissingEntityRequest(BaseModel):
+    expected_version: int = Field(ge=1)
+    type: str = Field(min_length=1, max_length=32)
+    text: str = Field(min_length=1, max_length=4000)
+    page: int = Field(ge=1)
+    bbox: list[float] = Field(min_length=4, max_length=4)
+    evidence_text: str = Field(min_length=1, max_length=4000)
 
 
 async def _load_scoped_entity(entity_id: uuid.UUID, db: AsyncSession, user: UserContext):
@@ -75,6 +86,72 @@ async def _persist_entity_revision(entity, before, actor_id, action, db, request
         resource_id=entity.id, request=request,
     )
     await db.commit()
+
+
+@router.post("/documents/{document_id}/entities/add-missing", dependencies=[Depends(require_roles(UserRole.REVIEWER, UserRole.ADMIN))])
+async def add_missing_review_entity(
+    document_id: uuid.UUID, payload: AddMissingEntityRequest, request: Request,
+    db: AsyncSession = Depends(get_db), current_user: UserContext = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Document, Extraction, DocumentVersion)
+        .join(Extraction, Extraction.document_id == Document.id)
+        .join(DocumentVersion, DocumentVersion.document_id == Document.id)
+        .where(Document.id == document_id, Document.organization_id == current_user.organization_id)
+        .order_by(DocumentVersion.version_number.desc(), Extraction.created_at.desc())
+        .limit(1)
+        .with_for_update()
+    )
+    row = result.first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Document with processed text was not found")
+    document, extraction, version = row
+    if version.version_number != payload.expected_version:
+        raise HTTPException(status_code=409, detail="Document text changed; reload before adding a finding")
+    if version.page_count is not None and payload.page > version.page_count:
+        raise HTTPException(status_code=422, detail="Evidence page is outside the document page range")
+    if not isinstance(payload.bbox, list) or any(not 0 <= value <= 1 for value in payload.bbox):
+        raise HTTPException(status_code=422, detail="Bounding box coordinates must be normalized from 0 to 1")
+    x1, y1, x2, y2 = payload.bbox
+    if x1 >= x2 or y1 >= y2:
+        raise HTTPException(status_code=422, detail="Bounding box must have positive width and height")
+    evidence = verify_evidence(version.raw_text, payload.evidence_text, fuzzy_threshold=1.0)
+    if not evidence.get("verified"):
+        raise HTTPException(status_code=422, detail="Evidence text was not found in the document OCR text")
+    entity = ClinicalEntity(
+        extraction_id=extraction.id,
+        entity_type=payload.type.strip().lower(),
+        raw_text=payload.text.strip(), normalized_value=payload.text.strip(),
+        original_ai_value=None, confidence=None, assertion="possible",
+        status="needs_correction", source="reviewer_added", version=1,
+        details={"group": "uncertain-review"},
+    )
+    db.add(entity)
+    await db.flush()
+    db.add(EvidenceSpan(
+        entity_id=entity.id, document_version_id=version.id,
+        page_number=payload.page, start_offset=evidence["start"],
+        end_offset=evidence["end"], text=payload.evidence_text.strip(), bbox=payload.bbox,
+    ))
+    # Keep newly added findings in the normal human review queue. This does
+    # not approve or otherwise bypass any review gate.
+    db.add(ReviewTask(
+        document_id=document.id, entity_id=entity.id, assigned_to=current_user.id,
+        status="pending", priority="high",
+        reason="Reviewer-added finding requires individual review.",
+    ))
+    db.add(ClinicalEntityRevision(
+        entity_id=entity.id, actor_user_id=current_user.id, source="reviewer_added",
+        action="added", before=None,
+        after={"type": entity.entity_type, "text": entity.raw_text, "assertion": entity.assertion, "source": entity.source},
+    ))
+    await record_audit_event(
+        db, action="review_entity_added", user_id=current_user.id,
+        organization_id=document.organization_id, resource_type="clinical_entity",
+        resource_id=entity.id, request=request,
+    )
+    await db.commit()
+    return {"entity_id": str(entity.id), "version": entity.version, "source": entity.source, "confidence": None}
 
 
 @router.post("/entities/{entity_id}/edit", dependencies=[Depends(require_roles(UserRole.REVIEWER, UserRole.ADMIN))])

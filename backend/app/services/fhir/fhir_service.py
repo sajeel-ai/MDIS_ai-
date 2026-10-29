@@ -139,6 +139,8 @@ def build_document_fhir_bundle(document: Document, *, include_unreviewed: bool =
     patient = document.patient
     if patient is None:
         raise ValueError("FHIR document export requires a linked patient")
+    if isinstance(patient.deleted_at, datetime):
+        raise ValueError("FHIR document export is blocked because the linked patient is soft-deleted; restore the patient first")
 
     doc_id = str(document.id)
     patient_id = str(patient.id)

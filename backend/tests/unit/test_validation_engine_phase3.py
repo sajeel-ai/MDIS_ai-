@@ -37,6 +37,14 @@ def test_confidence_range_pass_and_fail():
     assert confidence_range.validate(entity(confidence=1.1)).rule_code == "CONFIDENCE_RANGE"
 
 
+def test_unavailable_confidence_is_not_a_malformed_measurement_but_requires_review():
+    from app.services.validation.review_policy import requires_review
+
+    item = entity(confidence=None)
+    assert confidence_range.validate(item) is None
+    assert requires_review(item, [], policy="threshold", threshold=.8)
+
+
 def test_code_system_format_pass_and_fail():
     assert code_system_format.validate(entity(details={"code": "J18.9", "code_system": "ICD10"})) is None
     assert code_system_format.validate(entity(details={"code": "bad code", "code_system": "ICD10"})).rule_code == "CODE_SYSTEM_FORMAT"

@@ -7,6 +7,14 @@ import pytest
 from app.services.retention.retention_service import RetentionPurgeBlockedError, RetentionPurgeService
 
 
+def test_audit_retention_floor_is_at_least_six_years():
+    from pydantic import ValidationError
+    from app.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(retention_audit_log_days=2191)
+
+
 @pytest.mark.asyncio
 async def test_retention_service_policy_returns_configured_days():
     """Verify retention service exposes configured policy parameters."""

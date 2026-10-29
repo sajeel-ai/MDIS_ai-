@@ -11,6 +11,14 @@ class RoleChecker:
         self.allowed_roles = allowed_roles
 
     def __call__(self, user: User = Depends(get_current_user)):
+        # The development-only synthetic identity must never gain access just
+        # because its fixture role is ADMIN. It is not an authenticated user.
+        if (user.email or "").strip().casefold() == "anon@dev.local":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         if user.role not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
