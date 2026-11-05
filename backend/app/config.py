@@ -156,9 +156,7 @@ class Settings(BaseSettings):
     # CORS
     # Comma-separated string; parsed into a list by the property below.
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8443,http://127.0.0.1:8443"
-    telemetry_enabled: bool = True
     metrics_internal_only: bool = True
-    tracing_enabled: bool = False
 
     @model_validator(mode="after")
     def validate_fhir_configuration(self):
