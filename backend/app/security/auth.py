@@ -23,6 +23,7 @@ from app.config import settings
 from app.db import get_db
 from app.models import RefreshToken, User, UserRole
 from app.services.audit_service import record_audit_event
+from app.security.secrets import configured_secret, validate_required_secrets
 
 INSECURE_JWT_SECRETS = {"secret", "changeme", "change-this-in-production-1234567890"}
 JWT_ALGORITHM = "HS256"
@@ -49,6 +50,10 @@ def is_development_environment() -> bool:
 def validate_jwt_configuration() -> None:
     """Fail closed when an unsafe auth or production configuration is selected."""
     is_development = is_development_environment()
+    secret_failures = validate_required_secrets(settings)
+    if secret_failures:
+        names = ", ".join(failure.name for failure in secret_failures)
+        raise RuntimeError(f"Required production secrets are missing or weak: {names}")
     if settings.allow_anonymous_access and not is_development:
         raise RuntimeError("ALLOW_ANONYMOUS_ACCESS may only be enabled in development")
     if settings.auth_disabled and not is_development:
@@ -59,11 +64,12 @@ def validate_jwt_configuration() -> None:
         logger.warning("AUTH_DISABLED is set in development; authentication remains required")
     if settings.jwt_algorithm != JWT_ALGORITHM:
         raise RuntimeError("JWT_ALGORITHM must remain pinned to HS256")
+    jwt_secret = configured_secret("JWT_SECRET_KEY", settings.jwt_secret_key)
     if (
-        len(settings.jwt_secret_key) < 32
-        or settings.jwt_secret_key.strip().casefold() in INSECURE_JWT_SECRETS
-        or "cognate-dev-secret-key" in settings.jwt_secret_key.casefold()
-        or "change-this" in settings.jwt_secret_key.casefold()
+        len(jwt_secret) < 32
+        or jwt_secret.strip().casefold() in INSECURE_JWT_SECRETS
+        or "cognate-dev-secret-key" in jwt_secret.casefold()
+        or "change-this" in jwt_secret.casefold()
     ):
         raise RuntimeError("JWT_SECRET_KEY must be a private value of at least 32 characters")
     if not settings.jwt_issuer.strip() or not settings.jwt_audience.strip():
@@ -78,12 +84,13 @@ def validate_jwt_configuration() -> None:
             raise RuntimeError("DEBUG must be false outside development")
         if settings.ocr_provider.strip().lower() == "mock" or settings.extraction_provider.strip().lower() == "mock":
             raise RuntimeError("Mock OCR and extraction providers may only be used in development")
-        if not settings.storage_encryption_key and not os.getenv("STORAGE_ENCRYPTION_KEY"):
+        storage_key = configured_secret("STORAGE_ENCRYPTION_KEY", settings.storage_encryption_key)
+        if not storage_key:
             raise RuntimeError("STORAGE_ENCRYPTION_KEY must be configured outside development")
         from app.security.storage_crypto import validate_storage_key_strength
         try:
             validate_storage_key_strength(
-                settings.storage_encryption_key or os.getenv("STORAGE_ENCRYPTION_KEY", ""),
+                storage_key,
                 production=True,
             )
         except ValueError as exc:
@@ -119,7 +126,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         "iss": settings.jwt_issuer,
         "aud": settings.jwt_audience,
     }
-    return jwt.encode(claims, settings.jwt_secret_key, algorithm=JWT_ALGORITHM)
+    return jwt.encode(
+        claims,
+        configured_secret("JWT_SECRET_KEY", settings.jwt_secret_key),
+        algorithm=JWT_ALGORITHM,
+    )
 
 
 def hash_password(password: str) -> str:
@@ -234,7 +245,7 @@ async def get_current_user(
     try:
         payload = jwt.decode(
             credential,
-            settings.jwt_secret_key,
+            configured_secret("JWT_SECRET_KEY", settings.jwt_secret_key),
             algorithms=[JWT_ALGORITHM],
             issuer=settings.jwt_issuer,
             audience=settings.jwt_audience,

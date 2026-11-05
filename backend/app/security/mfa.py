@@ -11,11 +11,14 @@ from urllib.parse import quote
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from app.config import settings
+from app.security.secrets import configured_secret
 
 
 def _key() -> bytes:
     try:
-        key = base64.urlsafe_b64decode(settings.auth_encryption_key.encode())
+        key = base64.urlsafe_b64decode(
+            configured_secret("AUTH_ENCRYPTION_KEY", settings.auth_encryption_key).encode()
+        )
     except Exception as exc:
         raise RuntimeError("AUTH_ENCRYPTION_KEY must be a URL-safe base64 encoded 32-byte key") from exc
     if len(key) != 32:

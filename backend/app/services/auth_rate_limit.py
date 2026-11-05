@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.security.secrets import configured_secret
 from app.models import AuthRateLimitBucket
 
 
@@ -38,7 +39,11 @@ async def enforce_auth_rate_limit(
 
     for dimension, value, limit in dimensions:
         material = f"{action}:{dimension}:{value}".encode()
-        key_hash = hmac.new(settings.jwt_secret_key.encode(), material, hashlib.sha256).hexdigest()
+        key_hash = hmac.new(
+            configured_secret("JWT_SECRET_KEY", settings.jwt_secret_key).encode(),
+            material,
+            hashlib.sha256,
+        ).hexdigest()
         stmt = insert(AuthRateLimitBucket).values(
             key_hash=key_hash, window_started_at=now, attempts=1, blocked_until=None
         )

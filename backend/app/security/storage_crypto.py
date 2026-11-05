@@ -9,6 +9,7 @@ from typing import List, Optional
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from app.config import settings
+from app.security.secrets import configured_secret
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ def get_storage_encryption_key(key: bytes | str | None = None) -> bytes:
     if key is not None:
         return _parse_key_bytes(key)
 
-    configured = settings.storage_encryption_key or os.getenv("STORAGE_ENCRYPTION_KEY", "")
+    configured = configured_secret("STORAGE_ENCRYPTION_KEY", settings.storage_encryption_key)
     if configured.strip():
         return _parse_key_bytes(configured)
 
@@ -183,4 +184,3 @@ def decrypt_bytes(payload: bytes, key: bytes | str | None = None, strict: bool =
     if last_error:
         raise last_error
     raise ValueError("Decryption failed: no valid key found")
-

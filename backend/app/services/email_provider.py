@@ -9,6 +9,7 @@ from urllib.parse import urlencode, urlsplit
 import httpx
 
 from app.config import settings
+from app.security.secrets import configured_secret
 from app.services.email_templates import EmailTemplate, render_email
 
 
@@ -35,7 +36,10 @@ class SMTPEmailProvider:
                 if settings.smtp_starttls:
                     client.starttls()
                 if settings.smtp_username:
-                    client.login(settings.smtp_username, settings.smtp_password)
+                    client.login(
+                        settings.smtp_username,
+                        configured_secret("SMTP_PASSWORD", settings.smtp_password),
+                    )
                 client.send_message(message)
 
         await asyncio.to_thread(deliver)
