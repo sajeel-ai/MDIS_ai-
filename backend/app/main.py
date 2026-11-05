@@ -20,6 +20,7 @@ from app.config import settings, validate_fhir_configuration
 from app.db import AsyncSessionLocal
 from app.models import RefreshToken
 from app.security.auth import validate_jwt_configuration
+from app.telemetry import install_structured_logging, metrics
 from app.routers import health
 
 
@@ -54,6 +55,7 @@ app = FastAPI(
     openapi_url=f"{settings.api_prefix}/openapi.json",
     lifespan=lifespan,
 )
+install_structured_logging()
 security_logger = logging.getLogger("app.security")
 
 
@@ -61,10 +63,14 @@ security_logger = logging.getLogger("app.security")
 async def security_headers_and_request_id(request: Request, call_next):
     request_id = str(uuid.uuid4())
     request.state.request_id = request_id
+    started = datetime.now(timezone.utc)
     try:
         response = await call_next(request)
     except Exception:
-        security_logger.exception("Unhandled request failure request_id=%s", request_id)
+        security_logger.exception(
+            "Unhandled request failure",
+            extra={"request_id": request_id, "telemetry_event": "request_failure"},
+        )
         response = JSONResponse(status_code=500, content={"detail": "Internal server error"})
     response.headers["X-Request-ID"] = request_id
     response.headers["Content-Security-Policy"] = "frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
@@ -79,6 +85,23 @@ async def security_headers_and_request_id(request: Request, call_next):
         response.headers["Cache-Control"] = "no-store, private"
     if settings.auth_cookie_secure:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    route = request.scope.get("route")
+    route_name = getattr(route, "path", request.url.path)
+    metrics.observe_request(
+        request.method,
+        route_name,
+        response.status_code,
+        (datetime.now(timezone.utc) - started).total_seconds(),
+    )
+    security_logger.info(
+        "request_complete",
+        extra={
+            "telemetry_event": "request_complete",
+            "request_id": request_id,
+            "user_id": getattr(request.state, "user_id", None),
+            "organization_id": getattr(request.state, "organization_id", None),
+        },
+    )
     return response
 
 

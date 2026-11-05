@@ -223,6 +223,8 @@ async def get_current_user(
                 await db.commit()
                 await db.refresh(anon_user)
             db.info["organization_id"] = anon_user.organization_id
+            request.state.user_id = str(anon_user.id)
+            request.state.organization_id = str(anon_user.organization_id)
             return anon_user
 
         await record_audit_event(db, action="AUTHZ_DENIED", request=request)
@@ -259,6 +261,8 @@ async def get_current_user(
         await db.commit()
         raise unauthorized()
     db.info["organization_id"] = user.organization_id
+    request.state.user_id = str(user.id)
+    request.state.organization_id = str(user.organization_id)
 
     # A privileged role never receives API access before MFA is enrolled.
     if user.role in {UserRole.ADMIN, UserRole.OPERATOR} and not user.mfa_enabled:
