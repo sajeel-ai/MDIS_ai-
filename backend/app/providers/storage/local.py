@@ -1,7 +1,8 @@
 """Local File System Storage Provider with AES-256-GCM encryption at rest."""
 
 import asyncio
-import os
+from pathlib import Path
+
 from app.config import settings
 from app.providers.storage.base import BaseStorageProvider
 from app.security.storage_crypto import decrypt_bytes, encrypt_bytes
@@ -11,18 +12,30 @@ class LocalStorageProvider(BaseStorageProvider):
     def __init__(self, base_path: str | None = None):
         self.base_path = base_path or settings.storage_local_path
 
-    def _resolve_path(self, storage_key: str) -> str:
-        # Strip scheme prefix like 'local:' if present
-        clean_key = storage_key.split(":", 1)[-1] if ":" in storage_key else storage_key
-        return os.path.abspath(os.path.join(self.base_path, clean_key))
+    def _resolve_path(self, storage_key: str) -> Path:
+        clean_key = (
+            storage_key.removeprefix("local:")
+            if storage_key.startswith("local:")
+            else storage_key
+        )
+        if not clean_key or Path(clean_key).is_absolute():
+            raise ValueError("Storage key must be a non-empty relative path")
+
+        root = Path(self.base_path).resolve()
+        target = (root / clean_key).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("Storage key resolves outside the storage root") from exc
+        return target
 
     async def save_file(self, storage_key: str, file_bytes: bytes) -> str:
         target_path = self._resolve_path(storage_key)
-        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
         encrypted_bytes = encrypt_bytes(file_bytes)
 
         def _write():
-            with open(target_path, "wb") as f:
+            with target_path.open("wb") as f:
                 f.write(encrypted_bytes)
 
         await asyncio.to_thread(_write)
@@ -30,13 +43,13 @@ class LocalStorageProvider(BaseStorageProvider):
 
     async def save_file_from_path(self, storage_key: str, source_path: str) -> str:
         target_path = self._resolve_path(storage_key)
-        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
 
         def _read_and_encrypt_write():
             with open(source_path, "rb") as sf:
                 plain = sf.read()
             encrypted = encrypt_bytes(plain)
-            with open(target_path, "wb") as df:
+            with target_path.open("wb") as df:
                 df.write(encrypted)
 
         await asyncio.to_thread(_read_and_encrypt_write)
@@ -44,11 +57,11 @@ class LocalStorageProvider(BaseStorageProvider):
 
     async def read_file(self, storage_key: str) -> bytes:
         target_path = self._resolve_path(storage_key)
-        if not os.path.exists(target_path):
+        if not target_path.is_file():
             raise FileNotFoundError(f"Stored document file not found at {target_path}")
 
         def _read():
-            with open(target_path, "rb") as f:
+            with target_path.open("rb") as f:
                 return f.read()
 
         raw_bytes = await asyncio.to_thread(_read)
@@ -57,7 +70,7 @@ class LocalStorageProvider(BaseStorageProvider):
 
     async def delete_file(self, storage_key: str) -> bool:
         target_path = self._resolve_path(storage_key)
-        if os.path.exists(target_path):
-            os.remove(target_path)
+        if target_path.is_file():
+            target_path.unlink()
             return True
         return False
