@@ -1,6 +1,7 @@
 """Extraction Provider Factory."""
 
 from app.config import settings
+from app.security.secrets import configured_secret
 from app.providers.extraction.base import BaseExtractionProvider
 from app.providers.extraction.local import LocalExtractionProvider
 from app.providers.extraction.mock import MockExtractionProvider
@@ -29,7 +30,11 @@ def validate_extraction_provider_configuration(
         )
 
     if name == "openai":
-        resolved_key = settings.openai_api_key if api_key is None else api_key
+        resolved_key = (
+            configured_secret("OPENAI_API_KEY", settings.openai_api_key)
+            if api_key is None
+            else api_key
+        )
         resolved_model = settings.openai_model if model is None else model
         if not resolved_key or not resolved_key.strip():
             raise ExtractionProviderConfigurationError(
@@ -41,7 +46,7 @@ def validate_extraction_provider_configuration(
             )
 
     if name == "hybrid" and settings.extraction_llm_fallback_enabled:
-        if not settings.openai_api_key.strip() or not settings.openai_model.strip():
+        if not configured_secret("OPENAI_API_KEY", settings.openai_api_key).strip() or not settings.openai_model.strip():
             raise ExtractionProviderConfigurationError(
                 "Hybrid LLM fallback requires OPENAI_API_KEY and OPENAI_MODEL when enabled."
             )

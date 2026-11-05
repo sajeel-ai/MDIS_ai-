@@ -15,6 +15,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.security.secrets import configured_secret
 from app.models import AuthVerificationCode, User
 from app.services.audit_service import record_audit_event
 from app.services.auth_rate_limit import enforce_auth_rate_limit
@@ -32,7 +33,9 @@ _DUMMY_CODE_HASH = "0" * 64
 
 
 def _hash_code(row_id: uuid.UUID, purpose: str, code: str) -> str:
-    key = settings.auth_encryption_key or settings.jwt_secret_key
+    key = configured_secret("AUTH_ENCRYPTION_KEY", settings.auth_encryption_key) or configured_secret(
+        "JWT_SECRET_KEY", settings.jwt_secret_key
+    )
     material = f"{row_id}:{purpose}:{code}".encode("utf-8")
     return hmac.new(key.encode("utf-8"), material, hashlib.sha256).hexdigest()
 
@@ -187,7 +190,10 @@ async def verify_verification_code(
 
     expected = row.code_hash if row else _DUMMY_CODE_HASH
     actual = _hash_code(row.id, purpose_value, candidate) if row else hmac.new(
-        (settings.auth_encryption_key or settings.jwt_secret_key).encode("utf-8"),
+        (
+            configured_secret("AUTH_ENCRYPTION_KEY", settings.auth_encryption_key)
+            or configured_secret("JWT_SECRET_KEY", settings.jwt_secret_key)
+        ).encode("utf-8"),
         f"unknown:{purpose_value}:{candidate}".encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
